@@ -1,0 +1,60 @@
+
+   
+[MASTER]
+
+# Use multiple processes to speed up Pylint.
+jobs=1
+
+[FORMAT]
+max-line-length=100
+
+[MESSAGES CONTROL]
+
+
+# Tests
+enable=bad-indentation,       # Used when an unexpected number of indentation’s tabulations or spaces has been found.
+       mixed-indentation,     # Used when there are some mixed tabs and spaces in a module.
+       unnecessary-semicolon, # Used when a statement is ended by a semi-colon (”;”), which isn’t necessary.
+       unused-variable        # Used when a variable is defined but not used. (Use _var to ignore var).
+
+disable=import-error,
+        missing-module-docstring,
+        invalid-name,
+        missing-function-docstring,
+        redefined-outer-name,
+        missing-class-docstring,
+        too-many-locals,
+        too-few-public-methods,
+        unused-import,
+        pointless-string-statement,
+        too-many-statements,
+        too-many-arguments,
+        no-name-in-module,
+        fixme,
+        too-many-branches,
+        multiple-imports,
+        duplicate-code,
+        inconsistent-return-statements,
+        consider-using-min-builtin
+
+[REPORTS]
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+# Activate the evaluation score.
+score=no
+
+
+[EXCEPTIONS]
+
+# Exceptions that will emit a warning when being caught.
+overgeneral-exceptions=Exception
+
+[SIMILARITIES]
+
+# Minimum lines number of a similarity.
+min-similarity-lines=5
+
+[pre-commit-hook]
+params=*.py **/*.py
