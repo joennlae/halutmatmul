@@ -5,6 +5,9 @@
 # Use multiple processes to speed up Pylint.
 jobs=1
 
+ignore-paths=^maddness/python/joblib/.*$,
+             ^src/test/.*$,
+
 [FORMAT]
 max-line-length=100
 

@@ -1,17 +1,21 @@
+# pylint: disable=C0302, C1802, C0209, R1705, W0201
+
 import abc
 import copy
 import os
 import numpy as np
 import numba
-from joblib import Memory
 from sklearn import linear_model
+from scipy import stats
+from joblib import Memory
+
+
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 CIFAR10_DIR = os.path.join(_dir, "..", "assets", "cifar10-softmax")
 CIFAR100_DIR = os.path.join(_dir, "..", "assets", "cifar100-softmax")
 
 _memory = Memory(".", verbose=0)
-
 
 # numpy cumsum in insanely slow; also, having the nested loops is twice
 # as fast as assigning rows (ie, X[i] += X[i-1])
@@ -26,7 +30,7 @@ def _cumsum_cols(X):
     return out
 
 
-@numba.njit(fastmath=True, cache=True)  # njit = no python, cache binary
+@numba.njit(fastmath=True, cache=True)
 def _cumsse_cols(X):
     N, D = X.shape
     cumsses = np.empty((N, D), X.dtype)
@@ -46,42 +50,18 @@ def _cumsse_cols(X):
     return cumsses
 
 
-@numba.njit(fastmath=True, cache=True)  # njit = no python, cache binary
-def _cumsse_cols(X):
-    N, D = X.shape
-    cumsses = np.empty((N, D), X.dtype)
-    cumX_row = np.empty(D, X.dtype)
-    cumX2_row = np.empty(D, X.dtype)
-    for j in range(D):
-        cumX_row[j] = X[0, j]
-        cumX2_row[j] = X[0, j] * X[0, j]
-        cumsses[0, j] = 0  # no err in bucket with 1 element
-    for i in range(1, N):
-        one_over_count = 1.0 / (i + 1)
-        for j in range(D):
-            cumX_row[j] += X[i, j]
-            cumX2_row[j] += X[i, j] * X[i, j]
-            meanX = cumX_row[j] * one_over_count
-            cumsses[i, j] = cumX2_row[j] - (cumX_row[j] * meanX)
-    return cumsses
-
-
-# def optimal_split_val(X, dim, possible_vals=None, return_val_idx=False):
 # @_memory.cache
 def optimal_split_val(
     X,
     dim,
     possible_vals=None,
     X_orig=None,
-    # return_possible_vals_losses=False, force_val='median'):
     return_possible_vals_losses=False,
     force_val=None,
-    # shrink_towards_median=True):
     shrink_towards_median=False,
 ):
 
     X_orig = X if X_orig is None else X_orig
-    # X_orig = X # TODO rm
     if X_orig.shape != X.shape:
         print("X orig shape: ", X_orig.shape)
         print("X shape: ", X.shape)
@@ -100,77 +80,38 @@ def optimal_split_val(
         loss1 = np.sum(errs * errs)
         return val, loss0 + loss1
 
-    N, D = X.shape
-    # sort_idxs = np.argsort(X[:, dim])
+    N, _ = X.shape
     sort_idxs = np.argsort(X_orig[:, dim])
     X_sort = X[sort_idxs]
 
-    # use_jit = False
     use_jit = True
     if use_jit:
-        # X_sort = X_sort[:100] # TODO rm
-        # X_sort = np.ascontiguousarray(X_sort)
-        # N, D = X_sort.shape
-        # print("about to call jitted func; N, D = ", N, D)
         sses_head = _cumsse_cols(X_sort)
-        # print("got thru first call...")
-        # X_sort_rev = np.ascontiguousarray(X_sort[::-1])
-        # sses_tail = _cumsse_cols(X_sort_rev)[::-1]
         sses_tail = _cumsse_cols(X_sort[::-1])[::-1]
-        # print("returned from jitted func!")
     else:
         X_sort_sq = X_sort * X_sort
-        # cumX_head = np.cumsum(X_sort, axis=0)
-        # cumX2_head = np.cumsum(X_sort_sq, axis=0)
-        # cumX_tail = np.cumsum(X_sort[::-1], axis=0)[::-1]
-        # cumX2_tail = np.cumsum(X_sort_sq[::-1], axis=0)[::-1]
         cumX_head = _cumsum_cols(X_sort)
         cumX2_head = _cumsum_cols(X_sort_sq)
         cumX_tail = _cumsum_cols(X_sort[::-1])[::-1]
         cumX2_tail = _cumsum_cols(X_sort_sq[::-1])[::-1]
 
         all_counts = np.arange(1, N + 1).reshape(-1, 1)
-        EX_head = cumX_head / all_counts  # E[X], starting from 0
-        EX_tail = cumX_tail / all_counts[::-1]  # E[X], starting from N-1
-        # EX2_head = cumX2_head / all_counts          # E[X^2], starting from 0
-        # EX2_tail = cumX2_tail / all_counts[::-1]    # E[X^2], starting from N-1
-        # mses_head = EX2_head - (EX_head * EX_head)  # mses from 0
-        # mses_tail = EX2_tail - (EX_tail * EX_tail)  # mses from N-1
-        # sses_head = mses_head * all_counts          #
-        # sses_tail = mses_tail * all_counts[::-1]
+        EX_head = cumX_head / all_counts
+        EX_tail = cumX_tail / all_counts[::-1]
 
-        # simpler equivalent of above; mse * N reduces to this
         sses_head = cumX2_head - (cumX_head * EX_head)
         sses_tail = cumX2_tail - (cumX_tail * EX_tail)
-
-    # # TODO rm
-    # mse_head_diffs = sses_head[1:] - sses_head[:-1]
-    # # print("mse_head_diffs[:20]", mse_head_diffs[:20])
-    # assert np.all(mse_head_diffs > -.1)  # should be nondecreasing
-    # mse_tail_diffs = sses_tail[1:] - sses_tail[:-1]
-    # assert np.all(mse_tail_diffs < .1)  # should be nonincreasing
-
     sses = sses_head
-    sses[:-1] += sses_tail[1:]  # sse of X_sort[:i] + sse of X_sort[i:]
+    sses[:-1] += sses_tail[1:]
     sses = sses.sum(axis=1)
 
     if shrink_towards_median:
         minsse, maxsse = np.min(sses), np.max(sses)
         scale = maxsse - minsse
-        # n_over_2 = N // 2
-        # scale = (maxsse - minsse) / n_over_2
         coeffs = np.abs(np.arange(N, dtype=np.float32))
         penalties = coeffs * (scale / np.max(coeffs))
         sses += penalties
 
-    # # TODO rm
-    # E_X = X.mean(axis=0)
-    # E_X2 = (X * X).mean(axis=0)
-    # sse_true = np.sum(E_X2 - (E_X * E_X)) * N
-    # print("sses[0], sses[-1], true loss, np.sum(X.var(axis=0)) * N",
-    #       sses[0], sses[-1], sse_true, np.sum(X.var(axis=0)) * N)
-
-    # X_orig_sort = X_orig[sort_idxs]
     if possible_vals is None or not len(possible_vals):  # can split anywhere
         best_idx = np.argmin(sses)
         next_idx = min(N - 1, best_idx + 1)
@@ -194,7 +135,7 @@ def optimal_split_val(
     return ret + (sses_for_idxs,) if return_possible_vals_losses else ret
 
 
-class Bucket(object):
+class Bucket():
     __slots__ = "N D id sumX sumX2 point_ids support_add_and_remove".split()
 
     def __init__(
@@ -336,21 +277,11 @@ class Bucket(object):
 
     @property
     def loss(self):
-        # if self.N < 1:
-        #     return 0
-
-        # # less stable version with one less divide and mul
-        # return max(0, np.sum(self.sumX2 - (self.sumX * (self.sumX / self.N))))
-
         # more stable version, that also clamps variance at 0
         return max(0, np.sum(self.col_sum_sqs()))
-        # expected_X = self.sumX / self.N
-        # expected_X2 = self.sumX2 / self.N
-        # return max(0, np.sum(expected_X2 - (expected_X * expected_X)) * self.N)
 
 
 # @numba.jit(nopython=True)  # don't jit since take like 2.5s
-# def top_principal_component(X, niters=50, return_eigenval=False,
 def top_principal_component(
     X,
     niters=100,
@@ -358,7 +289,6 @@ def top_principal_component(
     momentum=0.9,
     nguesses=32,
     learning_rate=1.0,
-    # allow_materialize=False):
     allow_materialize_XtX=True,
 ):
     N, D = X.shape
@@ -368,17 +298,11 @@ def top_principal_component(
     if nguesses > 1:
         V = np.random.randn(D, nguesses).astype(X.dtype)
         V /= np.linalg.norm(V, axis=0)
-        # norms = np.sqrt((V * V).sum(axis=0))
-        # V /= norms
         prods = X.T @ (X @ V)
         new_norms = np.linalg.norm(prods, axis=0)
-        # new_norms_sq = (prods * prods).sum(axis=0)
         v = V[:, np.argmax(new_norms)]
-        # v = V[:, np.argmax(new_norms_sq)]
-        # print("picking v = ", v)
     else:
         v = np.random.randn(D).astype(X.dtype)
-    # v = np.ones(D, dtype=np.float32)
 
     v = v.astype(np.float32)
     prev_v = np.zeros_like(v)
@@ -398,7 +322,7 @@ def top_principal_component(
         X *= 1.0 / scaleby  # precondition by setting largest variance to 1
         XtX = X.T @ X
 
-    for i in range(niters):
+    for _ in range(niters):
         if materialize:
             v = XtX @ v
         else:
@@ -409,8 +333,6 @@ def top_principal_component(
         v_momentum = momentum * v_momentum + learning_rate * (v - prev_v)
         v += v_momentum
         prev_v = v
-        # if i % 5 == 0:
-        #     print("v: ", v)
 
     v /= np.linalg.norm(v) + 1e-20
     if return_eigenval:
@@ -463,7 +385,7 @@ def _learn_best_quantization(luts):
 
     return best_floors, best_scale_by, best_alpha
 
-
+# pylint: disable=R0902
 class MultiCodebookEncoder(abc.ABC):
     def __init__(
         self,
@@ -653,7 +575,7 @@ def _pq_codebook_start_end_idxs(X, ncodebooks, algo="start"):
     return idxs
 
 
-class MultiSplit(object):
+class MultiSplit():
     __slots__ = "dim vals scaleby offset".split()
 
     def __init__(self, dim, vals, scaleby=None, offset=None):
@@ -676,17 +598,9 @@ def learn_multisplits(
     nsplits=4,
     return_centroids=True,
     return_buckets=False,
-    # learn_quantize_params=False,
-    # learn_quantize_params='int16', X_orig=None, try_ndims=1,
-    # learn_quantize_params='int16', X_orig=None, try_ndims=2,
     learn_quantize_params="int16",
     X_orig=None,
     try_ndims=4,
-    # learn_quantize_params='int16', X_orig=None, try_ndims=8,
-    # learn_quantize_params='int16', X_orig=None, try_ndims=16,
-    # learn_quantize_params=True,
-    # verbose=3):
-    # verbose=2):
     verbose=1,
 ):
     assert nsplits <= 4  # >4 splits means >16 split_vals for this func's impl
@@ -768,8 +682,6 @@ def learn_multisplits(
                 col_losses += buck.col_sum_sqs()
             try_dims = np.argsort(col_losses)[-try_ndims:]
 
-            from scipy import stats
-
             col_losses *= col_losses  # just 4th central moment
             col_losses *= stats.kurtosis(X_res, axis=0)
             try_dims = np.argsort(col_losses)[-try_ndims:]
@@ -846,21 +758,17 @@ def learn_multisplits(
     if verbose > 0:
         print("learn_multisplits(): returning loss: ", loss)
 
-    ret = [splits, loss]
     if return_centroids:
         centroids = np.vstack([buck.col_means() for buck in buckets])
         assert centroids.shape == (len(buckets), X.shape[1])
-        ret.append(centroids)
-        # return splits, loss, centroids
+        return splits, loss, centroids
     if return_buckets:
-        # print("returning buckets!")
-        ret.append(buckets)
-    return tuple(ret)
+        return splits, loss, buckets
 
 
 @_memory.cache
 def _learn_mithral_initialization(X, ncodebooks, pq_perm_algo="start", **kwargs):
-    N, D = X.shape
+    _, D = X.shape
     ncentroids_per_codebook = 16
 
     X = X.astype(np.float32)
@@ -973,7 +881,7 @@ def assignments_from_multisplits(X, splits):
 
 
 def mithral_encode(X, multisplits_lists):
-    N, D = X.shape
+    N, _ = X.shape
     ncodebooks = len(multisplits_lists)
     X_enc = np.empty((N, ncodebooks), dtype=np.int64, order="f")
     for c in range(ncodebooks):
@@ -1052,7 +960,7 @@ def _XtY_encoded(X_enc, Y, K=16):
 @numba.njit(fastmath=True, cache=True)
 def _XW_encoded(X_enc, W, K=16):
     N, C = X_enc.shape
-    D, M = W.shape
+    _, M = W.shape
 
     out = np.zeros((N, M), W.dtype)
 
@@ -1341,7 +1249,6 @@ def _sparse_encoded_lstsq_elim_v2(
 def sparse_encoded_lstsq(X_enc, Y, K=16, nnz_blocks=-1, **kwargs):
     ncodebooks = X_enc.shape[1]
     if nnz_blocks < 1:
-        # nnz_per_centroid = Y.shape[1]
         # default to returning dense centroids
         W = encoded_lstsq(X_enc, Y, K=16)
         ncodebooks = X_enc.shape[1]
@@ -1354,21 +1261,14 @@ def sparse_encoded_lstsq(X_enc, Y, K=16, nnz_blocks=-1, **kwargs):
     else:
         nnz_per_centroid = int(nnz_blocks * Y.shape[1] / ncodebooks)
 
-        # nnz_blocks = int(np.sqrt(ncodebooks) + .5)
-
-    # return _sparse_encoded_lstsq_backward_elim(
-    #     X_enc, Y, nnz_blocks=nnz_blocks, K=K)
-    # return _sparse_encoded_lstsq_gomp(X_enc, Y, nnz_blocks=nnz_blocks, K=K)
-
-    # print("nnz_per_centroid: ", nnz_per_centroid)
     return _sparse_encoded_lstsq_elim_v2(
         X_enc, Y, nnz_per_centroid=nnz_per_centroid, K=K, **kwargs
     )
 
 
 @_memory.cache
-def learn_mithral(X, ncodebooks, return_buckets=False, lut_work_const=-1, **kwargs):
-    N, D = X.shape
+def learn_mithral(X, ncodebooks, return_buckets=False, lut_work_const=-1):
+    _, D = X.shape
     ncentroids_per_codebook = 16
     X_orig = X.astype(np.float32)
 
@@ -1381,6 +1281,7 @@ def learn_mithral(X, ncodebooks, return_buckets=False, lut_work_const=-1, **kwar
     print("X_res mse / X mse: ", mse0 / mse_orig)
 
     used_perm_algo = "start"
+    # pylint: disable=W0125
     if False:
         # choose between having wider codebooks at the start vs the end (if
         # there might be a meaningful difference)
@@ -1462,79 +1363,11 @@ def mithral_lut(q, all_centroids):
     return (q * all_centroids).sum(axis=2)  # ncodebooks, ncentroids
 
 
-def _mithral_quantize_luts(luts, lut_work_const, force_power_of_2=True):
-    nqueries, ncodebooks, ncentroids = luts.shape
-
-    # if lut_work_const < 0:  # not time constrained
-    #     assert luts.shape == (nqueries, ncodebooks, ncentroids)
-    #     luts2d = np.moveaxis(luts, 2, 1)
-    #     assert luts2d.shape == (nqueries, ncentroids, ncodebooks)
-    #     luts2d = luts2d.reshape(nqueries * ncentroids, ncodebooks)
-
-    #     # if True:
-    #     if False:
-    #         # ax = sb.distplot(luts.ravel(), hist=False, rug=True)
-    #         _, ax = plt.subplots(1, figsize=(13, 5))
-    #         # sb.violinplot(data=luts2d, inner='point', ax=ax)
-    #         # sb.boxenplot(data=luts2d, ax=ax)
-    #         means = luts2d.mean(axis=0)
-
-    #         # # rm largest and smallest entry in each col
-    #         # argmaxs = np.argmax(luts2d, axis=0)
-    #         # argmins = np.argmax(luts2d, axis=0)
-    #         # for c in range(luts.shape[1]):
-    #         #     luts2d[argmins[c], c] = means[c]
-    #         #     luts2d[argmaxs[c], c] = means[c]
-
-    #         maxs = luts2d.max(axis=0)
-    #         mins = luts2d.min(axis=0)
-
-    #         gaps = maxs - mins
-    #         max_idx = np.argmax(gaps)
-    #         print(f"biggest gap = {np.max(gaps)} at idx {max_idx}")
-    #         gaps[max_idx] = 0
-    #         max_idx = np.argmax(gaps)
-    #         print(f"2nd biggest gap = {np.max(gaps)} at idx {max_idx}")
-    #         gaps[max_idx] = 0
-    #         max_idx = np.argmax(gaps)
-    #         print(f"3rd biggest gap = {np.max(gaps)} at idx {max_idx}")
-    #         gaps[max_idx] = 0
-    #         max_idx = np.argmax(gaps)
-    #         print(f"4th biggest gap = {np.max(gaps)} at idx {max_idx}")
-    #         gaps[max_idx] = 0
-    #         max_idx = np.argmax(gaps)
-    #         print(f"5th biggest gap = {np.max(gaps)} at idx {max_idx}")
-
-    #         # for i in range(len(luts2d)):
-    #         #     row = luts2d[i]
-    #         #     luts2d[i, row == mins] = means
-    #         #     luts2d[i, row == maxs] = means
-
-    #         luts2d -= mins
-    #         # luts2d -= means
-    #         # luts2d *= 255 / (maxs - mins).max()
-    #         luts2d *= 255 / gaps.max()
-    #         luts2d = np.minimum(luts2d, 255)
-
-    #         sb.stripplot(data=luts2d, ax=ax, size=4)
-    #         ax.set_xlabel('Query dist to centroids (lut dist histogram)')
-    #         ax.set_ylabel('Fraction of queries')
-    #         plt.show()
-    #         import sys; sys.exit()
-
-    #     offsets, scale, _ = _learn_best_quantization(luts2d)
-    #     offsets = offsets[np.newaxis, :, np.newaxis]
-    #     luts = np.maximum(0, luts - offsets) * scale
-    #     luts = np.floor(luts).astype(np.int64)
-    #     luts = np.minimum(255, luts)
-    #     return luts, offsets.sum(), scale
-
-    # luts = np.zeros((Q.shape[0], self.ncodebooks, self.ncentroids))
+def _mithral_quantize_luts(luts, force_power_of_2=True):
     mins = luts.min(axis=(0, 2))
     maxs = luts.max(axis=(0, 2))
 
     gaps = maxs - mins
-    # gaps[np.argmax(gaps)] = 0  # use 2nd highest
     gap = np.max(gaps)
     if force_power_of_2:
         exponent = np.ceil(np.log2(gap))
@@ -1546,23 +1379,11 @@ def _mithral_quantize_luts(luts, lut_work_const, force_power_of_2=True):
     offsets = mins[np.newaxis, :, np.newaxis]
     luts_quantized = (luts - offsets) * scale
     luts_quantized = (luts_quantized + 0.5).astype(np.int64)
-    # luts_quantized = np.minimum(luts_quantized, 255)
 
     assert np.min(luts_quantized) >= 0
     assert np.max(luts_quantized) <= 255.0
 
-    # print("total offset: ", mins.sum())
-
     return luts_quantized, offsets.sum(), scale
-
-    # # compute offset taking into account stuff getting rounded down
-    # luts_hat = (luts / scale) + offsets
-    # diffs = luts - luts_hat
-    # print("mean of diffs: ", diffs.mean())
-    # offset = diffs.mean() + offsets.sum()
-
-    # return luts_quantized, offset, scale
-
 
 class MithralEncoder(MultiCodebookEncoder):
     def __init__(self, ncodebooks, lut_work_const=-1):
@@ -1587,27 +1408,25 @@ class MithralEncoder(MultiCodebookEncoder):
     def params(self):
         return {"ncodebooks": self.ncodebooks, "lut_work_const": self.lut_work_const}
 
-    def fit(self, X, Q=None):
+    def fit(self, X):
         self.splits_lists, self.centroids = learn_mithral(
             X, self.ncodebooks, lut_work_const=self.lut_work_const
         )
-        # self._learn_lut_quantization(X, Q)
 
     def encode_X(self, X):
         idxs = mithral_encode(X, self.splits_lists)
         return idxs + self.offsets
 
-    def encode_Q(self, Q, quantize=True):
+    def encode_Q(self, Q):
         Q = np.atleast_2d(Q)
         luts = np.zeros((Q.shape[0], self.ncodebooks, self.ncentroids))
         for i, q in enumerate(Q):
             luts[i] = mithral_lut(q, self.centroids)
         if self.quantize_lut:
-            luts, offset, scale = _mithral_quantize_luts(luts, self.lut_work_const)
+            luts, offset, scale = _mithral_quantize_luts(luts)
             return luts, offset, scale
 
         return luts, 0, 1
-
 
 class VQMatmul(abc.ABC):
     def __init__(self, ncodebooks, ncentroids=None):
@@ -1628,31 +1447,15 @@ class VQMatmul(abc.ABC):
     def get_speed_metrics(self, A, B, fixedA=False, fixedB=False):
         pass
 
-    def _get_encoder_kwargs(self):  # to be overriden by subclasses
-        return {}
-
     def reset_for_new_task(self):
         self.A_enc = None
         self.luts = None
 
-    def fit(self, A, B, Y=None):
+    def fit(self, A):
         _, D = A.shape
         if D < self.ncodebooks:
             raise Exception("D < C: {} < {}".format(D, self.ncodebooks))
-        self.enc.fit(A, B.T)
-
-    def set_A(self, A):
-        self.A_enc = self.enc.encode_X(A)
-
-    def set_B(self, B):
-        self.luts = self.enc.encode_Q(B.T)
-
-    def __call__(self, A, B):
-        if self.A_enc is None:
-            self.set_A(A)
-        if self.luts is None:
-            self.set_B(B)
-        return self.enc.dists_enc(self.A_enc, self.luts)
+        self.enc.fit(A)
 
     def get_params(self):
         return {"ncodebooks": self.ncodebooks}
@@ -1690,15 +1493,15 @@ class MithralMatmul(VQMatmul):
         nmuls += 0 if fixedB else nmuls_per_output * M
         # lookups given encoded data + luts
         nlookups = N * M * self.ncodebooks
-        # return {amm.KEY_NMULTIPLIES: nmuls, KEY_NLOOKUPS: nlookups}
+        print("nmuls: ", nmuls, "KEY_NLOOKUPS:" , nlookups)
+
+    def set_A(self, A):
+        self.A_enc = self.enc.encode_X(A)
 
     def set_B(self, B):
         self.luts, self.offset, self.scale = self.enc.encode_Q(B.T)
 
     def predict(self, A, B):
-        return self(A, B)
-
-    def __call__(self, A, B):
         if self.A_enc is None:
             self.set_A(A)
         if self.luts is None:
@@ -1767,42 +1570,28 @@ def load_cifar10_tasks():
     Y_train -= b
     Y_test -= b
 
-    # # TODO rm all this after debug
-    # logits_test = Y_test + b
-    # print("logits_test.shape", logits_test.shape)
-    # print("lbls_test.shape", lbls_test.shape)
-    # lbls_hat_test = np.argmax(Y_test, axis=1)
-    # print("lbls_hat_test.shape", lbls_hat_test.shape)
-    # acc = np.mean(lbls_hat_test.ravel() == lbls_test.ravel())
-    # print("Y_test: ", Y_test[:10])
-    # print("Y_train head: ", Y_train[:10])
-    # print("Y_train tail: ", Y_train[-10:])
-    # print("b:\n", b)
-    # # print("lbls hat test:")
-    # # print(lbls_hat_test[:100])
-    # # print("lbls test:")
-    # # print(lbls_test[:100])
-    # print("lbls train:")
-    # print(lbls_train[:100])
-    # print("acc: ", acc)
-
-    info = {
-        "problem": "softmax",
-        "biases": b,
-        "lbls_train": lbls_train,
-        "lbls_test": lbls_test,
-    }
-
-    return (X_train, Y_train, X_test, Y_test, W)
+    return (X_train, Y_train, X_test, Y_test, W, b, lbls_train, lbls_test)
 
 
 def main():
-    X_train, Y_train, X_test, Y_test, W = load_cifar100_tasks()
+    # pylint: disable=W0612
+    (
+        X_train,
+        Y_train,
+        X_test,
+        Y_test,
+        W,
+        b,
+        lbls_train,
+        lbls_test,
+    ) = load_cifar100_tasks()
     print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape, W.shape)
     print(X_train)
 
-    maddness = MithralMatmul(ncodebooks=16, lut_work_const=-1)
-    maddness.fit(X_train, W)
+    maddness = MithralMatmul(
+        ncodebooks=16, lut_work_const=-1
+    )  # MADDNESS-PQ has lut_work_const=1
+    maddness.fit(X_train)
 
     maddness.reset_for_new_task()
     Y_pred = maddness.predict(X_test, W)
@@ -1829,4 +1618,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
