@@ -1,30 +1,36 @@
 name: halutmatmul
 channels:
   - intel
+  - conda-forge
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=main
+  - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=1_gnu
   - appdirs=1.4.4=pyhd3eb1b0_0
   - astroid=2.9.0=py39h06a4308_0
   - attrs=21.4.0=pyhd3eb1b0_0
   - black=19.10b0=py_0
   - blas=1.0=mkl
-  - ca-certificates=2021.10.26=h06a4308_2
-  - certifi=2021.10.8=py39h06a4308_0
-  - click=8.0.4=py39h06a4308_0
+  - ca-certificates=2021.10.8=ha878542_0
+  - certifi=2021.10.8=py39hf3d152e_1
+  - cffi=1.15.0=py39hd667e15_1
+  - cfgv=3.3.1=pyhd8ed1ab_0
+  - distlib=0.3.4=pyhd8ed1ab_0
+  - filelock=3.6.0=pyhd8ed1ab_0
+  - identify=2.4.11=pyhd8ed1ab_0
+  - iniconfig=1.1.1=pyhd3eb1b0_0
   - intel-openmp=2021.4.0=h06a4308_3561
   - isort=5.9.3=pyhd3eb1b0_0
   - joblib=1.1.0=pyhd3eb1b0_0
   - lazy-object-proxy=1.6.0=py39h27cfd23_0
   - ld_impl_linux-64=2.35.1=h7274673_9
   - libffi=3.3=he6710b0_2
-  - libgcc-ng=9.3.0=h5101ec6_17
+  - libgcc-ng=11.2.0=h1d223b6_13
   - libgfortran-ng=7.5.0=ha8ba4b0_17
   - libgfortran4=7.5.0=ha8ba4b0_17
-  - libgomp=9.3.0=h5101ec6_17
+  - libgomp=11.2.0=h1d223b6_13
   - libllvm11=11.1.0=h3826bc1_0
-  - libstdcxx-ng=9.3.0=hd4cf53a_17
+  - libstdcxx-ng=11.2.0=he4da1e4_13
   - llvmlite=0.37.0=py39h295c915_1
   - mccabe=0.6.1=py39h06a4308_1
   - mkl=2021.4.0=h06a4308_640
@@ -33,15 +39,25 @@ dependencies:
   - mkl_random=1.2.2=py39h51133e4_0
   - mypy_extensions=0.4.3=py39h06a4308_1
   - ncurses=6.3=h7f8727e_2
+  - nodeenv=1.6.0=pyhd8ed1ab_0
   - numba=0.54.1=py39h51133e4_0
   - numpy=1.20.3=py39hf144106_0
   - numpy-base=1.20.3=py39h74d4b33_0
-  - openssl=1.1.1l=h7f8727e_0
+  - openssl=1.1.1l=h7f98852_0
+  - packaging=21.3=pyhd3eb1b0_0
   - pathspec=0.7.0=py_0
   - pip=21.2.4=py39h06a4308_0
   - platformdirs=2.4.0=pyhd3eb1b0_0
+  - pluggy=1.0.0=py39h06a4308_0
+  - pre-commit=2.17.0=py39hf3d152e_0
+  - py=1.11.0=pyhd3eb1b0_0
+  - pycparser=2.21=pyhd8ed1ab_0
   - pylint=2.12.2=py39h06a4308_0
+  - pyparsing=3.0.4=pyhd3eb1b0_0
+  - pytest=6.2.5=py39h06a4308_2
   - python=3.9.7=h12debd9_1
+  - python_abi=3.9=2_cp39
+  - pyyaml=6.0=py39h3811e60_3
   - readline=8.1.2=h7f8727e_1
   - regex=2021.11.2=py39h7f8727e_0
   - scikit-learn=1.0.1=py39h51133e4_0
@@ -57,8 +73,18 @@ dependencies:
   - typing-extensions=3.10.0.2=hd3eb1b0_0
   - typing_extensions=3.10.0.2=pyh06a4308_0
   - tzdata=2021e=hda174b7_0
+  - ukkonen=1.0.1=py39h1a9c180_1
+  - virtualenv=20.13.2=py39hf3d152e_0
   - wheel=0.37.1=pyhd3eb1b0_0
   - wrapt=1.13.3=py39h7f8727e_2
   - xz=5.2.5=h7b6447c_0
+  - yaml=0.2.5=h7f98852_2
   - zlib=1.2.11=h7f8727e_4
+  - pip:
+    - arrow==1.2.1
+    - click==8.0.3
+    - gitlint==0.17.0
+    - gitlint-core==0.17.0
+    - python-dateutil==2.8.2
+    - sh==1.14.2
 prefix: /home/msc22f5/.conda/envs/halutmatmul

@@ -2,3 +2,5 @@
 **joblib**
 
 maddness/assets
+
+.pytest_cache
