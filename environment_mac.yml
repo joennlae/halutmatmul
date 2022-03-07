@@ -9,13 +9,14 @@ dependencies:
   - attrs=21.4.0=pyhd3eb1b0_0
   - black=19.10b0=py_0
   - blas=1.0=mkl
-  - ca-certificates=2021.10.8=h033912b_0
-  - certifi=2021.10.8=py39h6e9494a_1
+  - ca-certificates=2022.2.1=hecd8cb5_0
+  - certifi=2021.10.8=py39hecd8cb5_2
   - cffi=1.15.0=py39hc55c11b_1
   - cfgv=3.3.1=pyhd8ed1ab_0
   - distlib=0.3.4=pyhd8ed1ab_0
   - filelock=3.6.0=pyhd8ed1ab_0
   - identify=2.4.11=pyhd8ed1ab_0
+  - iniconfig=1.1.1=pyhd3eb1b0_0
   - intel-openmp=2021.4.0=hecd8cb5_3538
   - isort=5.9.3=pyhd3eb1b0_0
   - joblib=1.1.0=pyhd3eb1b0_0
@@ -37,13 +38,18 @@ dependencies:
   - numba=0.54.1=py39hae1ba45_0
   - numpy=1.20.3=py39h4b4dc7a_0
   - numpy-base=1.20.3=py39he0bd621_0
-  - openssl=1.1.1l=h0d85af4_0
+  - openssl=1.1.1m=hca72f7f_0
+  - packaging=21.3=pyhd3eb1b0_0
   - pathspec=0.7.0=py_0
   - pip=21.2.4=py39hecd8cb5_0
   - platformdirs=2.4.0=pyhd3eb1b0_0
+  - pluggy=1.0.0=py39hecd8cb5_0
   - pre-commit=2.17.0=py39h6e9494a_0
+  - py=1.11.0=pyhd3eb1b0_0
   - pycparser=2.21=pyhd8ed1ab_0
   - pylint=2.12.2=py39hecd8cb5_0
+  - pyparsing=3.0.4=pyhd3eb1b0_0
+  - pytest=6.2.5=py39hecd8cb5_2
   - python=3.9.7=h88f2d9e_1
   - python_abi=3.9=2_cp39
   - pyyaml=6.0=py39h89e85a6_3
