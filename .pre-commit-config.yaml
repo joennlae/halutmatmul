@@ -1,17 +1,17 @@
 repos:
 # inspiration https://rednafi.github.io/digressions/python/2020/04/06/python-precommit.html
-# - repo: https://github.com/PyCQA/pylint
-#   rev: v2.12.2
-#   hooks:
-#     - id: pylint
-#       types: [python]
-#       args:
-#           [
-#             "-rn",
-#             "-sn",
-#             "--rcfile=.pylintrc"
-#           ]
-#       exclude: .vscode/|joblib
+- repo: https://github.com/PyCQA/pylint
+  rev: v2.12.2
+  hooks:
+    - id: pylint
+      types: [python]
+      args:
+          [
+            "-rn",
+            "-sn",
+            "--rcfile=.pylintrc"
+          ]
+      exclude: .vscode/|joblib
 
 - repo: https://github.com/jorisroovers/gitlint
   rev:  v0.17.0
