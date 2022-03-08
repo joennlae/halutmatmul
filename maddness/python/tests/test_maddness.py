@@ -21,8 +21,8 @@ def test_maddness_cifar_100():
     print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape, W.shape)
     print(X_train)
 
-    maddness = MD.MithralMatmul(
-        ncodebooks=16, lut_work_const=-1
+    maddness = MD.MaddnessMatmul(
+        number_of_codebooks=16, lut_work_const=-1
     )  # MADDNESS-PQ has lut_work_const=1
     maddness.fit(X_train)
 
@@ -63,8 +63,8 @@ def test_maddness_cifar_10():
     print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape, W.shape)
     print(X_train)
 
-    maddness = MD.MithralMatmul(
-        ncodebooks=16, lut_work_const=-1
+    maddness = MD.MaddnessMatmul(
+        number_of_codebooks=16, lut_work_const=-1
     )  # MADDNESS-PQ has lut_work_const=1
     maddness.fit(X_train)
 
