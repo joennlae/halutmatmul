@@ -9,7 +9,8 @@ repos:
           [
             "-rn",
             "-sn",
-            "--rcfile=.pylintrc"
+            "--rcfile=.pylintrc",
+            "maddness/python/*"
           ]
       exclude: .vscode/|joblib
 
