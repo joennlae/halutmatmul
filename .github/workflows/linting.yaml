@@ -15,4 +15,4 @@ jobs:
       - name: Python Pylint Github Action
         uses: fylein/python-pylint-github-action@v4
         with:
-          args: pylint --rcfile=.pylintrc maddness
+          args: pylint --rcfile=.pylintrc maddness/python/*

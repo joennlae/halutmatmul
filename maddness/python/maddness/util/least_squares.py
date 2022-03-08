@@ -2,7 +2,7 @@ import numba
 import numpy as np
 from sklearn import linear_model
 
-from lib.hash_function_helper import create_codebook_start_end_idxs
+from maddness.util.hash_function_helper import create_codebook_start_end_idxs
 
 
 @numba.njit(fastmath=True, cache=True)
