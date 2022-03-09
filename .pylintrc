@@ -3,7 +3,7 @@
 [MASTER]
 
 # Use multiple processes to speed up Pylint.
-jobs=1
+jobs=4
 
 ignore-paths=^maddness/python/joblib/.*$,
              ^src/test/.*$,
