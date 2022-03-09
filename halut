@@ -1,0 +1,150 @@
+#!/bin/bash
+# inspiration https://github.com/alajmo/template-generator/blob/master/tp
+trap 'echo "Aborting due to errexit on line $LINENO. Exit code: $?" >&2' ERR
+
+set -eEu
+set -o pipefail
+
+SAFER_IFS=$'\n\t'
+IFS="${SAFER_IFS}"
+
+# an example of a bash command-line script
+# the help section is auto-formatted to look legit
+
+# change the name of the app and the version number as needed...
+declare -r app_name="halut"
+declare -r version="0.1"
+
+_die() {
+  # Prefix die message with "cross mark (U+274C)", often displayed as a red x.
+  printf "❌  "
+  "${@}" 1>&2
+  exit 1
+}
+
+die() {
+  _die echo "${@}"
+}
+
+_print_help() {
+  cat <<HEREDOC
+template-generator - Template generator CLI
+Usage: ${app_name} [command] [arguments]
+Options:
+  -h, --help                       Print this help
+  -v, --version                    Print script version
+Commands:
+  l|lint                           Lint *c and *.py
+  t|test [path]                    Start pytests
+Examples:
+  # Add here
+HEREDOC
+}
+
+version() {
+    echo "$app_name version: $version"
+}
+
+compare_conda_env() {
+  default_name="halutmatmul"
+
+  if [ $default_name == $CONDA_DEFAULT_ENV ]; then
+    echo "[INFO] Conda env is activated ✅"
+  else
+    echo "[ERROR] Activate conda env halutmatmul ❌"
+    exit $1
+  fi
+}
+
+lint_python() {
+    compare_conda_env
+    echo "[INFO] lint python with pylint"
+    pylint --rcfile=.pylintrc maddness/python/*
+}
+
+test_python() {
+    compare_conda_env
+    echo "[INFO] testing python with pytest"
+    pytest -srPA
+}
+
+# Program option parameters.
+_PRINT_OPTION=0
+
+# Options
+_VERSION_OPTION=0
+
+# List
+_LINT_OPTION=0
+_LINT_ARG=""
+
+# Test python
+_TEST_OPTION=0
+_TEST_ARG=""
+
+_require_argument() {
+  local _option="${1:-}"
+  local _argument="${2:-}"
+
+  if [[ -z "${_argument}" ]] || [[ "${_argument}" =~ ^- ]]
+  then
+    _die printf "Option requires a argument: %s\n" "${_option}"
+  fi
+}
+
+
+while [ ${#} -gt 0 ]
+do
+  __option="${1:-}"
+  __maybe_param="${2:-}"
+  __maybe_param2="${3:-}"
+  __maybe_param3="${4:-}"
+  __maybe_param4="${5:-}"
+  __maybe_param5="${6:-}"
+  __maybe_param6="${7:-}"
+  # echo "${__option}"
+  # echo "${__maybe_param}"
+  # echo "${__maybe_param2}"
+  case "${__option}" in
+    -h|--help)
+      _PRINT_OPTION=1
+      ;;
+    -v|--version)
+      _VERSION_OPTION=1;
+      ;;
+    l|lint)
+      _LINT_OPTION=1;
+      _LINT_ARG="${__maybe_param}";
+      ;;
+    t|test)
+      _TEST_OPTION=1;
+      # _require_argument "${__option}" "${__maybe_param}"
+      _TEST_ARG="${__maybe_param}";
+      ;;
+    --endopts)
+      break
+      ;;
+    # -*)
+    #   _die printf "Unexpected option: %s\n" "${__option}"
+    #   ;;
+  esac
+  shift
+done
+
+
+_main() {
+  if ((_PRINT_OPTION))
+  then
+    _print_help
+  elif ((_VERSION_OPTION)); then
+    version
+  elif ((_LINT_OPTION)); then
+    lint_python
+  elif ((_TEST_OPTION)); then
+    test_python "$_TEST_ARG"
+  else
+    _print_help
+  fi
+}
+
+_main "${@:-}"
