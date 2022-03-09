@@ -21,6 +21,5 @@ jobs:
         cd maddness && bash ./download_assets.sh && cd ..
     - name: Test with pytest
       run: |
-        conda install pytest
-        # $CONDA/bin/pytest -srPA  
-        python -m pytest -srPA
+        $CONDA/bin/conda install pytest
+        $CONDA/bin/pytest -srPA
