@@ -18,8 +18,9 @@ jobs:
         $CONDA/bin/conda env update --file environment.yml --name base
     - name: Download Test data
       run: |
-        cd maddness && bash ./download_assets.sh
+        cd maddness && bash ./download_assets.sh && cd ..
     - name: Test with pytest
       run: |
         conda install pytest
-        $CONDA/bin/pytest -srPA  
+        # $CONDA/bin/pytest -srPA  
+        python -m pytest -srPA
