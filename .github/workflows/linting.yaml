@@ -17,4 +17,4 @@ jobs:
     - name: Lint with pylint
       run: |
         $CONDA/bin/conda install pylint
-        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/*
+        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/*

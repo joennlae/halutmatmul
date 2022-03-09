@@ -3,7 +3,11 @@ import os
 import numpy as np
 
 from maddness.util.least_squares import _XW_encoded, encoded_lstsq, sparse_encoded_lstsq
-from maddness.util.hash_function_helper import Bucket, MultiSplit, create_codebook_start_end_idxs
+from maddness.util.hash_function_helper import (
+    Bucket,
+    MultiSplit,
+    create_codebook_start_end_idxs,
+)
 
 # from joblib import Memory
 # _memory = Memory(".", verbose=0)
@@ -243,6 +247,7 @@ def maddness_quantize_luts(luts, force_power_of_2=True):
 
     return luts_quantized, offsets.sum(), scale
 
+
 # pylint: disable=R0902
 class MaddnessMatmul:
     def __init__(self, C=16, lut_work_const=-1):
@@ -351,8 +356,11 @@ class MaddnessMatmul:
             self.A_enc, self.luts, offset=self.offset, scale=self.scale
         )
 
-    def apply_matmul_e2e(self, A, B):
-        self._learn_hash_buckets_and_prototypes(A)
+    def apply_matmul_e2e(self, A, B, A_learn=None):
+        if A_learn is None:
+            self._learn_hash_buckets_and_prototypes(A)
+        else:
+            self._learn_hash_buckets_and_prototypes(A_learn)
         self._set_A(A)
         self._set_B(B)
         return self._calc_matmul(
@@ -377,8 +385,11 @@ class MaddnessMatmul:
         print("nmuls: ", nmuls, "KEY_NLOOKUPS:", nlookups)
 
 
-def matmul(A, B, C=16, lut_work_const=-1):
-    return MaddnessMatmul(C=C, lut_work_const=lut_work_const).apply_matmul_e2e(A, B)
+def matmul(A, B, C=16, lut_work_const=-1, A_learn=None):
+    return MaddnessMatmul(C=C, lut_work_const=lut_work_const).apply_matmul_e2e(
+        A, B, A_learn=A_learn
+    )
+
 
 if __name__ == "__main__":
     print("only use as import")

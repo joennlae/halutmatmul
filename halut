@@ -59,7 +59,7 @@ compare_conda_env() {
 lint_python() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
-    pylint --rcfile=.pylintrc maddness/python/*
+    pylint --rcfile=.pylintrc maddness/python/* src/*
 }
 
 test_python() {
