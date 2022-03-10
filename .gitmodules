@@ -1,0 +1,6 @@
+[submodule "maddness/cpp/lib/eigen"]
+	path = maddness/cpp/lib/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "maddness/cpp/lib/Catch2"]
+	path = maddness/cpp/lib/Catch2
+	url = https://github.com/catchorg/Catch2.git
