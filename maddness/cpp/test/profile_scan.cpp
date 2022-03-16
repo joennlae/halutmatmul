@@ -6,14 +6,11 @@
 //  Copyright © 2019 D Blalock. All rights reserved.
 //
 
-#ifdef BLAZE
-    #include "src/quantize/product_quantize.hpp"
-    #include "test/quantize/amm_common.hpp"
-#else
-    #include "amm_common.hpp"
-    #include "bit_ops.hpp"
-    #include "product_quantize.hpp"
-#endif
+#include <catch2/catch_test_macros.hpp>
+#include "amm_common.hpp"
+#include "bit_ops.hpp"
+// #include "product_quantize.hpp"
+
 
 static constexpr int kNtrialsScan = 20;
 
@@ -176,17 +173,9 @@ void _profile_scan_all(int nrows, int nbytes, int nout=1) {
     ColMatrix<uint8_t> dists_u8(nrows, nout);
     ColMatrix<uint16_t> dists_u16(nrows, nout);
 
-    // for pq / opq
-    ColMatrix<uint8_t> codes256(nrows, ncodebooks_pq);
-    codes256.setRandom();
-    codes256 = codes256.unaryExpr(
-        [=](const uint8_t x) { return (uint8_t)(x % 256); });
-    ColMatrix<float> luts_f32(256, ncodebooks_pq * nout); luts_f32.setRandom();
-    ColMatrix<float> dists_f32(nrows, nout); dists_f32.setRandom();
-
     std::string msg;
     auto fmt_as_cppstring = string_with_format(
-        "%%-23s, N C B M:, %7d, %%3d, %2d, %2d,\t", nrows, ncodebooks_pq, nout);
+        "%%-22s, N C B M:, %7d, %%3d, %2d, %2d,\t", nrows, ncodebooks_pq, nout);
     auto fmt = fmt_as_cppstring.c_str();
 
     // ------------------------ mithral
@@ -387,42 +376,6 @@ void _profile_scan_all(int nrows, int nbytes, int nout=1) {
         dists_u8_x2.data(), dists_u8_x2.size(),
         (mithral_scan<32, 6>(codes16.data(), nblocks, ncodebooks, nout,
                              luts16.data(), dists_u8_x2.data())));
-
-    // ------------------------ bolt
-    printf("---- bolt + pq\n");
-    static constexpr bool signed_luts = true; // bolt uses signed for dotprod
-    msg = string_with_format(fmt, "bolt scan uint8", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u8.data(), dists_u8.size(),
-        (bolt_scan<false, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u8.data())));
-    msg = string_with_format(fmt, "bolt scan uint16", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<false, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-    msg = string_with_format(fmt, "bolt scan safe uint16", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<true, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-    // bolt scan orig = bolt scan uint16 safe notile
-    msg = string_with_format(fmt, "bolt scan orig", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<true, signed_luts, false>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-
-    // ------------------------ pq (same as opq)
-    msg = string_with_format(fmt, "pq scan", ncodebooks_pq);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_f32.data(), dists_f32.size(),
-        pq_scan_8b(codes256.data(), nrows, ncodebooks_pq, nout,
-                   luts_f32.data(), dists_f32.data()));
 }
 
 void _profile_scan(int nrows, int nbytes, int nout=1) {
@@ -461,41 +414,6 @@ void _profile_scan(int nrows, int nbytes, int nout=1) {
         (mithral_scan<128, 2>(codes16.data(), nblocks, ncodebooks, nout,
                               luts16.data(), dists_u8_x2.data())));
 
-    // ------------------------ bolt
-    // printf("---- bolt + pq\n");
-    static constexpr bool signed_luts = true; // bolt uses signed for dotprod
-    msg = string_with_format(fmt, "bolt scan uint8", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u8.data(), dists_u8.size(),
-        (bolt_scan<false, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u8.data())));
-    msg = string_with_format(fmt, "bolt scan uint16", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<false, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-    msg = string_with_format(fmt, "bolt scan safe uint16", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<true, signed_luts>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-    // bolt scan orig = bolt scan uint16 safe notile
-    msg = string_with_format(fmt, "bolt scan orig", ncodebooks);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_u16.data(), dists_u16.size(),
-        (bolt_scan<true, signed_luts, false>(
-            codes16.data(), nblocks, ncodebooks, nout,
-            luts16.data(), dists_u16.data())));
-
-    // ------------------------ pq (same as opq)
-    msg = string_with_format(fmt, "pq scan", ncodebooks_pq);
-    REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrialsScan,
-        dists_f32.data(), dists_f32.size(),
-        pq_scan_8b(codes256.data(), nrows, ncodebooks_pq, nout,
-                   luts_f32.data(), dists_f32.data()));
 }
 
 TEST_CASE("popcount scan timing", "[amm][scan][popcount][profile]") {

@@ -20,3 +20,6 @@ halut --help
 # or without install
 ./halut --help
 ```
+### Links
+
+* [Github - Runner - Env](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md)

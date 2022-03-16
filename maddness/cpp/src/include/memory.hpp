@@ -9,11 +9,7 @@
 #ifndef __DIG_MEMORY_HPP
 #define __DIG_MEMORY_HPP
 
-#ifdef BLAZE
-    #include "src/external/eigen/Eigen/Core"
-#else
-    #include <Eigen/Core>  // minimal subset of EIGEN that will compile
-#endif
+#include <Eigen/Core> 
 
 static constexpr int kDefaultAlignBytes = EIGEN_DEFAULT_ALIGN_BYTES;
 static_assert(kDefaultAlignBytes == 32, "EIGEN_DEFAULT_ALIGN_BYTES is not 32!");

@@ -8,20 +8,11 @@
 
 #include <stdio.h>
 
-#ifdef BLAZE
-    #include "test/external/catch.hpp"
-    #include "src/utils/debug_utils.hpp"
-    #include "src/utils/memory.hpp"
-    #include "src/quantize/mithral_v1.hpp"
-    #include "test/testing_utils/testing_utils.hpp"
-#else
-    #include "catch.hpp"
-    #include "debug_utils.hpp"
-    #include "memory.hpp"
-    #include "mithral_v1.hpp"
-    #include "testing_utils.hpp"
-#endif
-
+#include <catch2/catch_test_macros.hpp>
+#include "debug_utils.hpp"
+#include "memory.hpp"
+#include "mithral_v1.hpp"
+#include "testing_utils.hpp"
 
 template<typename MatT0, typename MatT1>
 void _zip4_one_block(const MatT0& codes_in, MatT1& out,

@@ -14,11 +14,9 @@ message(STATUS "CLANG_TIDY : ${CLANG_TIDY}")
 message(STATUS "ORIGIN : ${ORIGIN}")
 
 include_directories(
-    src/utils/
     lib/eigen/
-    src/quantize/
-    quantize/
-    test/testing_utils/
+    src/include
+    test/include/
 )
 # add host lib path
 # link_directories(
@@ -34,15 +32,15 @@ else ()
 endif()
 
 set (COMMON_SOURCES
-  src/quantize/mithral.cpp
-  src/utils/avx_utils.cpp
+  src/mithral.cpp
+  src/avx_utils.cpp
 )
 set(COMMON_LIBRARIES
   # none at the moment
 )
 
 add_executable(maddness
-  test/main.cpp
+  src/main.cpp
   ${COMMON_SOURCES}
 )
 
@@ -79,6 +77,12 @@ if ("${UNIT_TESTS}" STREQUAL "1")
 
   set( SOURCES_IDIOMATIC_TESTS
     profile_amm.cpp
+    profile_encode.cpp
+    profile_lut_creation.cpp
+    profile_multicodebook.cpp
+    profile_scan.cpp
+    test_mithral.cpp
+    test_multicodebook.cpp
   )
 
   # check if all sources are listed, warn if not:

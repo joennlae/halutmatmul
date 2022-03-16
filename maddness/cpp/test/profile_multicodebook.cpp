@@ -1,19 +1,10 @@
+#include <catch2/catch_test_macros.hpp>
+#include "bit_ops.hpp"
+#include "multi_codebook.hpp"
+#include "memory.hpp"
+#include "timing_utils.hpp"
+#include "testing_utils.hpp"
 
-#ifdef BLAZE
-    #include "test/external/catch.hpp"
-    #include "src/quantize/multi_codebook.hpp"
-    #include "src/utils/bit_ops.hpp"
-    #include "src/utils/memory.hpp"
-    #include "src/utils/timing_utils.hpp"
-    #include "test/testing_utils/testing_utils.hpp"
-#else
-    #include "catch.hpp"
-    #include "bit_ops.hpp"
-    #include "multi_codebook.hpp"
-    #include "memory.hpp"
-    #include "timing_utils.hpp"
-    #include "testing_utils.hpp"
-#endif
 
 // uncomment these to profile other scan operations / ways of popcount-ing
 // #define PROFILE_4bit
