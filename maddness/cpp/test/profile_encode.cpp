@@ -6,9 +6,9 @@
 //  Copyright © 2019 D Blalock. All rights reserved.
 //
 
-#include <catch2/catch_test_macros.hpp>
 #include "amm_common.hpp"
 #include "bolt.hpp"
+#include <catch2/catch_test_macros.hpp>
 // #include "multisplit.hpp"
 // #include "product_quantize.hpp"
 

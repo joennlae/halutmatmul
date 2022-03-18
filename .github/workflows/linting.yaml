@@ -18,3 +18,17 @@ jobs:
       run: |
         $CONDA/bin/conda install pylint
         $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/*
+
+  clang-format:
+    name: c++ Lint clang-format
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run clang-format style check for C/C++ programs.
+        uses: jidicula/clang-format-action@v4.6.2
+        with:
+          clang-format-version: '12'
+          check-path: '.'
+          fallback-style: 'LLVM'
+          exclude-regex: '(lib|CMakeFiles)'

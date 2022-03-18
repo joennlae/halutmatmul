@@ -15,31 +15,25 @@
 
 namespace {
 
-using Eigen::Map;
 using Eigen::Dynamic;
-using Eigen::RowMajor;
+using Eigen::Map;
 using Eigen::Matrix;
+using Eigen::RowMajor;
 
 // ================================================================
 // typealiases
 // ================================================================
 
-template<class T, int Rows=Eigen::Dynamic, int Cols=Eigen::Dynamic>
+template <class T, int Rows = Eigen::Dynamic, int Cols = Eigen::Dynamic>
 using RowMatrix = Eigen::Matrix<T, Rows, Cols, Eigen::RowMajor>;
 
-template<class T, int Rows=Eigen::Dynamic, int Cols=Eigen::Dynamic>
+template <class T, int Rows = Eigen::Dynamic, int Cols = Eigen::Dynamic>
 using ColMatrix = Eigen::Matrix<T, Rows, Cols, Eigen::ColMajor>;
 
-template<class T>
-using ColVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+template <class T> using ColVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
-template<class T>
+template <class T>
 using RowVector = Eigen::Matrix<T, 1, Eigen::Dynamic, Eigen::RowMajor>;
 
-
-} // anon namespace
+} // namespace
 #endif
-
-
-
-

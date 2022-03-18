@@ -60,12 +60,17 @@ lint_python() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
     pylint --rcfile=.pylintrc maddness/python/* src/*
+    echo "[DONE] lint python with pyling"
+    echo "[INFO] lint c++ with clang-format"
+    ./scripts/clang-check.sh
+    echo "[DONE] lint c++ with clang-format"
 }
 
 test_python() {
     compare_conda_env
     echo "[INFO] testing python with pytest"
     pytest -srPA
+    echo "[DONE] pytest finished"
 }
 
 # Program option parameters.
