@@ -1,0 +1,19 @@
+name: C++ build
+on: [push]
+
+jobs:
+  build_cpp:
+    runs-on: ubuntu-latest
+
+    container:
+      image: joennlae/halutmatmul-ci:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Build C++
+      run: |
+        cd maddness/cpp
+        ./build.sh

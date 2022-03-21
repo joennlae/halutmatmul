@@ -27,8 +27,9 @@ if ("${CLANG_TIDY}" STREQUAL "0")
     message(STATUS "Building normal")
     # Header path
 else ()
-    message(STATUS "TODO implement clang-tidy")
-    set(CMAKE_CXX_CLANG_TIDY clang-tidy-12.0.1;) # -fix-errors; or -fix;
+    message(STATUS "Using clang-tidy ${CMAKE_CLANG_TIDY}")
+    # To many errors due to Catch2 import
+    set(CMAKE_CXX_CLANG_TIDY ${CMAKE_CLANG_TIDY};) # -fix-errors; or -fix;
 endif()
 
 set (COMMON_SOURCES
