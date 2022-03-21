@@ -16,8 +16,6 @@
 #include <intrin.h> // for cycle counting
 #endif
 
-namespace {
-
 // cycle counting adapted from http://stackoverflow.com/a/13772771
 #ifdef _WIN32 //  Windows
 static inline uint64_t time_now_cycles() { return __rdtsc(); }
@@ -68,5 +66,4 @@ private:
   bool _ms;
 };
 
-} // namespace
 #endif // _TIMING_UTILS_HPP

@@ -206,15 +206,10 @@ inline void zip_bolt_colmajor(const uint8_t *codes_in, int64_t nrows,
   assert(nrows % in_block_sz == 0);
   int ncolgroups = ncodebooks / ncols_in_per_group;
 
-  // int chunk_sz = MAX(256, 4096 / (ncodebooks / 2));
-  // int chunk_sz = 4096 / ncodebooks;
   auto nchunks = (nrows + chunk_sz - 1) / chunk_sz;
 
   auto in_col_stride = nrows;
-  // auto out_stride = simd_vec_sz;
 
-  // uint8_t* in_col_ptrs[ncols_in_per_group];
-  // const uint8_t* in_col_ptrs[ncols_in_per_col_out];
   const uint8_t *in_col_ptrs[ncols_out_per_group];
   uint8_t *out_ptrs[ncols_out_per_group];
 
@@ -239,32 +234,15 @@ inline void zip_bolt_colmajor(const uint8_t *codes_in, int64_t nrows,
       for (int b = 0; b < nblocks; b++) {
 #pragma unroll
         for (int gg = 0; gg < ncols_out_per_group; gg++) {
-          // // initialize col starts
-          // auto initial_col_in = (g * ncols_in_per_group) + (2 * gg);
-          // auto col_out = initial_col_in / 2;
-          // auto initial_col_ptr = codes_in + (initial_col_in * in_col_stride);
-          // auto out_col_ptr = codes_out + (col_out * simd_vec_sz);
-          // // for each block
-          // for (int b = 0; b < nblocks; b++) {
-          // auto x0 = load_si256i(initial_col_ptr + 0 * in_col_stride);
-          // auto x1 = load_si256i(initial_col_ptr + 1 * in_col_stride);
-          // initial_col_ptr += simd_vec_sz;
           auto in_ptr = in_col_ptrs[gg];
           auto x0 = load_si256i(in_ptr + 0 * in_col_stride);
           auto x1 = load_si256i(in_ptr + 1 * in_col_stride);
-          // initial_col_ptr += simd_vec_sz;
           in_col_ptrs[gg] += simd_vec_sz;
 
           // pack bits and store result
           auto x01 = _mm256_or_si256(x0, _mm256_slli_epi16(x1, 4));
           _mm256_store_si256((__m256i *)(out_ptrs[gg]), x01);
           out_ptrs[gg] += simd_vec_sz * ncolgroups;
-          // _mm256_store_si256((__m256i*)out_col_ptr, x01);
-          // _mm256_stream_si256((__m256i*)out_col_ptr, x01); // 4x slower
-          // out_col_ptr += simd_vec_sz * ncolgroups;
-          // __builtin_prefetch(out_col_ptr + 16 * simd_vec_sz * ncolgroups);
-          // __builtin_prefetch(out_col_ptr + 16 * simd_vec_sz * ncodebooks /
-          // 2);
         }
       }
     }
@@ -313,9 +291,7 @@ void _compute_offsets_scale_from_mins_maxs(const __m256 *mins,
   }
 }
 
-// template<int CodebookTileSz=2, int RowTileSz=2>
 // NOTE: ColTileSz has no effect on performance; already unrolled plenty
-// template<int CodebookTileSz=2, int RowTileSz=2, int ColTileSz=1>
 template <int CodebookTileSz = 2, int RowTileSz = 2>
 void dense_lut_f32(const float *Q, int nrows, int ncols, int ncodebooks,
                    const float *centroids, float *out) {
@@ -426,9 +402,6 @@ void dense_lut_f32(const float *Q, int nrows, int ncols, int ncodebooks,
     }
   }
 }
-// // force it to instantiate this template
-// template void dense_lut_f32<2, 3>(const float* Q, int nrows, int ncols,
-//     int ncodebooks, const float* centroids, float* out);
 
 // this is basically just a dense matmul that also tracks the min/max
 // product; Q = nrows, ncols; centroids = ncols, ncodebooks; but centroids.T
@@ -455,13 +428,6 @@ void _dense_lut_f32_fused(
   const float *queries_ptrs[RowTileSz];
   const float *centroids_ptrs[CodebookTileSz];
   float *out_ptrs[RowTileSz][CodebookTileSz];
-
-  // __m256 mins[ncodebooks];
-  // __m256 maxs[ncodebooks];
-  // for (int c = 0; c < ncodebooks; c++) {
-  //     mins[c] = _mm256_set1_ps(std::numeric_limits<float>::max());
-  //     maxs[c] = _mm256_set1_ps(std::numeric_limits<float>::min());
-  // }
 
   auto q_row_stride = ncols;
   auto centroids_codebook_stride = ncentroids * ncols;
@@ -577,19 +543,6 @@ void dense_lut_f32_fused(
                                           mins, maxs, centroids, out_offsets,
                                           out_offset_sum, out_scale, out);
 
-  // switch(nrows_trailing) {
-  //     case 0: break;
-  //     case 1: _dense_lut_f32_fused<CodebookTileSz, 1>(
-  //         Q, nrows_trailing, ncols, ncodebooks, mins, maxs,
-  //         centroids, out_offsets, out_offset_sum, out_scale, out); break;
-  //     case 2: _dense_lut_f32_fused<CodebookTileSz, 2>(
-  //         Q, nrows_trailing, ncols, ncodebooks, mins, maxs,
-  //         centroids, out_offsets, out_offset_sum, out_scale, out); break;
-  //     case 3: _dense_lut_f32_fused<CodebookTileSz, 3>(
-  //         Q, nrows_trailing, ncols, ncodebooks, mins, maxs,
-  //         centroids, out_offsets, out_offset_sum, out_scale, out); break;
-  // }
-  // write out stats using mins and maxs
   _compute_offsets_scale_from_mins_maxs(mins, maxs, ncodebooks, out_offsets,
                                         out_offset_sum, out_scale);
 }
@@ -1363,7 +1316,6 @@ void mithral_scan(const uint8_t *codes, int64_t nblocks, int ncodebooks,
 }
 
 template <int UpcastEvery = 64>
-// void mithral_scan(const uint8_t* codes, int64_t nblocks, int ncodebooks,
 void mithral_scan_nochunk(const uint8_t *codes, int64_t nblocks, int ncodebooks,
                           int noutputs, const uint8_t *luts,
                           uint8_t *dists_out) {
@@ -1383,8 +1335,6 @@ void mithral_scan_nochunk(const uint8_t *codes, int64_t nblocks, int ncodebooks,
 }
 
 template <int UpcastEvery = 128, int _OutTileSz = 2>
-// void mithral_scan_tiled(const uint8_t* codes, int64_t nblocks, int
-// ncodebooks,
 void mithral_scan(const uint8_t *codes, int64_t nblocks, int ncodebooks,
                   int noutputs, const uint8_t *luts, uint8_t *dists_out) {
   static constexpr int OutTileSz = _OutTileSz > 0 ? _OutTileSz : 1;
@@ -1418,40 +1368,6 @@ void mithral_scan(const uint8_t *codes, int64_t nblocks, int ncodebooks,
     auto out_ptr = dists_out + (chunk * out_chunk_stride);
     auto lut_ptr = luts + (chunk * lut_chunk_stride);
 
-    // if (ncodebooks <= 4) {
-    //     // static constexpr int OutTileSzBigger = OutTileSz * 2;
-    //     static constexpr int OutTileSzBigger = OutTileSz + 1;
-    //     int nfullgroups_out = noutputs / OutTileSzBigger;
-    //     for (int g = 0; g < nfullgroups_out; g++) {
-    //         mithral_scan<UpcastEvery, OutTileSzBigger>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    //     int ntrailing_outputs = noutputs % OutTileSzBigger;
-    //     for (int m = 0; m < ntrailing_outputs; m++) {
-    //         mithral_scan<UpcastEvery, 1>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    // } else {
-    //     int nfullgroups_out = noutputs / OutTileSz;
-    //     for (int g = 0; g < nfullgroups_out; g++) {
-    //         mithral_scan<UpcastEvery, OutTileSz>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    //     int ntrailing_outputs = noutputs % OutTileSz;
-    //     for (int m = 0; m < ntrailing_outputs; m++) {
-    //         mithral_scan<UpcastEvery, 1>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    // }
-
     int nfullgroups_out = noutputs / OutTileSz;
     for (int g = 0; g < nfullgroups_out; g++) {
       mithral_scan<UpcastEvery, OutTileSz>(codes_ptr, use_nblocks, ncodebooks,
@@ -1466,32 +1382,6 @@ void mithral_scan(const uint8_t *codes, int64_t nblocks, int ncodebooks,
       out_ptr += out_col_stride * OutTileSz;
       lut_ptr += lut_col_stride * OutTileSz;
     }
-
-    // if (OutTileSz > 0) {
-    //     int nfullgroups_out = noutputs / OutTileSz;
-    //     for (int g = 0; g < nfullgroups_out; g++) {
-    //         mithral_scan<UpcastEvery, OutTileSz>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    //     int ntrailing_outputs = noutputs % OutTileSz;
-    //     for (int m = 0; m < ntrailing_outputs; m++) {
-    //         mithral_scan<UpcastEvery, 1>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride * OutTileSz;
-    //         lut_ptr += lut_col_stride * OutTileSz;
-    //     }
-    // } else {
-    //     // TODO just call mithral_scan with OutTileSz=1 and eliminate
-    //     // dup code
-    //     for (int i = 0; i < noutputs; i++) {
-    //         mithral_scan_notile<UpcastEvery>(
-    //             codes_ptr, use_nblocks, ncodebooks, lut_ptr, out_ptr);
-    //         out_ptr += out_col_stride;
-    //         lut_ptr += lut_col_stride;
-    //     }
-    // }
   }
 }
 

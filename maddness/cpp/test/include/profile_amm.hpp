@@ -16,7 +16,6 @@ struct MatmulTaskShape {
   int N, D, M;
   const char *name;
 };
-// static constexpr MatmulTaskShape kCaltechTaskShape {49284, 27, 2, "Caltech"};
 static constexpr MatmulTaskShape kCaltechTaskShape0{
     (224 - 3 + 1) * (224 - 3 + 1), 3 * (3 * 3), 2, "Caltech3x3"}; // 49284, 27
 static constexpr MatmulTaskShape kCaltechTaskShape1{
@@ -24,8 +23,6 @@ static constexpr MatmulTaskShape kCaltechTaskShape1{
 static constexpr MatmulTaskShape kCifar10TaskShape{10000, 512, 10, "Cifar10"};
 static constexpr MatmulTaskShape kCifar100TaskShape{10000, 512, 100,
                                                     "Cifar100"};
-// 10000 * 10, 512, 100, "Cifar100"};
-// static constexpr MatmulTaskShape kUcrTaskShape {1000, 320, 128, "UCR"};
 static constexpr MatmulTaskShape kUcrTaskShape0{1000, 320, 64, "Ucr64"};
 static constexpr MatmulTaskShape kUcrTaskShape1{1000, 320, 128, "Ucr128"};
 static constexpr MatmulTaskShape kUcrTaskShape2{1000, 320, 256, "Ucr256"};
@@ -128,8 +125,6 @@ void _profile_mithral(const char *dset_name, uint32_t N, uint32_t D, uint32_t M,
   }
   mithral_amm_task<InputT> task(N, D, M, ncodebooks, lut_work_const);
 
-  // mithral_amm_task<InputT> task_dense(N, D, M, ncodebooks, -1);
-
   std::string msg;
   auto dtype_str = input_type_traits<InputT>{}.name;
 
@@ -178,37 +173,6 @@ void _profile_mithral(const char *dset_name, uint32_t N, uint32_t D, uint32_t M,
                                       task.output().data(),
                                       task.output().size(), task.lut());
   }
-
-  // if (ncodebooks >= lut_work_const) {
-  //     msg = string_with_format(fmt, "amm mithral sparselut", lut_work_const);
-  //     REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrials,
-  //         task.output().data(), task.output().size(),
-  //         task.run_matmul(true));
-  // }
-  // msg = string_with_format( // time if lut already created
-  //     "%3s amm mithral nolut      N, D, M, C, lut_work_coef:\t"
-  //         "%6d, %3d, %3d, %2d, %.1f\t",
-  //     dtype_str, N, D, M, ncodebooks, -1.f);
-  // "%3s amm mithral nolut      N, D, M, C:\t\t\t\t\t"
-  //     "%6d, %3d, %3d, %2d\t\t",
-  // dtype_str, N, D, M, ncodebooks);
-  // msg = string_with_format(fmt, dset_name, "amm mithral nolut",
-  //     dtype_str, N, D, M, ncodebooks, -1.f);
-
-  // // using dense centroids, which slows down LUT creation
-  // auto orig_nnz_per_centroid = task.amm.nnz_per_centroid;
-  // task.amm.nnz_per_centroid = -1;
-  // msg = string_with_format(fmt, "amm mithral denselut", -1.f);
-  // REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrials,
-  //     task.output().data(), task.output().size(),
-  //     task.run_matmul(true));
-  // msg = string_with_format(fmt, "amm mithral lut dense", -1.f);
-  // REPEATED_PROFILE_DIST_COMPUTATION(kNreps, msg, kNtrials,
-  //     task.output().data(), task.output().size(),
-  //     task.lut());
-  // task.amm.nnz_per_centroid = orig_nnz_per_centroid;
-
-  // back to sparse centroids
 }
 
 template <class InputT = float>
