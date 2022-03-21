@@ -9,15 +9,7 @@
 #ifndef __AVX_UTILS_HPP
 #define __AVX_UTILS_HPP
 
-// #ifdef BLAZE
-//     #include "src/utils/bit_ops.hpp"  // just for popcnt
-// #else
-//     #include "bit_ops.hpp"
-// #endif
-
-// #include <stdio.h> // TODO rm
 #include "debug_utils.hpp"
-
 #include "immintrin.h"
 
 #ifndef MAX

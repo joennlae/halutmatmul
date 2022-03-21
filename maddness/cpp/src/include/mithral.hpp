@@ -17,18 +17,10 @@
 
 // #define MITHRAL_USE_BOLT_SAFE_SCAN // way slower, but exact sum of uint8s
 
-#ifdef BLAZE
-#include "src/utils/avx_utils.hpp"
-#include "src/utils/eigen_utils.hpp"
-#ifdef MITHRAL_USE_BOLT_SAFE_SCAN
-#include "src/quantize/bolt.hpp"
-#endif
-#else
 #include "avx_utils.hpp"
 #include "eigen_utils.hpp"
 #ifdef MITHRAL_USE_BOLT_SAFE_SCAN
 #include "bolt.hpp"
-#endif
 #endif
 
 // ================================================================ in cpp

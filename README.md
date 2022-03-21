@@ -1,4 +1,4 @@
-# HALUTMATMUL
+# Halutmatmul
 
 Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
 
