@@ -7,10 +7,7 @@
 //
 
 #include "amm_common.hpp"
-#include "bolt.hpp"
 #include <catch2/catch_test_macros.hpp>
-// #include "multisplit.hpp"
-// #include "product_quantize.hpp"
 
 void _profile_encode(int N, int D, int nbytes) {
   static constexpr int nsplits_per_codebook = 4;

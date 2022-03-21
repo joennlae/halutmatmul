@@ -7,9 +7,7 @@
 //
 
 #include "amm_common.hpp"
-#include "bolt.hpp"
 #include <catch2/catch_test_macros.hpp>
-// #include "product_quantize.hpp"
 
 void _profile_lut_mithral(int nrows, int ncols, int nbytes,
                           float lut_work_const)

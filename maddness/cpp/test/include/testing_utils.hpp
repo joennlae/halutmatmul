@@ -14,8 +14,17 @@
 #include <stdint.h>
 
 #include "eigen_utils.hpp"
-#include "memory.hpp"
 #include "timing_utils.hpp" // for profiling
+
+template <int MAX_LEN = 1024>
+static inline std::string string_with_format(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  char buff[MAX_LEN];
+  vsnprintf(buff, MAX_LEN - 1, fmt, args);
+  return std::string(buff);
+  va_end(args);
+}
 
 template <class DistT>
 double prevent_optimizing_away_dists(DistT *dists, int64_t N,
@@ -130,46 +139,5 @@ static inline void print_dist_stats(const std::string &name, int64_t N,
     }                                                                          \
     printf("\n");                                                              \
   } while (0);
-
-template <class data_t, class len_t>
-static inline void
-randint_inplace(data_t *data, len_t len,
-                data_t min = std::numeric_limits<data_t>::min(),
-                data_t max = std::numeric_limits<data_t>::max()) {
-  assert(data != nullptr);
-  assert(len > 0);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> d(min, max);
-
-  for (len_t i = 0; i < len; i++) {
-    data[i] = static_cast<data_t>(d(gen));
-  }
-}
-template <class data_t, class len_t>
-static inline void rand_inplace(data_t *data, len_t len, data_t min = 0,
-                                data_t max = 1) {
-  assert(data != nullptr);
-  assert(len > 0);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<> d(min, max);
-
-  for (len_t i = 0; i < len; i++) {
-    data[i] = static_cast<data_t>(d(gen));
-  }
-}
-
-template <class data_t> static inline data_t *aligned_random_ints(int64_t len) {
-  data_t *ptr = aligned_alloc<data_t>(len);
-  randint_inplace(ptr, len);
-  return ptr;
-}
-
-template <class data_t> static inline data_t *aligned_random(int64_t len) {
-  data_t *ptr = aligned_alloc<data_t>(len);
-  rand_inplace(ptr, len);
-  return ptr;
-}
 
 #endif

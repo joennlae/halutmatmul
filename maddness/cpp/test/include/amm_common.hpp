@@ -14,15 +14,9 @@
 #include <string>
 #include <vector>
 
-// #include "catch.hpp"
-// #include "bolt.hpp"
-#include "debug_utils.hpp"
 #include "eigen_utils.hpp"
 #include "mithral.hpp"
-// #include "sketch.hpp"
-#include "memory.hpp"
 #include "testing_utils.hpp"
-#include "timing_utils.hpp"
 
 static constexpr int kNreps = 5;
 static constexpr int kNtrials = 10;

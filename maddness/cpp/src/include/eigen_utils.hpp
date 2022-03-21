@@ -13,13 +13,6 @@
 #include <Eigen/Dense>
 #include <unsupported/Eigen/CXX11/Tensor>
 
-namespace {
-
-using Eigen::Dynamic;
-using Eigen::Map;
-using Eigen::Matrix;
-using Eigen::RowMajor;
-
 // ================================================================
 // typealiases
 // ================================================================
@@ -35,5 +28,4 @@ template <class T> using ColVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <class T>
 using RowVector = Eigen::Matrix<T, 1, Eigen::Dynamic, Eigen::RowMajor>;
 
-} // namespace
 #endif

@@ -15,13 +15,8 @@
 #include <sys/types.h>
 #include <type_traits>
 
-// #define MITHRAL_USE_BOLT_SAFE_SCAN // way slower, but exact sum of uint8s
-
 #include "avx_utils.hpp"
 #include "eigen_utils.hpp"
-#ifdef MITHRAL_USE_BOLT_SAFE_SCAN
-#include "bolt.hpp"
-#endif
 
 // ================================================================ in cpp
 // these should be the only functions you have to call
@@ -138,13 +133,8 @@ template <class InputT> struct mithral_amm {
 
   void scan() {
     auto nblocks = N / scan_block_nrows;
-#ifdef MITHRAL_USE_BOLT_SAFE_SCAN
-    bolt_scan(codes.data(), nblocks, ncodebooks, M, luts.data(),
-              out_mat.data());
-#else
     mithral_scan(codes.data(), nblocks, ncodebooks, M, luts.data(),
                  (uint8_t *)out_mat.data());
-#endif
   }
 
   // ctor params
@@ -1506,9 +1496,5 @@ void mithral_scan(const uint8_t *codes, int64_t nblocks, int ncodebooks,
 }
 
 } // namespace
-
-#ifdef MITHRAL_USE_BOLT_SAFE_SCAN
-#undef MITHRAL_USE_BOLT_SAFE_SCAN
-#endif
 
 #endif // __MITHRAL_HPP

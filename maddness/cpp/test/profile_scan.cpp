@@ -7,9 +7,7 @@
 //
 
 #include "amm_common.hpp"
-#include "bit_ops.hpp"
 #include <catch2/catch_test_macros.hpp>
-// #include "product_quantize.hpp"
 
 static constexpr int kNtrialsScan = 20;
 
