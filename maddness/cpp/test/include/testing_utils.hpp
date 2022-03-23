@@ -28,7 +28,7 @@ static inline std::string string_with_format(const char *fmt, ...) {
 
 template <class DistT>
 double prevent_optimizing_away_dists(DistT *dists, int64_t N,
-                                     bool verbose = false) {
+                                     bool verbose = true) {
   // count how many dists are above a random threshold; let's see you
   // optimize this away, compiler
   std::random_device rd;

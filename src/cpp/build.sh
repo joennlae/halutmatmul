@@ -45,7 +45,7 @@ $CMAKE ../ \
   -DCLANG_TIDY=$IS_CLANG_TIDY \
   -DCMAKE_CLANG_TIDY=$CLANG_TIDY \
   -DUNIT_TESTS=$UNIT
-make -j16
+make -j32
 EXIT_CODE=$? # important for CI
 
 cd $ORIGIN

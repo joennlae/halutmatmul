@@ -26,7 +26,21 @@ die() {
   _die echo "${@}"
 }
 
+
+check_env() {
+  default_name="halutmatmul"
+
+  if [ -z ${REPO_BASE_PATH+x} ]; then
+    echo "[ERROR] Halutmatmul env is not activated ❌"
+    echo "[INFO] activate with source halut.env"
+    exit 1
+  else
+    echo "[INFO] Halutmatmul env is activated ✅"
+  fi
+}
+
 _print_help() {
+  check_env
   cat <<HEREDOC
 template-generator - Template generator CLI
 Usage: ${app_name} [command] [arguments]
@@ -34,8 +48,9 @@ Options:
   -h, --help                       Print this help
   -v, --version                    Print script version
 Commands:
-  l|lint                           Lint *c and *.py
+  l|lint                           Lint cpp and python
   t|test [path]                    Start pytests
+  e|env                            Set IIS env
 Examples:
   # Add here
 HEREDOC
@@ -87,6 +102,9 @@ _LINT_ARG=""
 _TEST_OPTION=0
 _TEST_ARG=""
 
+# Set environment
+_ENV_OPTION=0
+
 _require_argument() {
   local _option="${1:-}"
   local _argument="${2:-}"
@@ -126,6 +144,9 @@ do
       # _require_argument "${__option}" "${__maybe_param}"
       _TEST_ARG="${__maybe_param}";
       ;;
+    e|env)
+      _ENV_OPTION=1;
+      ;;
     --endopts)
       break
       ;;
@@ -147,6 +168,8 @@ _main() {
     lint_python
   elif ((_TEST_OPTION)); then
     test_python "$_TEST_ARG"
+  elif ((_ENV_OPTION)); then
+    check_env
   else
     _print_help
   fi

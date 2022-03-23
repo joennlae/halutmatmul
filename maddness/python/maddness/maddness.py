@@ -313,6 +313,7 @@ class MaddnessMatmul:
 
                     while read_lut.shape[-1] > 2:
                         read_lut = (read_lut[:, :, ::2] + read_lut[:, :, 1::2] + 1) // 2
+
                     read_lut = (read_lut[:, :, 0] + read_lut[:, :, 1] + 1) // 2
                     read_lut = read_lut.sum(axis=-1)  # clipping not needed
 

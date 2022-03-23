@@ -4,10 +4,11 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/maddness/cpp/lib/Catch2/src"
+                "${workspaceFolder}/maddness/cpp/lib/Catch2/src",
+                "${workspaceFolder}/src/cpp/src/include"
             ],
             "defines": [],
-            "compilerPath": "/usr/sepp/bin/clang-12",
+            "compilerPath": "/usr/sepp/bin/clang++-12.0.1",
             "cStandard": "c99",
             "cppStandard": "c++14",
             "intelliSenseMode": "linux-clang-x64"
