@@ -40,7 +40,8 @@ disable=import-error,
         multiple-imports,
         duplicate-code,
         inconsistent-return-statements,
-        consider-using-min-builtin
+        consider-using-min-builtin,
+        too-many-instance-attributes
 
 [REPORTS]
 
