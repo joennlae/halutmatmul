@@ -27,6 +27,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from functools import partial
 from typing import Dict, OrderedDict, Type, Any, Callable, Union, List, Optional
 
+import numpy as np
+
 import torch
 from torch import nn
 from torch import Tensor
@@ -37,6 +39,7 @@ from torchvision.models._api import WeightsEnum, Weights
 from torchvision.models._meta import _IMAGENET_CATEGORIES
 from torchvision.models._utils import _ovewrite_named_param
 
+from halutmatmul.modules import HalutLinear
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -153,7 +156,6 @@ class Bottleneck(nn.Module):
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-
         out = self.conv3(out)
         out = self.bn3(out)
 
@@ -177,6 +179,7 @@ class ResNet(nn.Module):
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        **kwargs,
     ) -> None:
         super().__init__()
         _log_api_usage_once(self)
@@ -197,6 +200,11 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
+
+        print(kwargs)
+        self.n_rows = kwargs["n_rows"] if "n_rows" in kwargs else 10000
+        self.batch_size = kwargs["batch_size"] if "batch_size" in kwargs else 128
+        self.save_inputs_for_offline = {}
         # ImageNet
         # self.conv1 = nn.Conv2d(
         #     3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
@@ -221,7 +229,14 @@ class ResNet(nn.Module):
             block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = HalutLinear(
+            512 * block.expansion,
+            num_classes,
+            halut_active=True,
+            halut_offline_A=np.load("./.data/fc_A.npy"),
+            halut_C=4
+        )
+        # nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -240,6 +255,32 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
+
+    def add_inputs_to_save(self, name: str, inputs: Tensor) -> None:
+        if name not in self.save_inputs_for_offline:
+            self.save_inputs_for_offline[name] = torch.zeros(
+                (self.n_rows, *inputs.shape[1:])
+            )
+            print(inputs.shape)
+            print("Shapes", self.n_rows, inputs.shape[1:])
+            print("Shapes", self.n_rows, *inputs.shape[1:])
+            self.save_inputs_for_offline[name + "_offset"] = 0
+        self.save_inputs_for_offline[name][
+            self.save_inputs_for_offline[
+                name + "_offset"
+            ] : self.save_inputs_for_offline[name + "_offset"]
+            + inputs.shape[0],
+            :,
+        ] = inputs
+        self.save_inputs_for_offline[name + "_offset"] += inputs.shape[0]
+
+    def write_inputs_to_disk(self) -> None:
+        for key, value in self.save_inputs_for_offline.items():
+            if "_offset" not in key:
+                np_array = value.detach().cpu().numpy()
+                np.save('.data/' + key + "_A.npy", np_array)
+
+                # torch.save(value, key + '.pt')
 
     def _make_layer(
         self,
@@ -304,6 +345,7 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         # pylint: disable=E1101
         x = torch.flatten(x, 1)
+        self.add_inputs_to_save("fc", x)
         x = self.fc(x)
 
         return x
@@ -324,7 +366,7 @@ def _resnet(
     #     _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
     model = ResNet(block, layers, **kwargs)
-
+    print(kwargs)
     if weights is not None:
         # model.load_state_dict(weights.get_state_dict(progress=progress))
         model.load_state_dict(weights)
@@ -382,5 +424,5 @@ def resnet50(
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     # weights = ResNet50_Weights.verify(weights)
-
+    print(kwargs)
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)

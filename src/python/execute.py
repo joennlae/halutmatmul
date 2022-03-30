@@ -30,9 +30,18 @@ cifar_10_val = torchvision.datasets.CIFAR10(
 loaded_data = DataLoader(
     cifar_10_val, batch_size=128, num_workers=8, drop_last=False, pin_memory=True
 )
-print(loaded_data)
+total_iters = len(loaded_data)
+n_rows = 0
+for n_iter, (image, label) in enumerate(loaded_data):
+    n_rows += label.size()[0]
 
-model = resnet50(weights=state_dict)
+print("total iters: {}, n_rows: {}".format(total_iters, n_rows))
+
+model = resnet50(
+    weights=state_dict,
+    progress=False,
+    **{"n_rows": n_rows, "n_iter": total_iters, "batch_size": 128}
+)
 print(model)
 model.eval()
 
@@ -60,6 +69,8 @@ with torch.no_grad():
 
         # compute top1
         correct_1 += correct[:, :1].sum()
+
+model.write_inputs_to_disk()
 
 print(correct_1, correct_5)
 print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset))

@@ -3,10 +3,10 @@
 [MASTER]
 
 # Use multiple processes to speed up Pylint.
-jobs=4
+jobs=1
 
 ignore-paths=^maddness/python/joblib/.*$,
-             ^src/test/.*$,
+             ^src/python/data/.*$,
 
 # init-hook='import sys; sys.path.append("./maddness/python/")'
 
@@ -41,7 +41,9 @@ disable=import-error,
         duplicate-code,
         inconsistent-return-statements,
         consider-using-min-builtin,
-        too-many-instance-attributes
+        too-many-instance-attributes,
+        consider-using-f-string,
+        no-else-return
 
 [REPORTS]
 
@@ -64,3 +66,9 @@ min-similarity-lines=5
 
 [pre-commit-hook]
 params=*.py **/*.py
+
+[TYPECHECK]
+
+# List of members which are set dynamically and missed by Pylint inference
+# system, and so shouldn't trigger E1101 when accessed.
+generated-members=numpy.*, torch.*

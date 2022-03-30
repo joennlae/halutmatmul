@@ -220,12 +220,12 @@ def learn_proto_and_hash_function(X, C, lut_work_const=-1):
     return all_splits, all_prototypes
 
 
-def maddness_lut(q, all_prototypes):
+def maddness_lut(q: np.ndarray, all_prototypes: np.ndarray) -> np.ndarray:
     q = q.reshape(1, 1, -1)  # all_prototypes is shape C, K, D
     return (q * all_prototypes).sum(axis=2)  # C, K
 
 
-def maddness_quantize_luts(luts, force_power_of_2=True):
+def maddness_quantize_luts(luts: np.ndarray, force_power_of_2: bool = True):
     mins = luts.min(axis=(0, 2))
     maxs = luts.max(axis=(0, 2))
 
@@ -250,7 +250,7 @@ def maddness_quantize_luts(luts, force_power_of_2=True):
 
 # pylint: disable=R0902
 class MaddnessMatmul:
-    def __init__(self, C=16, lut_work_const=-1):
+    def __init__(self, C: int = 16, lut_work_const: int = -1) -> None:
         # checks
         if lut_work_const > 0 and lut_work_const > C:
             raise Exception("lut_work_const > C: {} > {}".format(lut_work_const, C))
@@ -269,7 +269,7 @@ class MaddnessMatmul:
         self.offsets = np.arange(self.C, dtype=np.int32) * self.K
         self.reset()
 
-    def _learn_hash_buckets_and_prototypes(self, A):
+    def _learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
         _, D = A.shape
         if D < self.C:
             raise Exception("D < C: {} < {}".format(D, self.C))
@@ -277,12 +277,12 @@ class MaddnessMatmul:
             A, self.C, lut_work_const=self.lut_work_const
         )
 
-    def _encode_A(self, A):
+    def _encode_A(self, A: np.ndarray) -> np.ndarray:
         idxs = maddness_encode(A, self.splits_lists)
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
         return idxs + self.offsets
 
-    def _create_lut(self, B):
+    def _create_lut(self, B: np.ndarray):
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
         for i, q in enumerate(B):
@@ -292,7 +292,13 @@ class MaddnessMatmul:
             return luts, offset, scale
         return luts, 0, 1
 
-    def _calc_matmul(self, A_enc, B_luts, offset, scale):
+    def _calc_matmul(
+        self,
+        A_enc: np.ndarray,
+        B_luts: np.ndarray,
+        offset: np.ndarray,
+        scale: np.ndarray,
+    ) -> np.ndarray:
         A_enc = np.ascontiguousarray(A_enc)
 
         total_result = np.empty((len(B_luts), len(A_enc)), dtype=np.float32)
@@ -338,26 +344,29 @@ class MaddnessMatmul:
 
         return total_result.T
 
-    def _set_A(self, A):
+    def _set_A(self, A: np.ndarray) -> None:
         self.A_enc = self._encode_A(A)
 
-    def _set_B(self, B):
+    def _set_B(self, B: np.ndarray) -> None:
         self.luts, self.offset, self.scale = self._create_lut(B.T)
 
     # public function
-    def learn_A(self, A):
+    def learn_A(self, A: np.ndarray) -> None:
         self._learn_hash_buckets_and_prototypes(A)
 
-    def apply_matmul(self, A, B):
-        if self.A_enc is None:
-            self._set_A(A)
-        if self.luts is None:
-            self._set_B(B)
+    def learn_offline(self, A: np.ndarray, B: np.ndarray) -> None:
+        self._learn_hash_buckets_and_prototypes(A)
+        self._set_B(B)
+
+    def apply_matmul(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
+        self.learn_offline(A, B)
         return self._calc_matmul(
             self.A_enc, self.luts, offset=self.offset, scale=self.scale
         )
 
-    def apply_matmul_e2e(self, A, B, A_learn=None):
+    def apply_matmul_e2e(
+        self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None
+    ) -> np.ndarray:
         if A_learn is None:
             self._learn_hash_buckets_and_prototypes(A)
         else:
@@ -368,11 +377,17 @@ class MaddnessMatmul:
             self.A_enc, self.luts, offset=self.offset, scale=self.scale
         )
 
-    def reset(self):
+    def matmul_online(self, A: np.ndarray) -> np.ndarray:
+        self._set_A(A)
+        return self._calc_matmul(self.A_enc, self.luts, offset=self.offset, scale=self.scale)
+
+    def reset(self) -> None:
         self.A_enc = None
         self.luts = None
 
-    def get_speed_metrics(self, A, B, fixedA=False, fixedB=False):
+    def get_speed_metrics(
+        self, A: np.ndarray, B: np.ndarray, fixedA: bool = False, fixedB: bool = False
+    ) -> None:
         N, D = A.shape
         D, M = B.shape
         # data encoding and LUT costs
@@ -386,7 +401,9 @@ class MaddnessMatmul:
         print("nmuls: ", nmuls, "KEY_NLOOKUPS:", nlookups)
 
 
-def matmul(A, B, C=16, lut_work_const=-1, A_learn=None):
+def matmul(
+    A: np.ndarray, B: np.ndarray, C=16, lut_work_const=-1, A_learn=None
+) -> np.ndarray:
     return MaddnessMatmul(C=C, lut_work_const=lut_work_const).apply_matmul_e2e(
         A, B, A_learn=A_learn
     )

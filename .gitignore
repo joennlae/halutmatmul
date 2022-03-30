@@ -7,3 +7,4 @@ maddness/assets
 *.egg-info
 
 .data
+.mypy_cache
