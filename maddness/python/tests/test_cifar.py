@@ -24,7 +24,7 @@ def test_maddness_cifar_100():
     )  # MADDNESS-PQ has lut_work_const=1
     maddness.learn_A(X_train)
     maddness.reset()
-    Y_pred = maddness.apply_matmul(X_test, W)
+    Y_pred = maddness.apply_matmul_e2e(X_test, W)
 
     print(Y_pred)
     print("max_pred", np.max(Y_pred), "min_pred", np.min(Y_pred))
@@ -35,7 +35,7 @@ def test_maddness_cifar_100():
     print(mse)
 
     maddness.reset()
-    Y_train_pred = maddness.apply_matmul(X_train, W)
+    Y_train_pred = maddness.apply_matmul_e2e(X_train, W)
 
     print(Y_train_pred.shape, X_train.shape)
     print(
@@ -65,7 +65,7 @@ def test_maddness_cifar_10():
     )  # MADDNESS-PQ has lut_work_const=1
     maddness.learn_A(X_train)
     maddness.reset()
-    Y_pred = maddness.apply_matmul(X_test, W)
+    Y_pred = maddness.apply_matmul_e2e(X_test, W)
 
     print(Y_pred)
     print("max_pred", np.max(Y_pred), "min_pred", np.min(Y_pred))
@@ -76,7 +76,7 @@ def test_maddness_cifar_10():
     print(mse)
 
     maddness.reset()
-    Y_train_pred = maddness.apply_matmul(X_train, W)
+    Y_train_pred = maddness.apply_matmul_e2e(X_train, W)
 
     print(Y_train_pred.shape, X_train.shape)
     print(

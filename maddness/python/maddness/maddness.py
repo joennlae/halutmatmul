@@ -3,8 +3,12 @@ import os
 from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 
-from maddness.util.least_squares import _XW_encoded, encoded_lstsq, sparse_encoded_lstsq
-from maddness.util.hash_function_helper import (
+from maddness.util.least_squares import (  # type: ignore[attr-defined]
+    _XW_encoded,
+    encoded_lstsq,
+    sparse_encoded_lstsq,
+)
+from maddness.util.hash_function_helper import (  # type: ignore[attr-defined]
     Bucket,
     MultiSplit,
     create_codebook_start_end_idxs,
@@ -360,12 +364,6 @@ class MaddnessMatmul:
     def learn_offline(self, A: np.ndarray, B: np.ndarray) -> None:
         self._learn_hash_buckets_and_prototypes(A)
         self._set_B(B)
-
-    def apply_matmul(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
-        self.learn_offline(A, B)
-        return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale, # type: ignore[arg-type]
-        )
 
     def apply_matmul_e2e(
         self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None
