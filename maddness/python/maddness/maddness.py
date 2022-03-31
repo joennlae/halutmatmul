@@ -1,5 +1,6 @@
 # pylint: disable=C0302, C1802, C0209, R1705, W0201
 import os
+from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 
 from maddness.util.least_squares import _XW_encoded, encoded_lstsq, sparse_encoded_lstsq
@@ -14,13 +15,13 @@ from maddness.util.hash_function_helper import (
 
 # @_memory.cache
 def learn_binary_tree_splits(
-    X,
-    nsplits=4,  # levels of resulting binary hash tree
-    return_prototypes=True,
-    return_buckets=False,
-    X_orig=None,
-    check_x_dims=4,  # can be used to check more or less dims with max losses
-):
+    X: np.ndarray,
+    nsplits: int = 4,  # levels of resulting binary hash tree
+    return_prototypes: bool = True,
+    return_buckets: bool = False,
+    X_orig: Optional[np.ndarray] = None,
+    check_x_dims: int = 4,  # can be used to check more or less dims with max losses
+) -> Tuple[list, int, Union[list, np.ndarray]]:
     assert nsplits <= 4  # >4 splits means >16 split_vals for this func's impl
 
     X = X.astype(np.float32)
@@ -105,10 +106,13 @@ def learn_binary_tree_splits(
         return splits, loss, prototypes
     if return_buckets:
         return splits, loss, buckets
+    return splits, loss, buckets
 
 
 # @_memory.cache
-def init_and_learn_hash_function(X, C, pq_perm_algo="start"):
+def init_and_learn_hash_function(
+    X: np.ndarray, C: int, pq_perm_algo: str = "start"
+) -> Tuple[np.ndarray, list, np.ndarray, list]:
     _, D = X.shape
     K_per_codebook = 16
 
@@ -118,7 +122,7 @@ def init_and_learn_hash_function(X, C, pq_perm_algo="start"):
 
     # TODO: stored with height D but could be stored with height of amount of idx as rest is zero!
     all_prototypes = np.zeros((C, K_per_codebook, D), dtype=np.float32)
-    all_splits = []
+    all_splits: List = []
     pq_idxs = create_codebook_start_end_idxs(X, C, algo=pq_perm_algo)
 
     # ------------------------ 0th iteration; initialize all codebooks
@@ -155,7 +159,7 @@ def init_and_learn_hash_function(X, C, pq_perm_algo="start"):
     return X_res, all_splits, all_prototypes, all_buckets
 
 
-def apply_hash_function(X, splits):
+def apply_hash_function(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
     N, _ = X.shape
     nsplits = len(splits)
     assert len(splits) >= 1
@@ -169,17 +173,19 @@ def apply_hash_function(X, splits):
     return group_ids
 
 
-def maddness_encode(X, multisplits_lists):
+def maddness_encode(X: np.ndarray, multisplits_lists: List) -> np.ndarray:
     N, _ = X.shape
     C = len(multisplits_lists)
-    A_enc = np.empty((N, C), dtype=np.int32, order="f")  # column-major
+    A_enc = np.empty((N, C), dtype=np.int32, order="F")  # column-major
     for c in range(C):
         A_enc[:, c] = apply_hash_function(X, multisplits_lists[c])
     return np.ascontiguousarray(A_enc)
 
 
 # @_memory.cache
-def learn_proto_and_hash_function(X, C, lut_work_const=-1):
+def learn_proto_and_hash_function(
+    X: np.ndarray, C: int, lut_work_const: int = -1
+) -> Tuple[list, np.ndarray]:
     _, D = X.shape
     K_per_codebook = 16
     used_perm_algo = "start"  # or end
@@ -225,7 +231,7 @@ def maddness_lut(q: np.ndarray, all_prototypes: np.ndarray) -> np.ndarray:
     return (q * all_prototypes).sum(axis=2)  # C, K
 
 
-def maddness_quantize_luts(luts: np.ndarray, force_power_of_2: bool = True):
+def maddness_quantize_luts(luts: np.ndarray, force_power_of_2: bool = True) -> Any:
     mins = luts.min(axis=(0, 2))
     maxs = luts.max(axis=(0, 2))
 
@@ -258,6 +264,8 @@ class MaddnessMatmul:
         self.lut_work_const = lut_work_const
         self.C = C
         self.K = 16
+        self.A_enc: Optional[np.ndarray] = None
+        self.luts: Optional[np.ndarray] = None
 
         self.quantize_lut = True
         self.upcast_every = 16
@@ -267,7 +275,6 @@ class MaddnessMatmul:
         self.accumulate_how = "mean"  # sum
         # for fast lookups via indexing into flattened array
         self.offsets = np.arange(self.C, dtype=np.int32) * self.K
-        self.reset()
 
     def _learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
         _, D = A.shape
@@ -282,7 +289,7 @@ class MaddnessMatmul:
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
         return idxs + self.offsets
 
-    def _create_lut(self, B: np.ndarray):
+    def _create_lut(self, B: np.ndarray) -> Tuple[np.ndarray, int, int]:
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
         for i, q in enumerate(B):
@@ -293,11 +300,7 @@ class MaddnessMatmul:
         return luts, 0, 1
 
     def _calc_matmul(
-        self,
-        A_enc: np.ndarray,
-        B_luts: np.ndarray,
-        offset: np.ndarray,
-        scale: np.ndarray,
+        self, A_enc: np.ndarray, B_luts: np.ndarray, offset: int, scale: int,
     ) -> np.ndarray:
         A_enc = np.ascontiguousarray(A_enc)
 
@@ -361,7 +364,7 @@ class MaddnessMatmul:
     def apply_matmul(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:
         self.learn_offline(A, B)
         return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale
+            self.A_enc, self.luts, offset=self.offset, scale=self.scale, # type: ignore[arg-type]
         )
 
     def apply_matmul_e2e(
@@ -374,12 +377,14 @@ class MaddnessMatmul:
         self._set_A(A)
         self._set_B(B)
         return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale
+            self.A_enc, self.luts, offset=self.offset, scale=self.scale,  # type: ignore[arg-type]
         )
 
     def matmul_online(self, A: np.ndarray) -> np.ndarray:
         self._set_A(A)
-        return self._calc_matmul(self.A_enc, self.luts, offset=self.offset, scale=self.scale)
+        return self._calc_matmul(
+            self.A_enc, self.luts, offset=self.offset, scale=self.scale  # type: ignore[arg-type]
+        )
 
     def reset(self) -> None:
         self.A_enc = None
@@ -402,7 +407,11 @@ class MaddnessMatmul:
 
 
 def matmul(
-    A: np.ndarray, B: np.ndarray, C=16, lut_work_const=-1, A_learn=None
+    A: np.ndarray,
+    B: np.ndarray,
+    C: int = 16,
+    lut_work_const: int = -1,
+    A_learn: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     return MaddnessMatmul(C=C, lut_work_const=lut_work_const).apply_matmul_e2e(
         A, B, A_learn=A_learn

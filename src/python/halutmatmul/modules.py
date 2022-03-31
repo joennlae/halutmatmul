@@ -1,3 +1,4 @@
+from typing import Any, Optional, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -14,10 +15,10 @@ class HalutLinear(Linear):
         in_features: int,
         out_features: int,
         bias: bool = True,
-        device=None,
-        dtype=None,
+        device: Union[str, Any] =None,
+        dtype: Union[str, Any]=None,
         halut_active: bool = False,
-        halut_offline_A: np.ndarray = None,
+        halut_offline_A: Union[np.ndarray, None] = None,
         halut_C: int = 16,
         halut_lut_work_const: int = -1,
     ) -> None:
@@ -29,7 +30,7 @@ class HalutLinear(Linear):
             dtype=dtype,
         )
         self.halut_active = halut_active
-        self.halut = None
+        self.halut: Optional[MaddnessMatmul] = None
         self.halut_offline_learned = False
         self.halut_offline_A = halut_offline_A
         self.halut_C = halut_C
@@ -54,7 +55,8 @@ class HalutLinear(Linear):
                 self.learn_offline()
             input_numpy = input.detach().cpu().numpy()
             print(input_numpy.shape)
-            result = self.halut.matmul_online(input_numpy)
+            if self.halut:
+                result = self.halut.matmul_online(input_numpy)
             print(result.shape)
             bias_to_add = self.bias.clone().repeat(input.shape[0], 1)
             print(bias_to_add.shape)

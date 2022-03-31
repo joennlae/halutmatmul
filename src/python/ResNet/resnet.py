@@ -179,7 +179,7 @@ class ResNet(nn.Module):
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__()
         _log_api_usage_once(self)
@@ -204,7 +204,8 @@ class ResNet(nn.Module):
         print(kwargs)
         self.n_rows = kwargs["n_rows"] if "n_rows" in kwargs else 10000
         self.batch_size = kwargs["batch_size"] if "batch_size" in kwargs else 128
-        self.save_inputs_for_offline = {}
+        self.save_inputs_for_offline : Dict[str, Tensor]= {}
+        self.save_inputs_offsets : Dict[str, int] = {}
         # ImageNet
         # self.conv1 = nn.Conv2d(
         #     3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
@@ -264,23 +265,21 @@ class ResNet(nn.Module):
             print(inputs.shape)
             print("Shapes", self.n_rows, inputs.shape[1:])
             print("Shapes", self.n_rows, *inputs.shape[1:])
-            self.save_inputs_for_offline[name + "_offset"] = 0
+            self.save_inputs_offsets[name] = 0
         self.save_inputs_for_offline[name][
-            self.save_inputs_for_offline[
-                name + "_offset"
-            ] : self.save_inputs_for_offline[name + "_offset"]
+            self.save_inputs_offsets[
+                name
+            ] : self.save_inputs_offsets[name]
             + inputs.shape[0],
             :,
         ] = inputs
-        self.save_inputs_for_offline[name + "_offset"] += inputs.shape[0]
+        self.save_inputs_offsets[name] += inputs.shape[0]
 
     def write_inputs_to_disk(self) -> None:
         for key, value in self.save_inputs_for_offline.items():
-            if "_offset" not in key:
-                np_array = value.detach().cpu().numpy()
-                np.save('.data/' + key + "_A.npy", np_array)
-
-                # torch.save(value, key + '.pt')
+            np_array = value.detach().cpu().numpy()
+            np.save('.data/' + key + "_A.npy", np_array)
+            # torch.save(value, key + '.pt')
 
     def _make_layer(
         self,

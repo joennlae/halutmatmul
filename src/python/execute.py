@@ -73,8 +73,8 @@ with torch.no_grad():
 model.write_inputs_to_disk()
 
 print(correct_1, correct_5)
-print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset))
-print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset))
-print("Top 1 accuracy: ", correct_1 / len(loaded_data.dataset))
-print("Top 5 accuracy: ", correct_5 / len(loaded_data.dataset))
+print("Top 1 error: ", 1 - correct_1 / len(loaded_data))
+print("Top 5 error: ", 1 - correct_5 / len(loaded_data))
+print("Top 1 accuracy: ", correct_1 / len(loaded_data))
+print("Top 5 accuracy: ", correct_5 / len(loaded_data))
 print("Parameter numbers: {}".format(sum(p.numel() for p in model.parameters())))
