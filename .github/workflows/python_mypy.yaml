@@ -16,7 +16,7 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         $CONDA/bin/conda env update --file environment.yml --name base
-    - name: Test with pytest
+    - name: Check types with mypy
       run: |
         $CONDA/bin/conda install mypy
-        $CONDA/bin/mypy
+        $CONDA/bin/mypy --config-file .mypy.ini --pretty 
