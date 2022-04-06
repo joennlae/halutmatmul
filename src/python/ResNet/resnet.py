@@ -39,7 +39,8 @@ from torchvision.models._api import WeightsEnum, Weights
 from torchvision.models._meta import _IMAGENET_CATEGORIES
 from torchvision.models._utils import _ovewrite_named_param
 
-from halutmatmul.modules import HalutLinear
+from halutmatmul.modules import HalutConv2d, HalutLinear
+
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -57,9 +58,16 @@ def conv3x3(
     )
 
 
-def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
+def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> HalutConv2d:
     """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+    return HalutConv2d(
+        in_planes,
+        out_planes,
+        kernel_size=1,
+        stride=stride,
+        bias=False,
+        halut_active=True,
+    )
 
 
 class BasicBlock(nn.Module):
@@ -148,14 +156,15 @@ class Bottleneck(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
+        # print("bottleneck", x.shape)
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-
+        # print("bottleneck1", out.shape)
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
+        # print("bottleneck2", out.shape)
         out = self.conv3(out)
         out = self.bn3(out)
 
@@ -204,8 +213,8 @@ class ResNet(nn.Module):
         print(kwargs)
         self.n_rows = kwargs["n_rows"] if "n_rows" in kwargs else 10000
         self.batch_size = kwargs["batch_size"] if "batch_size" in kwargs else 128
-        self.save_inputs_for_offline : Dict[str, Tensor]= {}
-        self.save_inputs_offsets : Dict[str, int] = {}
+        self.save_inputs_for_offline: Dict[str, Tensor] = {}
+        self.save_inputs_offsets: Dict[str, int] = {}
         # ImageNet
         # self.conv1 = nn.Conv2d(
         #     3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
@@ -235,7 +244,8 @@ class ResNet(nn.Module):
             num_classes,
             halut_active=True,
             halut_offline_A=np.load("./.data/fc_A.npy"),
-            halut_C=4
+            halut_C=4,
+            halut_lut_work_const=-1,
         )
         # nn.Linear(512 * block.expansion, num_classes)
 
@@ -267,9 +277,7 @@ class ResNet(nn.Module):
             print("Shapes", self.n_rows, *inputs.shape[1:])
             self.save_inputs_offsets[name] = 0
         self.save_inputs_for_offline[name][
-            self.save_inputs_offsets[
-                name
-            ] : self.save_inputs_offsets[name]
+            self.save_inputs_offsets[name] : self.save_inputs_offsets[name]
             + inputs.shape[0],
             :,
         ] = inputs
@@ -278,7 +286,7 @@ class ResNet(nn.Module):
     def write_inputs_to_disk(self) -> None:
         for key, value in self.save_inputs_for_offline.items():
             np_array = value.detach().cpu().numpy()
-            np.save('.data/' + key + "_A.npy", np_array)
+            np.save(".data/" + key + "_A.npy", np_array)
             # torch.save(value, key + '.pt')
 
     def _make_layer(

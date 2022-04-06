@@ -14,6 +14,8 @@ state_dict = torch.load(script_dir + "/.data/" + "resnet50" + ".pt", map_locatio
 dict_ = state_dict
 print(dict_.keys())
 
+print(state_dict['conv1.weight'].dtype)
+
 val_transform = T.Compose(
     [
         T.Resize(32),
@@ -73,8 +75,8 @@ with torch.no_grad():
 model.write_inputs_to_disk()
 
 print(correct_1, correct_5)
-print("Top 1 error: ", 1 - correct_1 / len(loaded_data))
-print("Top 5 error: ", 1 - correct_5 / len(loaded_data))
-print("Top 1 accuracy: ", correct_1 / len(loaded_data))
-print("Top 5 accuracy: ", correct_5 / len(loaded_data))
+print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset)) # type: ignore[arg-type]
+print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset)) # type: ignore[arg-type]
+print("Top 1 accuracy: ", correct_1 / len(loaded_data.dataset)) # type: ignore[arg-type]
+print("Top 5 accuracy: ", correct_5 / len(loaded_data.dataset)) # type: ignore[arg-type]
 print("Parameter numbers: {}".format(sum(p.numel() for p in model.parameters())))

@@ -75,7 +75,10 @@ lint_python() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
     pylint --rcfile=.pylintrc maddness/python/* src/python/*
-    echo "[DONE] lint python with pyling"
+    echo "[DONE] lint python with pylint"
+    echo "[INFO] check types with mypy"
+    mypy
+    echo "[DONE] check types with mypy"
     echo "[INFO] lint c++ with clang-format"
     ./scripts/clang-check.sh
     echo "[DONE] lint c++ with clang-format"
