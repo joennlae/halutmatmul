@@ -1,5 +1,6 @@
 # pylint: disable=C0209
-import os
+import os, json
+from typing import Dict
 
 import torchvision
 import torch
@@ -8,75 +9,94 @@ from torchvision import transforms as T
 
 from ResNet.resnet import resnet50
 
-script_dir = os.path.dirname(__file__)
-state_dict = torch.load(script_dir + "/.data/" + "resnet50" + ".pt", map_location="cpu")
 
-dict_ = state_dict
-print(dict_.keys())
+def replace_bool(_bool: bool) -> torch.Tensor:
+    return torch.ones(1, dtype=torch.bool) if _bool else torch.zeros(1, dtype=torch.bool)
 
-print(state_dict['conv1.weight'].dtype)
+def apply_config(state_dict: Dict[str, torch.Tensor]) -> Dict:
+    with open('config.json', 'r', encoding='utf-8') as f:
+        config = json.load(f)
 
-val_transform = T.Compose(
-    [
-        T.Resize(32),
-        T.CenterCrop(32),
-        T.ToTensor(),
-        T.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616)),
-    ]
-)
+    config = {k: replace_bool(v) if isinstance(v, bool) else v for k, v in config.items()}
+    return state_dict | config
 
-cifar_10_val = torchvision.datasets.CIFAR10(
-    root="./.data", train=False, transform=val_transform, download=False
-)
+def cifar_inference() -> None:
+    script_dir = os.path.dirname(__file__)
+    state_dict = torch.load(
+        script_dir + "/.data/" + "resnet50" + ".pt", map_location="cpu"
+    )
 
-loaded_data = DataLoader(
-    cifar_10_val, batch_size=128, num_workers=8, drop_last=False, pin_memory=True
-)
-total_iters = len(loaded_data)
-n_rows = 0
-for n_iter, (image, label) in enumerate(loaded_data):
-    n_rows += label.size()[0]
+    state_dict = apply_config(state_dict)
 
-print("total iters: {}, n_rows: {}".format(total_iters, n_rows))
+    # CIFAR transformation
+    val_transform = T.Compose(
+        [
+            T.Resize(32),
+            T.CenterCrop(32),
+            T.ToTensor(),
+            T.Normalize((0.4914, 0.4822, 0.4465), (0.2471, 0.2435, 0.2616)),
+        ]
+    )
 
-model = resnet50(
-    weights=state_dict,
-    progress=False,
-    **{"n_rows": n_rows, "n_iter": total_iters, "batch_size": 128}
-)
-print(model)
-model.eval()
+    cifar_10_val = torchvision.datasets.CIFAR10(
+        root="./.data", train=False, transform=val_transform, download=False
+    )
 
-correct_1 = 0.0
-correct_5 = 0.0
-total = 0
-
-with torch.no_grad():
+    loaded_data = DataLoader(
+        cifar_10_val, batch_size=128, num_workers=8, drop_last=False, pin_memory=True
+    )
+    total_iters = len(loaded_data)
+    n_rows = 0
     for n_iter, (image, label) in enumerate(loaded_data):
-        # if n_iter > 10:
-        #     continue
-        print("iteration: {}\ttotal {} iterations".format(n_iter + 1, len(loaded_data)))
-        # https://github.com/weiaicunzai/pytorch-cifar100/blob/2149cb57f517c6e5fa7262f958652227225d125b/test.py#L54
+        n_rows += label.size()[0]
 
-        output = model(image).squeeze(0).softmax(0)
+    print("total iters: {}, n_rows: {}".format(total_iters, n_rows))
 
-        _, pred = output.topk(5, 1, largest=True, sorted=True)
+    model = resnet50(
+        weights=state_dict,
+        progress=False,
+        **{"n_rows": n_rows, "n_iter": total_iters, "batch_size": 128}
+    )
+    print(model)
+    model.eval()
 
-        label = label.view(label.size(0), -1).expand_as(pred)
+    correct_1 = 0.0
+    correct_5 = 0.0
 
-        correct = pred.eq(label).float()
+    with torch.no_grad():
+        for n_iter, (image, label) in enumerate(loaded_data):
+            # if n_iter > 10:
+            #     continue
+            print(
+                "iteration: {}\ttotal {} iterations".format(
+                    n_iter + 1, len(loaded_data)
+                )
+            )
+            # https://github.com/weiaicunzai/pytorch-cifar100/blob/2149cb57f517c6e5fa7262f958652227225d125b/test.py#L54
 
-        # compute top 5
-        correct_5 += correct[:, :5].sum()
+            output = model(image).squeeze(0).softmax(0)
 
-        # compute top1
-        correct_1 += correct[:, :1].sum()
+            _, pred = output.topk(5, 1, largest=True, sorted=True)
 
-model.write_inputs_to_disk()
+            label = label.view(label.size(0), -1).expand_as(pred)
 
-print(correct_1, correct_5)
-print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset)) # type: ignore[arg-type]
-print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset)) # type: ignore[arg-type]
-print("Top 1 accuracy: ", correct_1 / len(loaded_data.dataset)) # type: ignore[arg-type]
-print("Top 5 accuracy: ", correct_5 / len(loaded_data.dataset)) # type: ignore[arg-type]
-print("Parameter numbers: {}".format(sum(p.numel() for p in model.parameters())))
+            correct = pred.eq(label).float()
+
+            # compute top 5
+            correct_5 += correct[:, :5].sum()
+
+            # compute top1
+            correct_1 += correct[:, :1].sum()
+
+    model.write_inputs_to_disk()
+
+    print(correct_1, correct_5)
+    print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset))  # type: ignore[arg-type]
+    print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset))  # type: ignore[arg-type]
+    print("Top 1 accuracy: ", correct_1 / len(loaded_data.dataset))  # type: ignore[arg-type]
+    print("Top 5 accuracy: ", correct_5 / len(loaded_data.dataset))  # type: ignore[arg-type]
+    print("Parameter numbers: {}".format(sum(p.numel() for p in model.parameters())))
+
+
+if __name__ == "__main__":
+    cifar_inference()

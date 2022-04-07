@@ -162,10 +162,7 @@ class ResNet(nn.Module):
         self.base_width = width_per_group
 
         print(kwargs)
-        self.n_rows = kwargs["n_rows"] if "n_rows" in kwargs else 10000
-        self.batch_size = kwargs["batch_size"] if "batch_size" in kwargs else 128
-        self.save_inputs_for_offline: Dict[str, Tensor] = {}
-        self.save_inputs_offsets: Dict[str, int] = {}
+
         # ImageNet
         # self.conv1 = nn.Conv2d(
         #     3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
@@ -193,8 +190,8 @@ class ResNet(nn.Module):
         self.fc = HalutLinear(
             512 * block.expansion,
             num_classes,
-            halut_active=True,
-            halut_offline_A=np.load("./.data/fc_A.npy"),
+            halut_active=False,
+            halut_offline_A=None,  # np.load("./.data/fc_A.npy"),
             halut_C=4,
             halut_lut_work_const=-1,
         )
@@ -216,27 +213,27 @@ class ResNet(nn.Module):
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
 
-    def add_inputs_to_save(self, name: str, inputs: Tensor) -> None:
-        if name not in self.save_inputs_for_offline:
-            self.save_inputs_for_offline[name] = torch.zeros(
-                (self.n_rows, *inputs.shape[1:])
-            )
-            print(inputs.shape)
-            print("Shapes", self.n_rows, inputs.shape[1:])
-            print("Shapes", self.n_rows, *inputs.shape[1:])
-            self.save_inputs_offsets[name] = 0
-        self.save_inputs_for_offline[name][
-            self.save_inputs_offsets[name] : self.save_inputs_offsets[name]
-            + inputs.shape[0],
-            :,
-        ] = inputs
-        self.save_inputs_offsets[name] += inputs.shape[0]
-
+    # pylint: disable=W0212
     def write_inputs_to_disk(self) -> None:
-        for key, value in self.save_inputs_for_offline.items():
-            np_array = value.detach().cpu().numpy()
-            np.save(".data/" + key + "_A.npy", np_array)
-            # torch.save(value, key + '.pt')
+        def store(module: nn.Module, prefix: str = "") -> None:
+            print("module", prefix + module._get_name())
+            if hasattr(module, "store_input"):
+                if module.store_input:
+                    assert hasattr(module, "input_storage_a") and hasattr(
+                        module, "input_storage_b"
+                    )
+                    np_array_a = module.input_storage_a.\
+                      detach().cpu().numpy()  # type: ignore[operator]
+                    np.save(".data/" + prefix[:-1] + "_A.npy", np_array_a)
+                    np_array_b = module.input_storage_b.\
+                      detach().cpu().numpy()  # type: ignore[operator]
+                    np.save(".data/" + prefix[:-1] + "_B.npy", np_array_b)
+            for name, child in module._modules.items():
+                if child is not None:
+                    store(child, prefix + name + ".")
+
+        store(self)
+        del store
 
     def _make_layer(
         self,
@@ -301,7 +298,6 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         # pylint: disable=E1101
         x = torch.flatten(x, 1)
-        self.add_inputs_to_save("fc", x)
         x = self.fc(x)
 
         return x

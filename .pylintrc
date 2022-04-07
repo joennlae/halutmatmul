@@ -8,6 +8,7 @@ jobs=1
 ignore-paths=^maddness/python/joblib/.*$,
              ^src/python/data/.*$,
 
+ignore-patterns=.*\.json,
 # init-hook='import sys; sys.path.append("./maddness/python/")'
 
 [FORMAT]

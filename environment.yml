@@ -18,5 +18,5 @@ dependencies:
   - torchvision=0.13
   - pytorch=1.12
   - cpuonly
-  - mypy
+  - mypy=0.942
 prefix: /home/msc22f5/.conda/envs/halutmatmul

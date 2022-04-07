@@ -19,5 +19,5 @@ jobs:
         $CONDA/bin/conda env update --file environment.yml --name base
     - name: Check types with mypy
       run: |
-        $CONDA/bin/conda install mypy
+        $CONDA/bin/conda install -c conda-forge mypy=0.942
         $CONDA/bin/mypy --config-file .mypy.ini --pretty 

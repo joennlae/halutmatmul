@@ -10,9 +10,10 @@ from torch.nn.common_types import _size_2_t
 from torch.types import _int, _size
 from torch.nn.modules.utils import _pair
 from torch.nn.modules.conv import _ConvNd
+from torch.nn.parameter import Parameter
 
 from maddness.maddness import MaddnessMatmul
-from halutmatmul.halutmatmul import HalutMatmul
+from halutmatmul.halutmatmul import HalutMatmul, calc_newaxes_and_newshape_and_old
 
 
 class HalutLinear(Linear):
@@ -42,6 +43,12 @@ class HalutLinear(Linear):
         self.halut_C = halut_C
         self.halut_lut_work_const = halut_lut_work_const
 
+        self.store_input = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
+        self.input_storage_a: Optional[Tensor] = None
+        self.input_storage_b: Optional[Tensor] = None
+
     def learn_offline(self) -> None:
         if self.halut_offline_A is None:
             raise Exception("halut A is None: {}".format(self.halut_offline_A))
@@ -54,8 +61,18 @@ class HalutLinear(Linear):
         self.halut.learn_offline(self.halut_offline_A, weights_numpy)
         self.halut_offline_learned = True
 
+    def check_store_offline(self, _input: Tensor) -> None:
+        if (
+            self.store_input[0]
+            and self.input_storage_a is None
+            and self.input_storage_b is None
+        ):
+            self.input_storage_a = _input.clone()
+            self.input_storage_b = self.weight.clone()
+
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
+        self.check_store_offline(input)
         if self.halut_active:
             if not self.halut_offline_learned:
                 self.learn_offline()
@@ -128,6 +145,12 @@ class HalutConv2d(_ConvNd):
         self.halut_C = halut_C
         self.halut_lut_work_const = halut_lut_work_const
 
+        self.store_input = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
+        self.input_storage_a: Optional[Tensor] = None
+        self.input_storage_b: Optional[Tensor] = None
+
     # pylint: disable=R0201
     def halut_conv2d(
         self,
@@ -138,7 +161,8 @@ class HalutConv2d(_ConvNd):
         padding: Union[_int, _size] = 0,
         groups: int = 1,
         bias: Optional[Tensor] = None,
-    ) -> np.ndarray:
+        return_reshaped_inputs: bool = False,  # needed for storage
+    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
         kernel_size = (
             (kernel_size, kernel_size)
             if isinstance(kernel_size, int)
@@ -171,30 +195,53 @@ class HalutConv2d(_ConvNd):
         assert cout % groups == 0
         rcout = cout // groups
 
-        gx = _input.reshape(batch_size, groups, cin, _input.shape[2], _input.shape[3])
+        _input = _input.reshape(
+            batch_size, groups, cin, _input.shape[2], _input.shape[3]
+        )
 
         # im2col
-        tx = np.lib.stride_tricks.as_strided(
-            gx,
+        _input_im2col = np.lib.stride_tricks.as_strided(
+            _input,
             shape=(batch_size, groups, cin, out_y, out_x, H, W),
             strides=(
-                *gx.strides[0:3],
-                gx.strides[3] * stride_y,
-                gx.strides[4] * stride_x,
-                *gx.strides[3:5],
+                *_input.strides[0:3],
+                _input.strides[3] * stride_y,
+                _input.strides[4] * stride_x,
+                *_input.strides[3:5],
             ),
             writeable=False,
         )
-        tw = weights.reshape(groups, rcout, cin, H, W)
+        tensor_weights = weights.reshape(groups, rcout, cin, H, W)
 
         ret = np.zeros((batch_size, groups, out_y, out_x, rcout), dtype=_input.dtype)
-        for g in range(groups):
-            ret[:, g] += HalutMatmul().tensordot(tx[:, g], tw[g], ((1, 4, 5), (1, 2, 3)))
+
+        if return_reshaped_inputs:
+            (_, _, newshape_a, newshape_b, _, _,) = calc_newaxes_and_newshape_and_old(
+                _input_im2col[:, 0], tensor_weights[0], ((1, 4, 5), (1, 2, 3))
+            )
+            input_a = np.zeros((groups, *newshape_a))
+            input_b = np.zeros((groups, *newshape_b))
+            for g in range(groups):
+                (input_a_temp, input_b_temp) = HalutMatmul().tensordot(
+                    _input_im2col[:, 0],
+                    tensor_weights[0],
+                    ((1, 4, 5), (1, 2, 3)),
+                    return_reshaped_inputs=return_reshaped_inputs,
+                )
+                input_a[g] += input_a_temp
+                input_b[g] += input_b_temp
+            return (input_a, input_b)
+        else:
+            for g in range(groups):
+                ret[:, g] += HalutMatmul().tensordot(
+                    _input_im2col[:, g], tensor_weights[g], ((1, 4, 5), (1, 2, 3))
+                )
+
         ret = np.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
 
         assert bias is None
         # TODO: bias not used at the moment so probably false
-        return ret if bias is None else np.add(ret, bias) # type: ignore[arg-type]
+        return ret if bias is None else np.add(ret, bias)  # type: ignore[arg-type]
 
     def conv2d(
         self,
@@ -205,7 +252,8 @@ class HalutConv2d(_ConvNd):
         padding: Union[_int, _size] = 0,
         dilation: Union[_int, _size] = 1,
         groups: _int = 1,
-    ) -> Tensor:
+        return_reshaped_inputs: bool = False,  # needed for storage
+    ) -> Union[Tensor, tuple[Tensor, Tensor]]:
         assert dilation in (1, (1, 1))
 
         input_numpy = _input.detach().cpu().numpy()
@@ -220,13 +268,40 @@ class HalutConv2d(_ConvNd):
             padding,
             groups,
             bias_numpy,
+            return_reshaped_inputs=return_reshaped_inputs,
         )
 
-        return torch.from_numpy(ret_numpy)
+        if return_reshaped_inputs:
+            return (torch.from_numpy(ret_numpy[0]), torch.from_numpy(ret_numpy[1]))
+        else:
+            return torch.from_numpy(ret_numpy)
+
+    def check_store_offline(
+        self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
+    ) -> None:
+        if (
+            self.store_input[0]
+            and self.input_storage_a is None
+            and self.input_storage_b is None
+        ):
+            assert bias is None
+            (input_a, input_b) = self.conv2d(
+                _input,
+                weight,
+                bias,
+                self.stride,
+                self.padding,  # type: ignore[arg-type]
+                self.dilation,
+                self.groups,
+                return_reshaped_inputs=True,
+            )
+            self.input_storage_a = input_a.clone()
+            self.input_storage_b = input_b.clone()
 
     def _conv_forward(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
     ) -> Tensor:
+        self.check_store_offline(_input, weight, bias)
         if not self.halut_active:
             if self.padding_mode != "zeros":
                 return F.conv2d(
@@ -255,12 +330,12 @@ class HalutConv2d(_ConvNd):
             if self.padding_mode != "zeros":
                 raise Exception("padding_mode != zeros not supported with Halut")
             else:
-                return self.conv2d(
+                return self.conv2d( # type: ignore[return-value]
                     _input,
                     weight,
                     bias,
                     self.stride,
-                    self.padding, # type: ignore[arg-type]
+                    self.padding,  # type: ignore[arg-type]
                     self.dilation,
                     self.groups,
                 )
