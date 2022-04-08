@@ -241,7 +241,7 @@ class HalutConv2d(_ConvNd):
 
         assert bias is None
         # TODO: bias not used at the moment so probably false
-        return ret if bias is None else np.add(ret, bias)  # type: ignore[arg-type]
+        return ret if bias is None else np.add(ret, bias)  # type: ignore[call-overload]
 
     def conv2d(
         self,
