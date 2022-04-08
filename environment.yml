@@ -19,4 +19,5 @@ dependencies:
   - pytorch=1.12
   - cpuonly
   - mypy=0.942
+  - pytest-xdist
 prefix: /home/msc22f5/.conda/envs/halutmatmul

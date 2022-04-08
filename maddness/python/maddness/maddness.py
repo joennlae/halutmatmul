@@ -36,10 +36,10 @@ def learn_binary_tree_splits(
     buckets = [
         Bucket(sumX=X.sum(axis=0), sumX2=(X * X).sum(axis=0), point_ids=np.arange(N))
     ]
-    total_loss = sum([bucket.loss for bucket in buckets])
+    # total_loss = sum([bucket.loss for bucket in buckets])
 
-    print("================================")
-    print("learn_binary_tree_splits(): initial loss:   ", total_loss)
+    # print("================================")
+    # print("learn_binary_tree_splits(): initial loss:   ", total_loss)
 
     splits = []
     col_losses = np.zeros(D, dtype=np.float32)
@@ -102,7 +102,7 @@ def learn_binary_tree_splits(
         buckets = new_buckets
 
     loss = sum([bucket.loss for bucket in buckets])
-    print("learn_binary_tree_splits(): returning loss: ", loss)
+    # print("learn_binary_tree_splits(): returning loss: ", loss)
 
     if return_prototypes:
         prototypes = np.vstack([buck.col_means() for buck in buckets])
@@ -118,14 +118,14 @@ def init_and_learn_hash_function(
     X: np.ndarray, C: int, pq_perm_algo: str = "start"
 ) -> Tuple[np.ndarray, list, np.ndarray, list]:
     _, D = X.shape
-    K_per_codebook = 16
+    K = 16
 
     X = X.astype(np.float32)
     X_res = X.copy()
     X_orig = X
 
     # TODO: stored with height D but could be stored with height of amount of idx as rest is zero!
-    all_prototypes = np.zeros((C, K_per_codebook, D), dtype=np.float32)
+    all_prototypes = np.zeros((C, K, D), dtype=np.float32)
     all_splits: List = []
     pq_idxs = create_codebook_start_end_idxs(X, C, algo=pq_perm_algo)
 
@@ -163,7 +163,7 @@ def init_and_learn_hash_function(
     return X_res, all_splits, all_prototypes, all_buckets
 
 
-def apply_hash_function(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
+def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
     N, _ = X.shape
     nsplits = len(splits)
     assert len(splits) >= 1
@@ -177,7 +177,7 @@ def apply_hash_function(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
     return group_ids
 
 
-def maddness_encode(X: np.ndarray, multisplits_lists: List) -> np.ndarray:
+def maddness_encode(X: np.ndarray, multisplits_lists: list[list[MultiSplit]]) -> np.ndarray:
     N, _ = X.shape
     C = len(multisplits_lists)
     A_enc = np.empty((N, C), dtype=np.int32, order="F")  # column-major
@@ -189,22 +189,22 @@ def maddness_encode(X: np.ndarray, multisplits_lists: List) -> np.ndarray:
 # @_memory.cache
 def learn_proto_and_hash_function(
     X: np.ndarray, C: int, lut_work_const: int = -1
-) -> Tuple[list, np.ndarray]:
+) -> Tuple[list[list[MultiSplit]], np.ndarray]:
     _, D = X.shape
-    K_per_codebook = 16
+    K = 16
     used_perm_algo = "start"  # or end
-    X_orig = X.astype(np.float32)
+    # X_orig = X.astype(np.float32)
 
     X_res, all_splits, all_prototypes, _ = init_and_learn_hash_function(
         X, C, pq_perm_algo=used_perm_algo
     )
 
-    mse_orig = (X_orig * X_orig).mean()
-    mse0 = (X_res * X_res).mean()
-    print("X_res mse / X mse: ", mse0 / mse_orig)
+    # mse_orig = (X_orig * X_orig).mean()
+    # mse0 = (X_res * X_res).mean()
+    # print("X_res mse / X mse: ", mse0 / mse_orig)
 
-    mse = np.square(X_orig - X_res).mean()
-    print("mse", mse)
+    # mse = np.square(X_orig - X_res).mean()
+    # print("mse", mse)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
     A_enc = maddness_encode(X, all_splits)
@@ -212,20 +212,20 @@ def learn_proto_and_hash_function(
     # optimizing prototypes
     if lut_work_const != 1:  # if it's 1, equivalent to just doing PQ
         if lut_work_const < 0:
-            print("fitting dense lstsq to X_res")
+            # print("fitting dense lstsq to X_res")
             W = encoded_lstsq(A_enc=A_enc, Y=X_res)
         else:
             W, _ = sparse_encoded_lstsq(
                 A_enc, X_res, nnz_blocks=lut_work_const, pq_perm_algo=used_perm_algo
             )
 
-        all_prototypes_delta = W.reshape(C, K_per_codebook, D)
+        all_prototypes_delta = W.reshape(C, K, D)
         all_prototypes += all_prototypes_delta
 
         # check how much improvement we got
         X_res -= _XW_encoded(A_enc, W)  # if we fit to X_res
-        mse_res = (X_res * X_res).mean()
-        print("X_res mse / X mse after lstsq: ", mse_res / mse_orig)
+        # mse_res = (X_res * X_res).mean()
+        # print("X_res mse / X mse after lstsq: ", mse_res / mse_orig)
 
     return all_splits, all_prototypes
 
@@ -277,8 +277,6 @@ class MaddnessMatmul:
         # important otherwise wrong summation
         assert self.upcast_every in (1, 2, 4, 8, 16, 32, 64, 128, 256)
         self.accumulate_how = "mean"  # sum
-        # for fast lookups via indexing into flattened array
-        self.offsets = np.arange(self.C, dtype=np.int32) * self.K
 
     def _learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
         _, D = A.shape
@@ -291,9 +289,10 @@ class MaddnessMatmul:
     def _encode_A(self, A: np.ndarray) -> np.ndarray:
         idxs = maddness_encode(A, self.splits_lists)
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
-        return idxs + self.offsets
+        offsets = np.arange(self.C, dtype=np.int32) * self.K
+        return idxs + offsets
 
-    def _create_lut(self, B: np.ndarray) -> Tuple[np.ndarray, int, int]:
+    def _create_lut(self, B: np.ndarray) -> Tuple[np.ndarray, float, float]:
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
         for i, q in enumerate(B):

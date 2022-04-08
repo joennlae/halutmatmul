@@ -12,5 +12,6 @@
   "cSpell.words": [
     "maddness"
   ],
-  "mypy.runUsingActiveInterpreter": true
+  "mypy.runUsingActiveInterpreter": true,
+  "editor.rulers": [100]
 }
