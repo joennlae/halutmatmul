@@ -40,21 +40,24 @@ def linear_helper(
     state_dict = OrderedDict({"weight": weights})
     if bias:
         state_dict = OrderedDict(state_dict | OrderedDict({"bias": bias_weights}))
-    torch_module.load_state_dict(state_dict)
-    state_dict = OrderedDict(state_dict | OrderedDict(
-        {
-            "store_input": torch.zeros(1, dtype=torch.bool),
-            "halut_active": torch.ones(1, dtype=torch.bool),
-            "hash_buckets": torch.from_numpy(
-                store_array[hm.HalutOfflineStorage.HASH_TABLES]
-            ),
-            "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
-            "lut_offset_scale": torch.from_numpy(
-                store_array[hm.HalutOfflineStorage.LUT_OFFSET_SCALE]
-            ),
-        }
-    ))
-    halutmatmul_module.load_state_dict(state_dict)
+    torch_module.load_state_dict(state_dict, strict=False)
+    state_dict = OrderedDict(
+        state_dict
+        | OrderedDict(
+            {
+                "store_input": torch.zeros(1, dtype=torch.bool),
+                "halut_active": torch.ones(1, dtype=torch.bool),
+                "hash_buckets": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.HASH_TABLES]
+                ),
+                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
+                "lut_offset_scale": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.LUT_OFFSET_SCALE]
+                ),
+            }
+        )
+    )
+    halutmatmul_module.load_state_dict(state_dict, strict=False)
 
     print("======== TEST =========")
     print(
@@ -65,22 +68,29 @@ def linear_helper(
 
 
 @pytest.mark.parametrize(
-    "in_features, out_features", [(2048, 1000)] # (512, 16), (2048, 100)
+    "in_features, out_features, C, a, b, bias",
+    [
+        (in_features, out_features, C, a, b, bias)
+        for in_features in [512, 2048]
+        for out_features in [10, 1000]
+        for C in [4, 16, 64]
+        for a in [1.0, 10.0]
+        for b in [0.0, 10.0]
+        for bias in [True, False]
+    ],
 )
-def test_linear_module(in_features: int, out_features: int) -> None:
+def test_linear_module(
+    in_features: int, out_features: int, C: int, a: float, b: float, bias: bool
+) -> None:
     n_row_learn = 10000
     n_row_test = 2000
-    for C in [4, 16, 32, 64]:  # [4, 8, 16, 32, 64]
-        for a in [1.0, 4.0, 100.0]:
-            for b in [0.0, 20.0]:
-                for bias in [True, False]:
-                    linear_helper(
-                        in_features,
-                        out_features,
-                        bias,
-                        n_row_learn,
-                        n_row_test,
-                        C,
-                        a,
-                        b,
-                    )
+    linear_helper(
+        in_features,
+        out_features,
+        bias,
+        n_row_learn,
+        n_row_test,
+        C,
+        a,
+        b,
+    )

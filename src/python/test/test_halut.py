@@ -46,9 +46,7 @@ def helper_halut(
     )
 
     time_numpy = (
-        timeit.Timer(functools.partial(np.matmul, *[A_2, B])).timeit(5)
-        * 1000
-        / 5
+        timeit.Timer(functools.partial(np.matmul, *[A_2, B])).timeit(5) * 1000 / 5
     )
 
     print(
@@ -61,28 +59,19 @@ def helper_halut(
     # pylint: disable=E1307
     print("mse: %.4f / mae: %.4f" % (mse, mae))
 
-@pytest.mark.parametrize("N, K, M", [
-  (2048, 512, 16),
-  (2048, 512, 64),
-  (2048, 512, 256),
-  # (2048, 2048, 16),
-  # (2048, 2048, 64),
-  # (2048, 2048, 256),
-  # (16284, 512, 16),
-  # (16284, 512, 64),
-  # (16284, 512, 256),
-  # (16284, 2048, 16),
-  # (16284, 2048, 64),
-  # (16284, 2048, 256)
-])
-def test_learn_offline(N: int, K: int, M: int) -> None:
-    np.random.seed(4419)
 
-    # pylint: disable=R1702
-    # for N in [2048, 16284]: # [2048, 4096, 8196, 16284]
-    #     for K in [512, 2048]: # [512, 1024, 2048]
-    #         for M in [16, 64, 256]: # [16, 32, 64, 128, 256]
-    for C in [4, 16, 64]: # [4, 8, 16, 32, 64]
-        for a in [1.0, 4.0, 100.0]:
-            for b in [0.0, 20.0]:
-                helper_halut(N, K, M, C, a=a, b=b)
+@pytest.mark.parametrize(
+    "N, K, M, C, a, b",
+    [
+        (N, K, M, C, a, b)
+        for N in [2048, 16284]
+        for K in [512]
+        for M in [16, 64]
+        for C in [4, 16, 32, 64]
+        for a in [1.0, 5.0]
+        for b in [0.0, 10.0]
+    ],
+)
+def test_learn_offline(N: int, K: int, M: int, C: int, a: float, b: float) -> None:
+    np.random.seed(4419)
+    helper_halut(N, K, M, C, a=a, b=b)

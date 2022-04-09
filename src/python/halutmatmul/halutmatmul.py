@@ -5,6 +5,7 @@ import numpy as np
 
 from maddness.maddness import MaddnessMatmul, MultiSplit
 
+
 class HalutOfflineStorage:
     HASH_TABLES = 0
     LUT = 1
@@ -12,10 +13,7 @@ class HalutOfflineStorage:
 
 
 def learn_halut_offline(
-    A: np.ndarray,
-    B: np.ndarray,
-    C: int = 16,
-    lut_work_const: int = -1
+    A: np.ndarray, B: np.ndarray, C: int = 16, lut_work_const: int = -1
 ) -> np.ndarray:
     mn = HalutMatmul(C, lut_work_const)
     mn.learn_offline(A, B)
@@ -131,6 +129,66 @@ def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
             multi_split = MultiSplit(dim=dim, vals=vals, scaleby=scaleby, offset=offset)
             splits[c].append(multi_split)
     return splits
+
+
+# pylint: disable=R0201
+def tensordot(
+    a: np.ndarray,
+    b: np.ndarray,
+    axes: Union[int, list[int], Any] = 2,
+    return_reshaped_inputs: bool = False,
+    halut: Optional[HalutMatmul] = None,
+) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    # https://github.com/numpy/numpy/blob/145ed90f638c1a12ce5b06e9100421f99783f431/numpy/core/numeric.py#L950
+
+    """Example
+      padding=0, kernel_size=(3, 3), stride=1
+
+      IN: (128, 64, 112, 112)
+      W: (64, 64, 3, 3)
+      after Im2col (np.lib.stride_tricks.as_strided): (128, 64, 110, 110, 3, 3)
+      np.tensordot(IN, W, ((1,4,5),(1,2,3)))
+
+      at transpose: (128, 64, 110, 110, 3, 3) -> (128, 110, 110, 64, 3, 3)
+      newaxes_a: [0, 2, 3, 1, 4, 5]
+      bt transpose: (64, 64, 3, 3) -> (64, 3, 3, 64)
+      newaxes_b: [1, 2, 3, 0]
+      newshape_a: (1548800, 576)
+      newshape_B: (576, 64)
+
+      (1548800, 64) -> (128, 64, 110, 110)
+      olda: [128, 110, 110]
+      oldb: [64]
+      olda + oldb: [128, 110, 110, 64]
+      OUT: (128, 110, 110, 64)
+
+      needs to be reshaped later to match conv2d output
+      np.moveaxis(ret,4,2).reshape(batch_size, channels_out, out_y, out_x)
+    """
+
+    a, b = np.asarray(a), np.asarray(b)
+    (
+        newaxes_a,
+        newaxes_b,
+        newshape_a,
+        newshape_b,
+        olda,
+        oldb,
+    ) = calc_newaxes_and_newshape_and_old(a, b, axes)
+
+    at = a.transpose(newaxes_a).reshape(newshape_a)
+    bt = b.transpose(newaxes_b).reshape(newshape_b)
+    if return_reshaped_inputs:
+        return (at, bt)
+
+    # numpy
+    # res = np.dot(at, bt)
+    if halut is not None:
+        res = halut.matmul_online(at)
+    else:
+        raise Exception("Halut was not passed as argument")
+    return res.reshape(olda + oldb)
+
 
 class HalutMatmul(MaddnessMatmul):
     def __init__(self, C: int = 16, lut_work_const: int = -1,) -> None:
@@ -265,59 +323,3 @@ class HalutMatmul(MaddnessMatmul):
             return ret_str
         else:
             return "not learned"
-
-    # pylint: disable=R0201
-    def tensordot(
-        self,
-        a: np.ndarray,
-        b: np.ndarray,
-        axes: Union[int, list[int], Any] = 2,
-        return_reshaped_inputs: bool = False,
-    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
-        # https://github.com/numpy/numpy/blob/145ed90f638c1a12ce5b06e9100421f99783f431/numpy/core/numeric.py#L950
-
-        """Example
-          padding=0, kernel_size=(3, 3), stride=1
-
-          IN: (128, 64, 112, 112)
-          W: (64, 64, 3, 3)
-          after Im2col (np.lib.stride_tricks.as_strided): (128, 64, 110, 110, 3, 3)
-          np.tensordot(IN, W, ((1,4,5),(1,2,3)))
-
-          at transpose: (128, 64, 110, 110, 3, 3) -> (128, 110, 110, 64, 3, 3)
-          newaxes_a: [0, 2, 3, 1, 4, 5]
-          bt transpose: (64, 64, 3, 3) -> (64, 3, 3, 64)
-          newaxes_b: [1, 2, 3, 0]
-          newshape_a: (1548800, 576)
-          newshape_B: (576, 64)
-
-          (1548800, 64) -> (128, 64, 110, 110)
-          olda: [128, 110, 110]
-          oldb: [64]
-          olda + oldb: [128, 110, 110, 64]
-          OUT: (128, 110, 110, 64)
-
-          needs to be reshaped later to match conv2d output
-          np.moveaxis(ret,4,2).reshape(batch_size, channels_out, out_y, out_x)
-        """
-
-        a, b = np.asarray(a), np.asarray(b)
-
-        (
-            newaxes_a,
-            newaxes_b,
-            newshape_a,
-            newshape_b,
-            olda,
-            oldb,
-        ) = calc_newaxes_and_newshape_and_old(a, b, axes)
-
-        at = a.transpose(newaxes_a).reshape(newshape_a)
-        bt = b.transpose(newaxes_b).reshape(newshape_b)
-        if return_reshaped_inputs:
-            return (at, bt)
-        # print(at.shape, bt.shape)
-        # not supporting all different configurations
-        res = np.dot(at, bt)
-
-        return res.reshape(olda + oldb)

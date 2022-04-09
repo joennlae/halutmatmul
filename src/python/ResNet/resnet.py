@@ -25,7 +25,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 from functools import partial
-from typing import Dict, OrderedDict, Type, Any, Callable, Union, List, Optional
+from typing import OrderedDict, Type, Any, Callable, Union, List, Optional
 
 import numpy as np
 
@@ -65,8 +65,7 @@ def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> HalutConv2d:
         out_planes,
         kernel_size=1,
         stride=stride,
-        bias=False,
-        halut_active=True,
+        bias=False
     )
 
 
@@ -107,15 +106,12 @@ class Bottleneck(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-        # print("bottleneck", x.shape)
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        # print("bottleneck1", out.shape)
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        # print("bottleneck2", out.shape)
         out = self.conv3(out)
         out = self.bn3(out)
 
@@ -189,8 +185,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = HalutLinear(
             512 * block.expansion,
-            num_classes,
-            activate_halut_parameters=True
+            num_classes
         )
         # nn.Linear(512 * block.expansion, num_classes)
 
@@ -318,7 +313,7 @@ def _resnet(
     print(kwargs)
     if weights is not None:
         # model.load_state_dict(weights.get_state_dict(progress=progress))
-        model.load_state_dict(weights)
+        model.load_state_dict(weights, strict=False)
 
     return model
 
