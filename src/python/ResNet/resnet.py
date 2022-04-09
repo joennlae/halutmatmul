@@ -190,10 +190,7 @@ class ResNet(nn.Module):
         self.fc = HalutLinear(
             512 * block.expansion,
             num_classes,
-            halut_active=False,
-            halut_offline_A=None,  # np.load("./.data/fc_A.npy"),
-            halut_C=4,
-            halut_lut_work_const=-1,
+            activate_halut_parameters=True
         )
         # nn.Linear(512 * block.expansion, num_classes)
 

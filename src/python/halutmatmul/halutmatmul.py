@@ -1,8 +1,14 @@
+from __future__ import annotations
 from functools import reduce
-from typing import Any, Optional, Union
+from typing import Any, Optional, Type, TypeVar, Union
 import numpy as np
 
 from maddness.maddness import MaddnessMatmul, MultiSplit
+
+class HalutOfflineStorage:
+    HASH_TABLES = 0
+    LUT = 1
+    LUT_OFFSET_SCALE = 2
 
 
 def learn_halut_offline(
@@ -112,7 +118,6 @@ def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
     length = numpy_array.shape[2] - 3
     C = numpy_array.shape[0]
     num_splits = numpy_array.shape[1]
-    print(length, numpy_array.shape, num_splits)
     assert num_splits == np.log2(length) + 1
     for c in range(C):
         splits.append([])
@@ -126,7 +131,6 @@ def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
             multi_split = MultiSplit(dim=dim, vals=vals, scaleby=scaleby, offset=offset)
             splits[c].append(multi_split)
     return splits
-
 
 class HalutMatmul(MaddnessMatmul):
     def __init__(self, C: int = 16, lut_work_const: int = -1,) -> None:
@@ -150,12 +154,11 @@ class HalutMatmul(MaddnessMatmul):
 
         hash_bucket_strings = ""
         if self.splits_lists is not None:
-            D = 1
-            if self.prototypes is not None:
+            if self.prototypes.size > 0:
                 D = self.prototypes.shape[2]
             i = 0
             for c in self.splits_lists:
-                if self.prototypes is not None:
+                if self.prototypes.size > 0:
                     hash_bucket_strings += (
                         f"Bucket {i} dims: "
                         f"{int(i * D / self.C)} - {int((i + 1) * D / self.C - 1)} \n"
@@ -167,7 +170,7 @@ class HalutMatmul(MaddnessMatmul):
             f"hash_buckets for prototypes: \n"
             f"{hash_bucket_strings} \n"
         )
-        if self.prototypes is not None:
+        if self.prototypes.size > 0:
             params += (
                 f"prototypes: {self.prototypes.shape}, " f"{self.prototypes.dtype} \n"
             )
@@ -203,11 +206,11 @@ class HalutMatmul(MaddnessMatmul):
         )
         return store_array
 
-    def from_numpy(self, numpy_array: np.ndarray) -> None:
-        splits_numpy = numpy_array[0]
+    def from_numpy(self, numpy_array: np.ndarray) -> HalutMatmul:
+        splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
         self.splits_lists = numpy_to_split_list(splits_numpy)
-        self.luts = numpy_array[1]
-        offset_scale = numpy_array[2]
+        self.luts = numpy_array[HalutOfflineStorage.LUT]
+        offset_scale = numpy_array[HalutOfflineStorage.LUT_OFFSET_SCALE]
         self.offset = offset_scale[0]
         self.scale = offset_scale[1]
         assert self.splits_lists and self.luts.shape[1]
@@ -216,6 +219,7 @@ class HalutMatmul(MaddnessMatmul):
         self.K = K
         self.upcast_every = min(self.C, self.upcast_every)
         assert self.upcast_every in (1, 2, 4, 8, 16, 32, 64, 128, 256)
+        return self
 
     # redefinition for convenience public function
     def learn_A(self, A: np.ndarray) -> None:

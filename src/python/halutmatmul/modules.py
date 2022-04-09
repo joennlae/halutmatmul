@@ -1,9 +1,9 @@
-from typing import Any, Optional, Union
+from typing import Any, Optional, OrderedDict, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from torch import Tensor
+from torch import Tensor, detach
 from torch.nn.modules import Linear
 
 from torch.nn.common_types import _size_2_t
@@ -24,10 +24,7 @@ class HalutLinear(Linear):
         bias: bool = True,
         device: Union[str, Any] = None,
         dtype: Union[str, Any] = None,
-        halut_active: bool = False,
-        halut_offline_A: Union[np.ndarray, None] = None,
-        halut_C: int = 16,
-        halut_lut_work_const: int = -1,
+        activate_halut_parameters: bool = True,
     ) -> None:
         super().__init__(
             in_features=in_features,
@@ -36,30 +33,46 @@ class HalutLinear(Linear):
             device=device,
             dtype=dtype,
         )
-        self.halut_active = halut_active
-        self.halut: Optional[MaddnessMatmul] = None
-        self.halut_offline_learned = False
-        self.halut_offline_A = halut_offline_A
-        self.halut_C = halut_C
-        self.halut_lut_work_const = halut_lut_work_const
+        self.activate_halut_parameters = activate_halut_parameters
+        if activate_halut_parameters:
+            self.halut_active = Parameter(
+                torch.zeros(1, dtype=torch.bool), requires_grad=False
+            )
+            self.hash_buckets = Parameter(
+                torch.zeros(1, dtype=torch.bool), requires_grad=False
+            )
+            self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+            self.lut_offset_scale = Parameter(
+                torch.zeros(2, dtype=torch.float32), requires_grad=False
+            )
 
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
+
+        self.halut: Optional[HalutMatmul] = None
+
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
-    def learn_offline(self) -> None:
-        if self.halut_offline_A is None:
-            raise Exception("halut A is None: {}".format(self.halut_offline_A))
-        self.halut = MaddnessMatmul(
-            C=self.halut_C, lut_work_const=self.halut_lut_work_const
-        )
-        weights_numpy = self.weight.detach().cpu().numpy().transpose(1, 0)
-        print(weights_numpy, weights_numpy.shape)
-        print(self.halut_offline_A, self.halut_offline_A.shape)
-        self.halut.learn_offline(self.halut_offline_A, weights_numpy)
-        self.halut_offline_learned = True
+        self._register_load_state_dict_pre_hook(self.state_dict_hook)
+
+    def state_dict_hook(self, state_dict: "OrderedDict[str, Tensor]", *_: Any) -> None:
+        if self.activate_halut_parameters:
+            # hack to support variable parameter size --> with the cost of double copying :-)
+            self.hash_buckets = Parameter(
+                state_dict["hash_buckets"].clone(), requires_grad=False
+            )
+            self.lut = Parameter(state_dict["lut"].clone(), requires_grad=False)
+            store_array = np.array(
+                [
+                    state_dict["hash_buckets"].clone().detach().numpy(),
+                    state_dict["lut"].clone().detach().numpy(),
+                    state_dict["lut_offset_scale"].clone().detach().numpy(),
+                ],
+                dtype=object,
+            )
+            self.halut = HalutMatmul().from_numpy(store_array)
 
     def check_store_offline(self, _input: Tensor) -> None:
         if (
@@ -73,17 +86,15 @@ class HalutLinear(Linear):
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
         self.check_store_offline(input)
-        if self.halut_active:
-            if not self.halut_offline_learned:
-                self.learn_offline()
+        if self.halut_active[0]:
             input_numpy = input.detach().cpu().numpy()
-            print(input_numpy.shape)
-            if self.halut:
-                result = self.halut.matmul_online(input_numpy)
-            print(result.shape)
-            bias_to_add = self.bias.clone().repeat(input.shape[0], 1)
-            print(bias_to_add.shape)
-            return torch.tensor(result) + bias_to_add
+            if self.halut is None:
+                raise Exception("self.halut is None")
+            result = torch.from_numpy(self.halut.matmul_online(input_numpy))
+            if self.bias is not None:
+                bias_to_add = self.bias.clone().repeat(input.shape[0], 1)
+                result += bias_to_add
+            return result
         else:
             return F.linear(input, self.weight, self.bias)
 
@@ -330,7 +341,7 @@ class HalutConv2d(_ConvNd):
             if self.padding_mode != "zeros":
                 raise Exception("padding_mode != zeros not supported with Halut")
             else:
-                return self.conv2d( # type: ignore[return-value]
+                return self.conv2d(  # type: ignore[return-value]
                     _input,
                     weight,
                     bias,

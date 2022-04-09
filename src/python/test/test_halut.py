@@ -1,5 +1,6 @@
 import functools
 import timeit
+from test.utils.utils import error_hist_numpy
 import numpy as np
 import pytest
 import halutmatmul.halutmatmul as hm
@@ -36,11 +37,7 @@ def helper_halut(
     res_halut = new_halut.matmul_online(A_2)
     res_numpy = np.matmul(A_2, B)
 
-    try:
-        np.testing.assert_allclose(res_halut, res_numpy, rtol=0.1, atol=0,
-        err_msg="More than +-10%% accuracy")
-    except AssertionError as e:
-        print(e)
+    error_hist_numpy(res_halut, res_numpy)
 
     time_halut = (
         timeit.Timer(functools.partial(new_halut.matmul_online, *[A_2])).timeit(5)
