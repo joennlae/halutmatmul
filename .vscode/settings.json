@@ -10,8 +10,5 @@
   "python.analysis.extraPaths": [
     "maddness/python",
   ],
-  "cSpell.words": [
-    "maddness"
-  ],
   "editor.rulers": [100]
 }

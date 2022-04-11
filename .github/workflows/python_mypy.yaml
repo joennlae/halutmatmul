@@ -16,9 +16,9 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         CONDA_OVERRIDE_GLIBC=2.17 #https://github.com/conda/conda/issues/11204#issuecomment-1039839191
-        $CONDA/bin/conda env update --file environment.yml --name base
+        $CONDA/bin/conda env update --file environment_lock.yml --name base
     - name: Check types with mypy
       run: |
         $CONDA/bin/conda install -c conda-forge mypy=0.942
-        yes | $CONDA/bin/mypy --install-types
+        /usr/share/miniconda/bin/python -m pip install types-requests types-setuptools
         $CONDA/bin/mypy --config-file .mypy.ini --pretty 
