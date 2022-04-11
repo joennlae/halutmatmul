@@ -41,6 +41,8 @@ from torchvision.models._utils import _ovewrite_named_param
 
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
+END_STORE_A = "_A.npy"
+END_STORE_B = "_B.npy"
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -125,6 +127,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
+    # pylint: disable=unused-argument
     def __init__(
         self,
         block: Type[Bottleneck],
@@ -156,8 +159,6 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-
-        print(kwargs)
 
         # ImageNet
         # self.conv1 = nn.Conv2d(
@@ -206,20 +207,20 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
 
     # pylint: disable=W0212
-    def write_inputs_to_disk(self) -> None:
+    def write_inputs_to_disk(self, path: str = '.data/') -> None:
         def store(module: nn.Module, prefix: str = "") -> None:
-            print("module", prefix + module._get_name())
             if hasattr(module, "store_input"):
                 if module.store_input:
                     assert hasattr(module, "input_storage_a") and hasattr(
                         module, "input_storage_b"
                     )
+                    print("store inputs for module", prefix + module._get_name())
                     np_array_a = module.input_storage_a.\
                       detach().cpu().numpy()  # type: ignore[operator]
-                    np.save(".data/" + prefix[:-1] + "_A.npy", np_array_a)
+                    np.save(path + "/" + prefix[:-1] + END_STORE_A, np_array_a)
                     np_array_b = module.input_storage_b.\
                       detach().cpu().numpy()  # type: ignore[operator]
-                    np.save(".data/" + prefix[:-1] + "_B.npy", np_array_b)
+                    np.save(path + "/" + prefix[:-1] + END_STORE_B, np_array_b)
             for name, child in module._modules.items():
                 if child is not None:
                     store(child, prefix + name + ".")
@@ -310,7 +311,6 @@ def _resnet(
     #     _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
     model = ResNet(block, layers, **kwargs)
-    print(kwargs)
     if weights is not None:
         # model.load_state_dict(weights.get_state_dict(progress=progress))
         model.load_state_dict(weights, strict=False)

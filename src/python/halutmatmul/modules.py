@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from torch import Tensor, detach
+from torch import Tensor
 from torch.nn.modules import Linear
 
 from torch.nn.common_types import _size_2_t
@@ -56,29 +56,44 @@ class HalutLinear(Linear):
 
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
-    def state_dict_hook(self, state_dict: "OrderedDict[str, Tensor]", *_: Any) -> None:
+    def state_dict_hook(
+        self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
+    ) -> None:
         if all(
-            k in state_dict.keys() for k in ("hash_buckets", "lut", "lut_offset_scale")
+            k in state_dict.keys()
+            for k in (
+                prefix + "hash_buckets",
+                prefix + "lut",
+                prefix + "lut_offset_scale",
+            )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
             self.hash_buckets = Parameter(
-                state_dict["hash_buckets"].clone(), requires_grad=False
+                state_dict[prefix + "hash_buckets"].clone(), requires_grad=False
             )
-            self.lut = Parameter(state_dict["lut"].clone(), requires_grad=False)
+            self.lut = Parameter(
+                state_dict[prefix + "lut"].clone(), requires_grad=False
+            )
             store_array = np.array(
                 [
-                    state_dict["hash_buckets"].clone().detach().numpy(),
-                    state_dict["lut"].clone().detach().numpy(),
-                    state_dict["lut_offset_scale"].clone().detach().numpy(),
+                    state_dict[prefix + "hash_buckets"].clone().detach().numpy(),
+                    state_dict[prefix + "lut"].clone().detach().numpy(),
+                    state_dict[prefix + "lut_offset_scale"].clone().detach().numpy(),
                 ],
                 dtype=object,
             )
             self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
-            k in state_dict.keys() for k in ("hash_buckets", "lut", "lut_offset_scale")
+            k in state_dict.keys()
+            for k in (
+                prefix + "hash_buckets",
+                prefix + "lut",
+                prefix + "lut_offset_scale",
+            )
         ):
             raise Exception(
-                "not all 'hash_buckets', 'lut', 'lut_offset_scale' paramters in state_dict"
+                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}lut_offset_scale' "
+                "paramters in state_dict"
             )
 
     def check_store_offline(self, _input: Tensor) -> None:
@@ -88,7 +103,7 @@ class HalutLinear(Linear):
             and self.input_storage_b is None
         ):
             self.input_storage_a = _input.clone()
-            self.input_storage_b = self.weight.clone()
+            self.input_storage_b = self.weight.clone().transpose(1, 0)
 
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
@@ -248,7 +263,7 @@ class HalutConv2d(_ConvNd):
             groups,
             bias,
             padding_mode,
-            **factory_kwargs
+            **factory_kwargs,
         )
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
@@ -271,29 +286,44 @@ class HalutConv2d(_ConvNd):
 
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
-    def state_dict_hook(self, state_dict: "OrderedDict[str, Tensor]", *_: Any) -> None:
+    def state_dict_hook(
+        self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
+    ) -> None:
         if all(
-            k in state_dict.keys() for k in ("hash_buckets", "lut", "lut_offset_scale")
+            k in state_dict.keys()
+            for k in (
+                prefix + "hash_buckets",
+                prefix + "lut",
+                prefix + "lut_offset_scale",
+            )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
             self.hash_buckets = Parameter(
-                state_dict["hash_buckets"].clone(), requires_grad=False
+                state_dict[prefix + "hash_buckets"].clone(), requires_grad=False
             )
-            self.lut = Parameter(state_dict["lut"].clone(), requires_grad=False)
+            self.lut = Parameter(
+                state_dict[prefix + "lut"].clone(), requires_grad=False
+            )
             store_array = np.array(
                 [
-                    state_dict["hash_buckets"].clone().detach().numpy(),
-                    state_dict["lut"].clone().detach().numpy(),
-                    state_dict["lut_offset_scale"].clone().detach().numpy(),
+                    state_dict[prefix + "hash_buckets"].clone().detach().numpy(),
+                    state_dict[prefix + "lut"].clone().detach().numpy(),
+                    state_dict[prefix + "lut_offset_scale"].clone().detach().numpy(),
                 ],
                 dtype=object,
             )
             self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
-            k in state_dict.keys() for k in ("hash_buckets", "lut", "lut_offset_scale")
+            k in state_dict.keys()
+            for k in (
+                prefix + "hash_buckets",
+                prefix + "lut",
+                prefix + "lut_offset_scale",
+            )
         ):
             raise Exception(
-                "not all 'hash_buckets', 'lut', 'lut_offset_scale' paramters in state_dict"
+                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}lut_offset_scale' "
+                "paramters in state_dict"
             )
 
     def conv2d(

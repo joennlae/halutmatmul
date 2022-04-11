@@ -20,4 +20,5 @@ jobs:
     - name: Check types with mypy
       run: |
         $CONDA/bin/conda install -c conda-forge mypy=0.942
+        yes | $CONDA/bin/mypy --install-types
         $CONDA/bin/mypy --config-file .mypy.ini --pretty 

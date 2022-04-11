@@ -1,5 +1,6 @@
 {
   "python.linting.pylintEnabled": true,
+  "python.linting.mypyEnabled": true,
   "python.linting.enabled": true,
   "python.formatting.provider": "black",
   "python.terminal.activateEnvironment": true,
@@ -12,6 +13,5 @@
   "cSpell.words": [
     "maddness"
   ],
-  "mypy.runUsingActiveInterpreter": true,
   "editor.rulers": [100]
 }
