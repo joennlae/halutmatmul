@@ -1,7 +1,7 @@
 # pylint: disable=C0209
 from pathlib import Path
 from collections import OrderedDict
-from typing import Dict, TypeVar
+from typing import Any, Dict, TypeVar
 
 import numpy as np
 import torch
@@ -39,15 +39,19 @@ class HalutHelper:
         state_dict: "OrderedDict[str, torch.Tensor]",
         dataset: Dataset[T_co],
         data_path: str = DATA_PATH,
+        batch_size_store: int = DEFAULT_BATCH_SIZE_OFFLINE,
+        batch_size_inference: int = DEFAULT_BATCH_SIZE_INFERENCE,
+        device: torch.device = torch.device("cpu")
     ) -> None:
         self.model = model
         self.dataset = dataset
-        self.batch_size_store = DEFAULT_BATCH_SIZE_OFFLINE
-        self.batch_size_inference = DEFAULT_BATCH_SIZE_INFERENCE
+        self.batch_size_store = batch_size_store
+        self.batch_size_inference = batch_size_inference
         self.state_dict_base = state_dict
         self.editable_keys = editable_prefixes(state_dict)
         self.halut_modules: Dict[str, int] = dict([])
         self.data_path = data_path
+        self.device = device
 
     def activate_halut_module(self, name: str, C: int) -> None:
         if name not in self.editable_keys:
@@ -119,6 +123,7 @@ class HalutHelper:
 
         with torch.no_grad():
             for n_iter, (image, _) in enumerate(loaded_data):
+                image = image.to(self.device)
                 if n_iter > 1:
                     continue
                 self.model(image)
@@ -156,13 +161,15 @@ class HalutHelper:
         loaded_data = DataLoader(
             self.dataset,
             batch_size=self.batch_size_inference,
-            num_workers=8,
+            num_workers=16,
             drop_last=False,
             pin_memory=True,
         )
+        self.model.eval()
         correct_5 = correct_1 = 0
         with torch.no_grad():
             for n_iter, (image, label) in enumerate(loaded_data):
+                image, label = image.to(self.device), label.to(self.device)
                 # if n_iter > 10:
                 #     continue
                 print(
@@ -171,7 +178,7 @@ class HalutHelper:
                     )
                 )
                 # https://github.com/weiaicunzai/pytorch-cifar100/blob/2149cb57f517c6e5fa7262f958652227225d125b/test.py#L54
-                output = self.model(image).squeeze(0).softmax(0)
+                output = self.model(image)
                 _, pred = output.topk(5, 1, largest=True, sorted=True)
                 label = label.view(label.size(0), -1).expand_as(pred)
                 correct = pred.eq(label).float()

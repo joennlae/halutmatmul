@@ -15,3 +15,22 @@ and then merge it together.
 ```bash
 $ conda env export > environment_lock.yml 
 ```
+
+### ISS config
+
+10GB is just not enough :-)
+
+add a file `~/.condarc` and add
+
+```yaml
+pkgs_dirs:
+  - /scratch/janniss/conda
+```
+
+### Create env in scratch
+
+```
+conda env create -f environment_gpu.yml --prefix /scratch2/janniss/conda/halutmatmul_gpu
+
+conda activate /scratch2/janniss/conda/halutmatmul_gpu
+```

@@ -1,0 +1,24 @@
+name: halutmatmul
+channels:
+  - intel
+  - pytorch-nightly
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - black
+  - pylint
+  - numpy=1.21.2
+  - numba
+  - joblib
+  - scipy
+  - scikit-learn
+  - pytest
+  - pre-commit
+  - mypy=0.942
+  - pytest-xdist
+  - torchvision=0.13
+  - pytorch=1.12
+  # cpu stuff
+  - cpuonly
+prefix: /home/msc22f5/.conda/envs/halutmatmul

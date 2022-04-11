@@ -1,6 +1,10 @@
+# pylint: disable=C0413
 from __future__ import annotations
 from functools import reduce
-from typing import Any, Optional, Type, TypeVar, Union
+from typing import Any, Optional, Union
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent) + '/../../../maddness/python/') # for maddness import
 import numpy as np
 
 from maddness.maddness import MaddnessMatmul, MultiSplit

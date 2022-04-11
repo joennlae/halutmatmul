@@ -53,12 +53,19 @@ def test_cifar10_inference() -> None:
         )
 
         cifar_10_val = torchvision.datasets.CIFAR10(
-            root=tmpdirname + "/.data", train=False, transform=val_transform, download=True
+            root=tmpdirname + "/.data",
+            train=False,
+            transform=val_transform,
+            download=True,
         )
 
-        model = resnet50(weights=state_dict, progress=False)
+        model = resnet50(
+            weights=state_dict, progress=False, **{"is_cifar": True, "num_classes": 10}
+        )
 
-        halut_model = HalutHelper(model, state_dict, cifar_10_val, data_path=tmpdirname + "/.data")
+        halut_model = HalutHelper(
+            model, state_dict, cifar_10_val, data_path=tmpdirname + "/.data"
+        )
         halut_model.print_available_module()
         halut_model.activate_halut_module("fc", 16)
         halut_model.activate_halut_module("layer4.2.conv3", 16)

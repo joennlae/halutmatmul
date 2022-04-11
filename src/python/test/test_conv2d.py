@@ -33,9 +33,9 @@ def conv2d_helper(
     ) * a
     input_test = (torch.rand((batch_size, in_channels, image_x_y, image_x_y)) + b) * a
 
-    learn_numpy = input_learn.detach().numpy()
-    weights_numpy = weights.detach().numpy()
-    bias_numpy = bias_weights.detach().numpy()
+    learn_numpy = input_learn.detach().cpu().numpy()
+    weights_numpy = weights.detach().cpu().numpy()
+    bias_numpy = bias_weights.detach().cpu().numpy()
 
     input_a, input_b = halut_conv2d(
         learn_numpy,

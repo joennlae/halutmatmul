@@ -132,12 +132,13 @@ class ResNet(nn.Module):
         self,
         block: Type[Bottleneck],
         layers: List[int],
-        num_classes: int = 10,
+        num_classes: int = 1000,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        is_cifar: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__()
@@ -161,14 +162,15 @@ class ResNet(nn.Module):
         self.base_width = width_per_group
 
         # ImageNet
-        # self.conv1 = nn.Conv2d(
-        #     3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
-        # )
+        self.conv1 = nn.Conv2d(
+            3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
+        )
 
         # CIFAR10 / 100: kernel_size 7 -> 3, stride 2 -> 1, padding 3->1
-        self.conv1 = nn.Conv2d(
-            3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False
-        )
+        if is_cifar:
+            self.conv1 = nn.Conv2d(
+                3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False
+            )
 
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -307,12 +309,8 @@ def _resnet(
     progress: bool,
     **kwargs: Any,
 ) -> ResNet:
-    # if weights is not None:
-    #     _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
-
     model = ResNet(block, layers, **kwargs)
     if weights is not None:
-        # model.load_state_dict(weights.get_state_dict(progress=progress))
         model.load_state_dict(weights, strict=False)
 
     return model
@@ -368,5 +366,4 @@ def resnet50(
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     # weights = ResNet50_Weights.verify(weights)
-    print(kwargs)
     return _resnet(Bottleneck, [3, 4, 6, 3], weights, progress, **kwargs)

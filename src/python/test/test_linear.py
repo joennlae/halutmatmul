@@ -24,8 +24,8 @@ def linear_helper(
     input_learn = (torch.rand((n_row_learn, in_features)) + b) * a
     input_test = (torch.rand((n_row_test, in_features)) + b) * a
 
-    learn_numpy = input_learn.detach().numpy()
-    weights_numpy = weights.detach().numpy().transpose(1, 0)
+    learn_numpy = input_learn.detach().cpu().numpy()
+    weights_numpy = weights.detach().cpu().numpy().transpose(1, 0)
     store_array = hm.learn_halut_offline(
         learn_numpy, weights_numpy, C=C, lut_work_const=-1
     )

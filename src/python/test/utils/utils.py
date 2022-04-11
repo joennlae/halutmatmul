@@ -24,7 +24,7 @@ def helper_test_module(
         ret.shape,
     )
 
-    error_hist_numpy(ret.detach().numpy(), out.detach().numpy())
+    error_hist_numpy(ret.detach().cpu().numpy(), out.detach().cpu().numpy())
 
     torch_fp = (
         timeit.Timer(functools.partial(torch_module, ts_input)).timeit(5) * 1000 / 5

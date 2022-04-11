@@ -76,9 +76,9 @@ class HalutLinear(Linear):
             )
             store_array = np.array(
                 [
-                    state_dict[prefix + "hash_buckets"].clone().detach().numpy(),
-                    state_dict[prefix + "lut"].clone().detach().numpy(),
-                    state_dict[prefix + "lut_offset_scale"].clone().detach().numpy(),
+                    state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "lut_offset_scale"].clone().detach().cpu().numpy(),
                 ],
                 dtype=object,
             )
@@ -306,9 +306,9 @@ class HalutConv2d(_ConvNd):
             )
             store_array = np.array(
                 [
-                    state_dict[prefix + "hash_buckets"].clone().detach().numpy(),
-                    state_dict[prefix + "lut"].clone().detach().numpy(),
-                    state_dict[prefix + "lut_offset_scale"].clone().detach().numpy(),
+                    state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "lut_offset_scale"].clone().detach().cpu().numpy(),
                 ],
                 dtype=object,
             )
