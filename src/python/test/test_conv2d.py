@@ -20,6 +20,7 @@ def conv2d_helper(
     C: int = 16,
     a: float = 1.0,
     b: float = 0.0,
+    rel_error: float = 0.3,
 ) -> None:
     torch.manual_seed(4419)
 
@@ -60,7 +61,7 @@ def conv2d_helper(
         kernel_size=kernel_size,
         stride=stride,
         bias=bias,
-        groups=groups
+        groups=groups,
     )
     state_dict = OrderedDict({"weight": weights})
     if bias:
@@ -75,8 +76,8 @@ def conv2d_helper(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES]
                 ),
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
-                "lut_offset_scale": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.LUT_OFFSET_SCALE]
+                "halut_config": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.CONFIG]
                 ),
             }
         )
@@ -88,7 +89,9 @@ def conv2d_helper(
         f"params: C: {C}, in: {in_channels}, out: {out_channels}, bias: {bias}, "
         f"input_learn: {input_learn.shape}, input_test: {input_test.shape}, a: {a}, b: {b}"
     )
-    helper_test_module(input_test, torch_module, halutmatmul_module)
+    helper_test_module(
+        input_test, torch_module, halutmatmul_module, rel_error=rel_error
+    )
 
 
 @pytest.mark.parametrize(
@@ -99,9 +102,9 @@ def conv2d_helper(
         for out_channels in [64, 128, 256]
         for image_x_y in [7, 14]
         for kernel_size in [1, 3]
-        for bias in [False] # True, False
+        for bias in [False]  # True, False
         for C in [16, 32, 64]
-        for a in [1.0] #
+        for a in [1.0]
         for b in [0.0]
     ],
 )
@@ -116,10 +119,6 @@ def test_conv2d_module(
     b: float,
 ) -> None:
     batch_size = 32  # 32, 64
-    bias = True
-    C = 32
-    a = 1.0
-    b = 0.0
 
     stride = 1
     groups = 1

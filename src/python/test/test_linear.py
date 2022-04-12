@@ -51,8 +51,8 @@ def linear_helper(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES]
                 ),
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
-                "lut_offset_scale": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.LUT_OFFSET_SCALE]
+                "halut_config": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.CONFIG]
                 ),
             }
         )

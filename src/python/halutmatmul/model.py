@@ -1,21 +1,20 @@
 # pylint: disable=C0209
+import json
 from pathlib import Path
 from collections import OrderedDict
 from typing import Any, Dict, TypeVar
-
+from timeit import default_timer as timer
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-
 from ResNet.resnet import END_STORE_A, END_STORE_B
-
 import halutmatmul.halutmatmul as hm
 
 T_co = TypeVar("T_co", covariant=True)
 
 DEFAULT_BATCH_SIZE_OFFLINE = 512
 DEFAULT_BATCH_SIZE_INFERENCE = 128
-DATA_PATH = "./.data"
+DATA_PATH = "/scratch/janniss/data"
 
 
 def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
@@ -41,7 +40,7 @@ class HalutHelper:
         data_path: str = DATA_PATH,
         batch_size_store: int = DEFAULT_BATCH_SIZE_OFFLINE,
         batch_size_inference: int = DEFAULT_BATCH_SIZE_INFERENCE,
-        device: torch.device = torch.device("cpu")
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -52,6 +51,7 @@ class HalutHelper:
         self.halut_modules: Dict[str, int] = dict([])
         self.data_path = data_path
         self.device = device
+        self.stats: Dict[str, Any] = dict([])
 
     def activate_halut_module(self, name: str, C: int) -> None:
         if name not in self.editable_keys:
@@ -136,7 +136,12 @@ class HalutHelper:
             input_a = np.load(self.data_path + "/" + k + END_STORE_A)
             input_b = np.load(self.data_path + "/" + k + END_STORE_B)
             print(f"Learn Layer {k}: a: {input_a.shape}, b: {input_b.shape}")
+            self.stats[k + ".input_a_shape"] = input_a.shape
+            self.stats[k + ".input_b_shape"] = input_b.shape
+            start = timer()
             store_array = hm.learn_halut_offline(input_a, input_b, C)
+            end = timer()
+            self.stats[k + ".halut_learning_time"] = end - start
             additional_dict = additional_dict | dict(
                 {
                     k + ".halut_active": torch.ones(1, dtype=torch.bool),
@@ -147,12 +152,16 @@ class HalutHelper:
                     k
                     + ".lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
                     k
-                    + ".lut_offset_scale": torch.from_numpy(
-                        store_array[hm.HalutOfflineStorage.LUT_OFFSET_SCALE]
+                    + ".halut_config": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.CONFIG]
                     ),
                 }
             )
+        self.stats["halut_layers"] = json.dumps(self.halut_modules)
         return OrderedDict(self.state_dict_base | additional_dict)
+
+    def get_stats(self) -> Dict[str, Any]:
+        return self.stats
 
     def run_inference(self) -> float:
         self.store_inputs()
@@ -167,6 +176,7 @@ class HalutHelper:
         )
         self.model.eval()
         correct_5 = correct_1 = 0
+        start = timer()
         with torch.no_grad():
             for n_iter, (image, label) in enumerate(loaded_data):
                 image, label = image.to(self.device), label.to(self.device)
@@ -184,6 +194,8 @@ class HalutHelper:
                 correct = pred.eq(label).float()
                 correct_5 += correct[:, :5].sum()
                 correct_1 += correct[:, :1].sum()
+        end = timer()
+        self.stats["total_time"] = end - start
         print(correct_1, correct_5)
         print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset))  # type: ignore[arg-type]
         print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset))  # type: ignore[arg-type]
@@ -194,4 +206,10 @@ class HalutHelper:
                 sum(p.numel() for p in self.model.parameters())
             )
         )
-        return correct_1 / len(loaded_data.dataset) # type: ignore[arg-type]
+        self.stats["top_1_accuracy"] = (
+            correct_1 / len(loaded_data.dataset)  # type: ignore[arg-type]
+        ).item()  # type: ignore[attr-defined]
+        self.stats["top_5_accuracy"] = (
+            correct_5 / len(loaded_data.dataset)  # type: ignore[arg-type]
+        ).item()  # type: ignore[attr-defined]
+        return correct_1 / len(loaded_data.dataset)  # type: ignore[arg-type]

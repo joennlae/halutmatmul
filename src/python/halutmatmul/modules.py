@@ -1,4 +1,5 @@
 from typing import Any, Optional, OrderedDict, Union
+from timeit import default_timer as timer
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -13,6 +14,7 @@ from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
 from halutmatmul.halutmatmul import (
+    HalutConfig,
     HalutMatmul,
     calc_newaxes_and_newshape_and_old,
     tensordot,
@@ -42,8 +44,8 @@ class HalutLinear(Linear):
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.lut_offset_scale = Parameter(
-            torch.zeros(2, dtype=torch.float32), requires_grad=False
+        self.halut_config = Parameter(
+            torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
         )
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
@@ -64,7 +66,7 @@ class HalutLinear(Linear):
             for k in (
                 prefix + "hash_buckets",
                 prefix + "lut",
-                prefix + "lut_offset_scale",
+                prefix + "halut_config",
             )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
@@ -78,7 +80,7 @@ class HalutLinear(Linear):
                 [
                     state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
                     state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
-                    state_dict[prefix + "lut_offset_scale"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
                 ],
                 dtype=object,
             )
@@ -88,11 +90,11 @@ class HalutLinear(Linear):
             for k in (
                 prefix + "hash_buckets",
                 prefix + "lut",
-                prefix + "lut_offset_scale",
+                prefix + "halut_config",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}lut_offset_scale' "
+                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}halut_config' "
                 "paramters in state_dict"
             )
 
@@ -112,7 +114,9 @@ class HalutLinear(Linear):
             input_numpy = input.detach().cpu().numpy()
             if self.halut is None:
                 raise Exception("self.halut is None")
-            result = torch.from_numpy(self.halut.matmul_online(input_numpy))
+            result = torch.from_numpy(self.halut.matmul_online(input_numpy)).to(
+                str(input.device)
+            )
             if self.bias is not None:
                 bias_to_add = self.bias.clone().repeat(input.shape[0], 1)
                 result += bias_to_add
@@ -206,12 +210,15 @@ def halut_conv2d(
         return (input_a[0], input_b[0])
     else:
         for g in range(groups):
+            start = timer()
             ret[:, g] += tensordot(
                 _input_im2col[:, g],
                 tensor_weights[g],
                 ((1, 4, 5), (1, 2, 3)),
                 halut=halut,
             )
+            end = timer()
+            print("total halutmatmul time: ", (end - start) * 1000)
 
     ret = np.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
 
@@ -272,8 +279,8 @@ class HalutConv2d(_ConvNd):
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.lut_offset_scale = Parameter(
-            torch.zeros(2, dtype=torch.float32), requires_grad=False
+        self.halut_config = Parameter(
+            torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
         )
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
@@ -294,7 +301,7 @@ class HalutConv2d(_ConvNd):
             for k in (
                 prefix + "hash_buckets",
                 prefix + "lut",
-                prefix + "lut_offset_scale",
+                prefix + "halut_config",
             )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
@@ -308,7 +315,7 @@ class HalutConv2d(_ConvNd):
                 [
                     state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
                     state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
-                    state_dict[prefix + "lut_offset_scale"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
                 ],
                 dtype=object,
             )
@@ -318,11 +325,11 @@ class HalutConv2d(_ConvNd):
             for k in (
                 prefix + "hash_buckets",
                 prefix + "lut",
-                prefix + "lut_offset_scale",
+                prefix + "halut_config",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}lut_offset_scale' "
+                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}halut_config' "
                 "paramters in state_dict"
             )
 
@@ -359,7 +366,7 @@ class HalutConv2d(_ConvNd):
         if return_reshaped_inputs:
             return (torch.from_numpy(ret_numpy[0]), torch.from_numpy(ret_numpy[1]))
         else:
-            return torch.from_numpy(ret_numpy)
+            return torch.from_numpy(ret_numpy).to(str(_input.device))
 
     def check_store_offline(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]

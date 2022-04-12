@@ -17,7 +17,6 @@ def sys_info() -> None:
         "__CUDA VERSION",
     )
 
-
     # ! nvcc --version
     print("__CUDNN VERSION:", torch.backends.cudnn.version())
     print("__Number CUDA Devices:", torch.cuda.device_count())
@@ -66,12 +65,12 @@ def cifar_inference() -> None:
 
 
 def imagenet_inference() -> None:
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(2)
     sys_info()
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     state_dict = ResNet50_Weights.IMAGENET1K_V2.get_state_dict(progress=True)
     imagenet_val = torchvision.datasets.ImageNet(
-        root="/scratch2/janniss/imagenet/",
+        root="/scratch/janniss/imagenet/",
         split="val",
         transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
     )
@@ -80,11 +79,15 @@ def imagenet_inference() -> None:
     model.to(device)
 
     halut_model = HalutHelper(
-        model, state_dict, imagenet_val, batch_size_inference=128, device=device
+        model,
+        state_dict,
+        imagenet_val,  # Dataloader
+        batch_size_inference=128,
+        batch_size_store=6 * 128,
+        device=device,
     )
     halut_model.print_available_module()
-    # halut_model.activate_halut_module("fc", 16)
-    # halut_model.activate_halut_module("layer4.2.conv3", 16)
+    halut_model.activate_halut_module("layer1.0.conv1", 16)
     halut_model.run_inference()
 
 

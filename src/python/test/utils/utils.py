@@ -12,6 +12,7 @@ def helper_test_module(
     ts_input: torch.Tensor,
     torch_module: torch.nn.Module,
     halutmatmul_module: torch.nn.Module,
+    rel_error: float = 0.2,
 ) -> None:
 
     out = torch_module(ts_input)
@@ -25,6 +26,9 @@ def helper_test_module(
     )
 
     error_hist_numpy(ret.detach().cpu().numpy(), out.detach().cpu().numpy())
+    check_if_error_normal_dist_around_zero(
+        ret.detach().cpu().numpy(), out.detach().cpu().numpy(), max_rel_error=rel_error
+    )
 
     torch_fp = (
         timeit.Timer(functools.partial(torch_module, ts_input)).timeit(5) * 1000 / 5
@@ -35,7 +39,20 @@ def helper_test_module(
         / 5
     )
 
-    print("torch/halutmatmul fp: %.2f / %.2f ms" % (torch_fp, halutmatmul_fp,))
+    # import cProfile
+    # from pstats import SortKey
+    # with cProfile.Profile() as pr:
+    #     halutmatmul_module(ts_input)
+    #     pr.disable()
+    #     pr.print_stats(sort=SortKey.CUMULATIVE)
+
+    print(
+        "torch/halutmatmul fp: %.2f / %.2f ms"
+        % (
+            torch_fp,
+            halutmatmul_fp,
+        )
+    )
 
 
 def error_hist_numpy(actual: np.ndarray, desired: np.ndarray) -> None:
@@ -46,14 +63,23 @@ def error_hist_numpy(actual: np.ndarray, desired: np.ndarray) -> None:
     asciihist(rel, str_tag="Rel %")
 
 
+def check_if_error_normal_dist_around_zero(
+    actual: np.ndarray, desired: np.ndarray, max_rel_error: float = 0.2
+) -> None:
+    rel = ((np.abs(actual - desired) / desired) * 100).ravel()
+    counts, cutoffs = np.histogram(rel, bins=10)
+    assert np.argmax(counts) == 0 or np.argmax(counts) == 1  # error peaks around zero
+    assert cutoffs[9] < max_rel_error * 100  # check max rel error
+
+
 def asciihist(
     it: np.ndarray,
-    bins: int=10,
-    minmax: Optional[str] =None,
-    str_tag: str="",
-    scale_output: int=30,
-    generate_only: bool=False,
-    print_function: Callable =print,
+    bins: int = 10,
+    minmax: Optional[str] = None,
+    str_tag: str = "",
+    scale_output: int = 30,
+    generate_only: bool = False,
+    print_function: Callable = print,
 ) -> str:
     """Create an ASCII histogram from an interable of numbers.
     Author: Boris Gorelik boris@gorelik.net.

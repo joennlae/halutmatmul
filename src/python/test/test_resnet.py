@@ -18,7 +18,7 @@ def download_weights(path: str) -> None:
 
     # Total size in Mebibyte
     total_size = int(r.headers.get("content-length", 0))
-    block_size = 2 ** 20  # Mebibyte
+    block_size = 2**20  # Mebibyte
 
     dl = 0
     print("Download ResNet-50 CIFAR-10 weights")

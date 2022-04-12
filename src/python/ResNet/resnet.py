@@ -44,6 +44,7 @@ from halutmatmul.modules import HalutConv2d, HalutLinear
 END_STORE_A = "_A.npy"
 END_STORE_B = "_B.npy"
 
+
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
 ) -> nn.Conv2d:
@@ -62,13 +63,7 @@ def conv3x3(
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> HalutConv2d:
     """1x1 convolution"""
-    return HalutConv2d(
-        in_planes,
-        out_planes,
-        kernel_size=1,
-        stride=stride,
-        bias=False
-    )
+    return HalutConv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
 class Bottleneck(nn.Module):
@@ -186,10 +181,7 @@ class ResNet(nn.Module):
             block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = HalutLinear(
-            512 * block.expansion,
-            num_classes
-        )
+        self.fc = HalutLinear(512 * block.expansion, num_classes)
         # nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
@@ -209,7 +201,7 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
 
     # pylint: disable=W0212
-    def write_inputs_to_disk(self, path: str = '.data/') -> None:
+    def write_inputs_to_disk(self, path: str = ".data/") -> None:
         def store(module: nn.Module, prefix: str = "") -> None:
             if hasattr(module, "store_input"):
                 if module.store_input:
@@ -217,11 +209,13 @@ class ResNet(nn.Module):
                         module, "input_storage_b"
                     )
                     print("store inputs for module", prefix + module._get_name())
-                    np_array_a = module.input_storage_a.\
-                      detach().cpu().numpy()  # type: ignore[operator]
+                    np_array_a = (
+                        module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
+                    )
                     np.save(path + "/" + prefix[:-1] + END_STORE_A, np_array_a)
-                    np_array_b = module.input_storage_b.\
-                      detach().cpu().numpy()  # type: ignore[operator]
+                    np_array_b = (
+                        module.input_storage_b.detach().cpu().numpy()  # type: ignore[operator]
+                    )
                     np.save(path + "/" + prefix[:-1] + END_STORE_B, np_array_b)
             for name, child in module._modules.items():
                 if child is not None:

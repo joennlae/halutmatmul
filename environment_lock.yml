@@ -100,7 +100,7 @@ dependencies:
   - pytest-xdist=2.5.0=pyhd8ed1ab_0
   - python=3.9.10=h3b4beac_1
   - python_abi=3.9=2_cp39
-  - pytorch=1.12.0.dev20220411=py3.9_cpu_0
+  - pytorch=1.12
   - pytorch-mutex=1.0=cpu
   - pyyaml=6.0=py39h7f8727e_1
   - readline=8.1=h46c0cb4_0
@@ -116,7 +116,7 @@ dependencies:
   - tk=8.6.10=h8e2d9d6_3
   - toml=0.10.2=pyhd8ed1ab_0
   - tomli=2.0.1=pyhd8ed1ab_0
-  - torchvision=0.13.0.dev20220411=py39_cpu
+  - torchvision=0.13
   - typed-ast=1.5.2=py39h3811e60_0
   - typing-extensions=4.1.1=hd8ed1ab_0
   - typing_extensions=4.1.1=pyha770c72_0

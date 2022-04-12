@@ -271,7 +271,7 @@ class MaddnessMatmul:
         self.A_enc: Optional[np.ndarray] = None
         self.luts: Optional[np.ndarray] = None
 
-        self.quantize_lut = True
+        self.quantize_lut = False
         self.upcast_every = 16
         self.upcast_every = min(self.C, self.upcast_every)
         # important otherwise wrong summation
@@ -303,7 +303,11 @@ class MaddnessMatmul:
         return luts, 0, 1
 
     def _calc_matmul(
-        self, A_enc: np.ndarray, B_luts: np.ndarray, offset: int, scale: int,
+        self,
+        A_enc: np.ndarray,
+        B_luts: np.ndarray,
+        offset: float,
+        scale: float,
     ) -> np.ndarray:
         A_enc = np.ascontiguousarray(A_enc)
 
@@ -374,13 +378,16 @@ class MaddnessMatmul:
         self._set_A(A)
         self._set_B(B)
         return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale,  # type: ignore[arg-type]
+            self.A_enc, # type: ignore[arg-type]
+            self.luts, # type: ignore[arg-type]
+            offset=self.offset,
+            scale=self.scale
         )
 
     def matmul_online(self, A: np.ndarray) -> np.ndarray:
         self._set_A(A)
         return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale  # type: ignore[arg-type]
+            self.A_enc, self.luts, offset=self.offset, scale=self.scale # type: ignore[arg-type]
         )
 
     def reset(self) -> None:

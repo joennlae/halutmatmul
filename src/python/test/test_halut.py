@@ -1,6 +1,6 @@
 import functools
 import timeit
-from test.utils.utils import error_hist_numpy
+from test.utils.utils import check_if_error_normal_dist_around_zero, error_hist_numpy
 import numpy as np
 import pytest
 import halutmatmul.halutmatmul as hm
@@ -14,12 +14,24 @@ def helper_halut(
     lut_work_const: int = -1,
     a: float = 1.0,
     b: float = 0.0,
+    quantize_lut: bool = False,
+    run_optimized: bool = True,
 ) -> None:
     print("=====TEST=====")
-    print(f"params: ({N}, {K}, {M}), C: {C}, a: {a}, b: {b}")
+    print(
+        f"params: ({N}, {K}, {M}), C: {C}, a: {a}, b: {b}, quantize_lut: {quantize_lut}, "
+        f"run_optimized: {run_optimized}"
+    )
     A = (np.random.random((N, K)) + b) * a
     B = (np.random.random((K, M)) + b) * a
-    store_array = hm.learn_halut_offline(A, B, C=C, lut_work_const=lut_work_const)
+    store_array = hm.learn_halut_offline(
+        A,
+        B,
+        C=C,
+        lut_work_const=lut_work_const,
+        quantize_lut=quantize_lut,
+        run_optimized=run_optimized,
+    )
     new_halut = hm.HalutMatmul()
     new_halut.from_numpy(store_array)
 
@@ -38,6 +50,7 @@ def helper_halut(
     res_numpy = np.matmul(A_2, B)
 
     error_hist_numpy(res_halut, res_numpy)
+    check_if_error_normal_dist_around_zero(res_halut, res_numpy)
 
     time_halut = (
         timeit.Timer(functools.partial(new_halut.matmul_online, *[A_2])).timeit(5)
@@ -61,17 +74,30 @@ def helper_halut(
 
 
 @pytest.mark.parametrize(
-    "N, K, M, C, a, b",
+    "N, K, M, C, a, b, quantize_lut, run_optimized",
     [
-        (N, K, M, C, a, b)
-        for N in [2048, 16284]
+        (N, K, M, C, a, b, q, r)
+        for N in [2048, 4098]
         for K in [512]
         for M in [16, 64]
-        for C in [4, 16, 32, 64]
-        for a in [1.0, 5.0]
+        for C in [4, 16, 32]
+        for a in [1.0] # 5.0
         for b in [0.0, 10.0]
+        for q in [True, False]
+        for r in [True, False]
     ],
 )
-def test_learn_offline(N: int, K: int, M: int, C: int, a: float, b: float) -> None:
+def test_learn_offline(
+    N: int,
+    K: int,
+    M: int,
+    C: int,
+    a: float,
+    b: float,
+    quantize_lut: bool,
+    run_optimized: bool,
+) -> None:
     np.random.seed(4419)
-    helper_halut(N, K, M, C, a=a, b=b)
+    helper_halut(
+        N, K, M, C, a=a, b=b, quantize_lut=quantize_lut, run_optimized=run_optimized
+    )

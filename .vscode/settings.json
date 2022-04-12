@@ -10,5 +10,8 @@
   "python.analysis.extraPaths": [
     "maddness/python",
   ],
-  "editor.rulers": [100]
+  "editor.rulers": [
+    100
+  ],
+  "editor.formatOnSave": true,
 }

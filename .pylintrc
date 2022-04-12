@@ -6,7 +6,7 @@
 jobs=4
 
 ignore-paths=^maddness/python/joblib/.*$,
-             ^src/python/data/.*$,
+             ^src/python/results/*$,
 
 ignore-patterns=.*\.json,
 # init-hook='import sys; sys.path.append("./maddness/python/")'
@@ -45,7 +45,8 @@ disable=import-error,
         too-many-instance-attributes,
         consider-using-f-string,
         no-else-return,
-        no-else-raise
+        no-else-raise,
+        unspecified-encoding
 
 [REPORTS]
 
