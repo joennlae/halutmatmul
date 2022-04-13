@@ -280,19 +280,21 @@ def read_luts_opt(
     return total_result
 
 
-# @numba.jit(nopython=False, parallel=False)
-def apply_hash_function_opt(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
+@numba.jit(nopython=True, parallel=False)
+def apply_hash_function_opt(
+    X: np.ndarray, splits: np.ndarray
+) -> np.ndarray:
     N, _ = X.shape
     # original code had a distinction: not sure why
-    group_ids = np.zeros(N, dtype=np.int32)
+    group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
     num_splits = splits.shape[0]
     length = splits.shape[1] - 3
     for i in range(num_splits):
         vals = splits[i, 0 : pow(2, i)].astype(np.int32)
         vals = vals[group_ids]
         dim = int(splits[i, length])
-        offset = splits[i, length + 1]
-        scaleby = splits[i, length + 2]
+        scaleby = splits[i, length + 1]
+        offset = splits[i, length + 2]
         x = X[:, dim] - offset
         x = x * scaleby
         indicators = x > vals
@@ -314,15 +316,17 @@ def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
     return group_ids
 
 
-# @numba.jit(nopython=False, parallel=True)
-def maddness_encode_opt(X: np.ndarray, numpy_array: np.ndarray) -> np.ndarray:
+@numba.jit(nopython=True, parallel=True)
+def maddness_encode_opt(
+    X: np.ndarray, numpy_array: np.ndarray
+) -> np.ndarray:
     N, _ = X.shape
     C = numpy_array.shape[0]
-    A_enc = np.empty((N, C), dtype=np.int32, order="F")  # column-major
-    split_lists = numpy_to_split_list(numpy_array)
-    for c in range(C):
-        A_enc[:, c] = apply_hash_function(X, split_lists[c])
-    return np.ascontiguousarray(A_enc)
+    A_enc = np.empty((C, N), dtype=np.int32)  # column-major
+    # split_lists = numpy_to_split_list(numpy_array)
+    for c in prange(C):
+        A_enc[c] = apply_hash_function_opt(X, numpy_array[c])
+    return np.ascontiguousarray(A_enc.T)
 
 
 class HalutMatmul:

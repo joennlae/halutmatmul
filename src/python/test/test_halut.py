@@ -81,7 +81,7 @@ def helper_halut(
         for K in [512]
         for M in [16, 64]
         for C in [4, 16, 32]
-        for a in [1.0] # 5.0
+        for a in [1.0]  # 5.0
         for b in [0.0, 10.0]
         for q in [True, False]
         for r in [True, False]

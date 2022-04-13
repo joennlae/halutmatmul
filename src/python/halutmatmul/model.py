@@ -14,7 +14,7 @@ T_co = TypeVar("T_co", covariant=True)
 
 DEFAULT_BATCH_SIZE_OFFLINE = 512
 DEFAULT_BATCH_SIZE_INFERENCE = 128
-DATA_PATH = "/scratch/janniss/data"
+DATA_PATH = "/scratch1/janniss/data"
 
 
 def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
