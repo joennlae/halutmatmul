@@ -1,4 +1,4 @@
-name: halutmatmul
+name: /scratch2/janniss/conda/halutmatmul_gpu
 channels:
   - pytorch-nightly
   - intel
@@ -20,21 +20,20 @@ dependencies:
   - chardet=4.0.0=py39h06a4308_1003
   - click=8.0.3=pyhd3eb1b0_0
   - colorama=0.4.4=pyh9f0ad1d_0
-  - cpuonly=1.0=0
   - cryptography=3.3.2=py39h3d3d174_1
+  - cudatoolkit=11.3.1=ha36c431_10
   - dataclasses=0.8=pyh6d0b6a4_7
   - dill=0.3.4=pyhd8ed1ab_0
   - distlib=0.3.4=pyhd8ed1ab_0
   - dpcpp-cpp-rt=2022.0.1=intel_3633
   - dpcpp_cpp_rt=2022.0.1=intel_3633
-  - editdistance-s=1.0.0=py39h1a9c180_1
   - execnet=1.9.0=pyhd8ed1ab_0
   - ffmpeg=4.4=h3fd9d12_2
   - filelock=3.6.0=pyhd8ed1ab_0
   - freetype=2.10.4=h8e2d9d6_0
   - gmp=6.2.1=h58526e2_0
   - icc_rt=2022.0.1=intel_3633
-  - identify=2.3.7=pyhd8ed1ab_0
+  - identify=2.4.12=pyhd8ed1ab_0
   - idna=2.10=pyhd3eb1b0_0
   - iniconfig=1.1.1=pyh9f0ad1d_0
   - intel-cmplr-lib-rt=2022.0.1=intel_3633
@@ -59,7 +58,7 @@ dependencies:
   - liblapack=3.9.0=14_linux64_mkl
   - libllvm11=11.0.0=h3826bc1_0
   - libpng=1.6.37=8
-  - libstdcxx-ng=9.3.0=hdf63c60_101
+  - libstdcxx-ng=11.2.0=he4da1e4_15
   - libtiff=4.2.0=h3942068_0
   - libuv=1.40.0=h7b6447c_2
   - libwebp-base=1.2.0=h7f98852_2
@@ -101,7 +100,7 @@ dependencies:
   - python=3.9.10=h3b4beac_1
   - python_abi=3.9=2_cp39
   - pytorch=1.12
-  - pytorch-mutex=1.0=cpu
+  - pytorch-mutex=1.0=cuda
   - pyyaml=6.0=py39h7f8727e_1
   - readline=8.1=h46c0cb4_0
   - requests=2.25.1=pyhd3eb1b0_0
@@ -120,12 +119,20 @@ dependencies:
   - typed-ast=1.5.2=py39h3811e60_0
   - typing-extensions=4.1.1=hd8ed1ab_0
   - typing_extensions=4.1.1=pyha770c72_0
+  - ukkonen=1.0.1=py39hf939315_2
   - urllib3=1.26.6=py39h6fed32d_1
-  - virtualenv=20.14.0=py39hf3d152e_1
+  - virtualenv=20.14.1=py39hf3d152e_0
   - wheel=0.37.0=pyhd3eb1b0_1
   - wrapt=1.12.1=py39he8ac12f_1
   - xz=5.2.5=h74280d8_2
   - yaml=0.2.5=h7b6447c_0
   - zlib=1.2.11.1=h1e99aa7_5
   - zstd=1.4.5=h3f200d0_0
-prefix: /home/msc22f5/.conda/envs/halutmatmul
+  - pip:
+    - cupy-cuda112==10.3.1
+    - fastrlock==0.8
+    - pynvrtc==9.2
+    - types-requests==2.27.16
+    - types-setuptools==57.4.12
+    - types-urllib3==1.26.11
+prefix: /scratch2/janniss/conda/halutmatmul_gpu

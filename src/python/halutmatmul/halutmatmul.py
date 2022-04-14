@@ -281,9 +281,7 @@ def read_luts_opt(
 
 
 @numba.jit(nopython=True, parallel=False)
-def apply_hash_function_opt(
-    X: np.ndarray, splits: np.ndarray
-) -> np.ndarray:
+def apply_hash_function_opt(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
     N, _ = X.shape
     # original code had a distinction: not sure why
     group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
@@ -317,9 +315,7 @@ def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
 
 
 @numba.jit(nopython=True, parallel=True)
-def maddness_encode_opt(
-    X: np.ndarray, numpy_array: np.ndarray
-) -> np.ndarray:
+def maddness_encode_opt(X: np.ndarray, numpy_array: np.ndarray) -> np.ndarray:
     N, _ = X.shape
     C = numpy_array.shape[0]
     A_enc = np.empty((C, N), dtype=np.int32)  # column-major
@@ -579,6 +575,7 @@ class HalutMatmul:
         self._check_if_learned()
         numba.set_num_threads(min(32, numba.get_num_threads()))
         self._set_A(A)
+        print(self.luts.shape)
         return self._calc_matmul(
             self.A_enc, self.luts, offset=self.offset, scale=self.scale
         )
