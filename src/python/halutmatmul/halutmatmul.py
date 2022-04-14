@@ -575,7 +575,6 @@ class HalutMatmul:
         self._check_if_learned()
         numba.set_num_threads(min(32, numba.get_num_threads()))
         self._set_A(A)
-        print(self.luts.shape)
         return self._calc_matmul(
             self.A_enc, self.luts, offset=self.offset, scale=self.scale
         )
