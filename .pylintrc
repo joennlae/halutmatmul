@@ -46,7 +46,8 @@ disable=import-error,
         consider-using-f-string,
         no-else-return,
         no-else-raise,
-        unspecified-encoding
+        unspecified-encoding,
+        broad-except
 
 [REPORTS]
 

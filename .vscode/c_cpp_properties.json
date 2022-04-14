@@ -1,18 +1,22 @@
 {
-    "configurations": [
-        {
-            "name": "Linux",
-            "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/maddness/cpp/lib/Catch2/src",
-                "${workspaceFolder}/src/cpp/src/include"
-            ],
-            "defines": [],
-            "compilerPath": "/usr/sepp/bin/clang++-12.0.1",
-            "cStandard": "c99",
-            "cppStandard": "c++14",
-            "intelliSenseMode": "linux-clang-x64"
-        }
-    ],
-    "version": 4
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/maddness/cpp/lib/Catch2/src",
+        "${workspaceFolder}/src/cpp/src/include",
+        "/usr/local/cuda/include"
+      ],
+      "defines": [],
+      // "compilerPath": "/usr/sepp/bin/clang++-12.0.1",
+      // "cStandard": "c99",
+      // "cppStandard": "c++14",
+      "compilerPath": "/usr/local/cuda/bin/nvcc",
+      "cStandard": "gnu17",
+      "cppStandard": "gnu++14",
+      "intelliSenseMode": "linux-clang-x64"
+    }
+  ],
+  "version": 4
 }
