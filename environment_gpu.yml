@@ -21,6 +21,7 @@ dependencies:
   - pytorch=1.12
   # gpu stuff
   - cudatoolkit=11.3
+  - pip
   - pip:
     - cupy-cuda112
 prefix: /home/msc22f5/.conda/envs/halutmatmul

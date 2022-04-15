@@ -96,7 +96,8 @@ class HalutHelper:
             ]
         )
         state_dict_to_store = OrderedDict(self.state_dict_base | dict_to_add)
-        self.run_for_input_storage(state_dict_to_store)
+        if keys_to_store:
+            self.run_for_input_storage(state_dict_to_store)
 
     def store_all(self) -> None:
         dict_to_add = OrderedDict(
@@ -169,8 +170,18 @@ class HalutHelper:
 
     def run_inference(self) -> float:
         self.store_inputs()
+        print("Start training of Halutmatmul")
+        start = timer()
         state_dict_with_halut = self.run_halut_offline_training()
+        end = timer()
+        print("Training time: %.2f s" % (end - start))
+        print("Load state dict")
+        start = timer()
         self.model.load_state_dict(state_dict_with_halut, strict=False)
+        end = timer()
+        print("State dict time: %.2f s" % (end - start))
+        print("Init dataloader")
+        start = timer()
         loaded_data = DataLoader(
             self.dataset,
             batch_size=self.batch_size_inference,
@@ -178,6 +189,8 @@ class HalutHelper:
             drop_last=False,
             pin_memory=True,
         )
+        end = timer()
+        print("Init dataloader time: %.2f s" % (end - start))
         self.model.eval()
         correct_5 = correct_1 = 0
         start = timer()
