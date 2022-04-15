@@ -5,22 +5,43 @@ on: [push]
 jobs:
   test_python:
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
-    - name: Install dependencies
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        CONDA_OVERRIDE_GLIBC=2.17 #https://github.com/conda/conda/issues/11204#issuecomment-1039839191
-        $CONDA/bin/conda env update --file environment_lock.yml --name base
+    # - name: Install dependencies
+    #   run: |
+    #     # $CONDA is an environment variable pointing to the root of the miniconda directory
+    #     CONDA_OVERRIDE_GLIBC=2.17 #https://github.com/conda/conda/issues/11204#issuecomment-1039839191
+    #     $CONDA/bin/conda env update --file environment_lock.yml --name base
+    - name: Cache conda
+      uses: actions/cache@v3
+      env:
+        # Increase this value to reset cache if environment_lock.yml has not changed
+        CACHE_NUMBER: 0
+      with:
+        path: ~/conda_pkgs_dir
+        key:
+          ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+          hashFiles('environment_lock.yml') }}
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v2.1.1
+      with:
+        activate-environment: halutmatmul_gpu
+        environment-file: environment_lock.yml
+        python-version: 3.9
+        use-only-tar-bz2: true
     - name: Download Test data
       run: |
         cd maddness && bash ./download_assets.sh && cd ..
     - name: Test with pytest
       run: |
-        $CONDA/bin/conda install pytest
-        $CONDA/bin/pytest -srPA
+        conda env list
+        conda activate halutmatmul_gpu
+        conda install pytest
+        pytest -srPA
