@@ -8,7 +8,7 @@ from halutmatmul.modules import HalutConv2d, halut_conv2d_cpu
 import halutmatmul.halutmatmul as hm
 
 
-def conv2d_helper(
+def conv2d_helper_gpu(
     in_channels: int,
     out_channels: int,
     image_x_y: int,
@@ -16,6 +16,7 @@ def conv2d_helper(
     kernel_size: int,
     stride: int,
     batch_size: int,
+    device: torch.device,
     groups: int = 1,
     C: int = 16,
     a: float = 1.0,
@@ -66,22 +67,32 @@ def conv2d_helper(
     state_dict = OrderedDict({"weight": weights})
     if bias:
         state_dict = OrderedDict(state_dict | OrderedDict({"bias": bias_weights}))
+
+    torch_module.cuda()
+    torch_module.to(device)
+    torch_module.eval()
     torch_module.load_state_dict(state_dict, strict=False)
+
     state_dict = OrderedDict(
         state_dict
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
                 "hash_buckets": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.HASH_TABLES]
+                    store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(np.float32)
                 ),
-                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
+                "lut": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.LUT].astype(np.float32)
+                ),
                 "halut_config": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.CONFIG]
+                    store_array[hm.HalutOfflineStorage.CONFIG].astype(np.float32)
                 ),
             }
         )
     )
+    halutmatmul_module.cuda()
+    halutmatmul_module.eval()
+    halutmatmul_module.to(device)
     halutmatmul_module.load_state_dict(state_dict, strict=False)
 
     print("======== TEST =========")
@@ -89,6 +100,7 @@ def conv2d_helper(
         f"params: C: {C}, in: {in_channels}, out: {out_channels}, bias: {bias}, "
         f"input_learn: {input_learn.shape}, input_test: {input_test.shape}, a: {a}, b: {b}"
     )
+    input_test = input_test.to(device)
     helper_test_module(
         input_test, torch_module, halutmatmul_module, rel_error=rel_error
     )
@@ -98,9 +110,9 @@ def conv2d_helper(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b",
     [
         (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b)
-        for in_channels in [64, 128, 256]
-        for out_channels in [64, 128, 256]
-        for image_x_y in [7, 14]
+        for in_channels in [64, 512, 2048]
+        for out_channels in [64, 512, 2048]
+        for image_x_y in [14, 28, 56]
         for kernel_size in [1, 3]
         for bias in [False]  # True, False
         for C in [16, 32, 64]
@@ -108,7 +120,7 @@ def conv2d_helper(
         for b in [0.0]
     ],
 )
-def test_conv2d_module(
+def test_conv2d_module_gpu(
     in_channels: int,
     out_channels: int,
     image_x_y: int,
@@ -118,20 +130,29 @@ def test_conv2d_module(
     a: float,
     b: float,
 ) -> None:
-    batch_size = 32  # 32, 64
+
+    device_id = 1
+    if not torch.cuda.is_available():
+        pytest.skip("need GPU to run")
+    torch.cuda.set_device(device_id)
+    device = torch.device(
+        "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
+    )
+    batch_size = 128  # 32, 64
 
     stride = 1
     groups = 1
-    conv2d_helper(
-        in_channels,
-        out_channels,
-        image_x_y,
-        bias,
-        kernel_size,
-        stride,
-        batch_size,
-        groups,
-        C,
-        a,
-        b,
+    conv2d_helper_gpu(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        image_x_y=image_x_y,
+        bias=bias,
+        kernel_size=kernel_size,
+        stride=stride,
+        batch_size=batch_size,
+        device=device,
+        groups=groups,
+        C=C,
+        a=a,
+        b=b,
     )

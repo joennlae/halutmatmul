@@ -131,7 +131,7 @@ class HalutLinear(Linear):
 
 
 # pylint: disable=R0201
-def halut_conv2d(
+def halut_conv2d_cpu(
     _input: np.ndarray,
     weights: np.ndarray,
     halut: HalutMatmul,
@@ -306,10 +306,12 @@ class HalutConv2d(_ConvNd):
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
             self.hash_buckets = Parameter(
-                state_dict[prefix + "hash_buckets"].clone(), requires_grad=False
+                state_dict[prefix + "hash_buckets"].clone().to(str(self.weight.device)),
+                requires_grad=False,
             )
             self.lut = Parameter(
-                state_dict[prefix + "lut"].clone(), requires_grad=False
+                state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
+                requires_grad=False,
             )
             store_array = np.array(
                 [
@@ -319,7 +321,18 @@ class HalutConv2d(_ConvNd):
                 ],
                 dtype=object,
             )
-            self.halut = HalutMatmul().from_numpy(store_array)
+            if "cuda" in str(self.weight.device):
+                # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
+                from halutmatmul.cuda.kernels import create_kernels_halutmatmul
+
+                C = self.lut.shape[1]
+                K = self.lut.shape[2]
+                (
+                    self.encode_kernel,
+                    self.read_acc_lut_kernel,
+                ) = create_kernels_halutmatmul(C, K)
+            else:
+                self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
             k in state_dict.keys()
             for k in (
@@ -346,27 +359,51 @@ class HalutConv2d(_ConvNd):
         return_reshaped_inputs: bool = False,  # needed for storage
     ) -> Union[Tensor, tuple[Tensor, Tensor]]:
         assert dilation in (1, (1, 1))
+        if "cuda" in str(_input.device):
+            if any(
+                not hasattr(self, x) for x in ("encode_kernel", "read_acc_lut_kernel")
+            ):
+                raise Exception("CUDA kernels not defined or loaded!")
+            # pylint: disable=import-outside-toplevel
+            from halutmatmul.cuda.functions import halut_conv2d_gpu
 
-        input_numpy = _input.detach().cpu().numpy()
-        weights_numpy = weight.detach().cpu().numpy()
-        bias_numpy = bias.detach().cpu().numpy() if bias is not None else None
-
-        ret_numpy = halut_conv2d(
-            input_numpy,
-            weights_numpy,
-            halut,
-            self.kernel_size,
-            stride,
-            padding,
-            groups,
-            bias_numpy,
-            return_reshaped_inputs=return_reshaped_inputs,
-        )
-
-        if return_reshaped_inputs:
-            return (torch.from_numpy(ret_numpy[0]), torch.from_numpy(ret_numpy[1]))
+            ret_tensor = halut_conv2d_gpu(
+                _input=_input,
+                weights=weight,
+                encode_kernel=self.encode_kernel,
+                read_acc_lut_kernel=self.read_acc_lut_kernel,
+                L=self.lut,
+                H=self.hash_buckets,
+                kernel_size=self.kernel_size,
+                stride=stride,
+                padding=padding,
+                groups=groups,
+                bias=self.bias,
+            )
+            if return_reshaped_inputs:
+                return ret_tensor[0], ret_tensor[1]
+            return ret_tensor
         else:
-            return torch.from_numpy(ret_numpy).to(str(_input.device))
+            input_numpy = _input.detach().cpu().numpy()
+            weights_numpy = weight.detach().cpu().numpy()
+            bias_numpy = bias.detach().cpu().numpy() if bias is not None else None
+
+            ret_numpy = halut_conv2d_cpu(
+                input_numpy,
+                weights_numpy,
+                halut,
+                self.kernel_size,
+                stride,
+                padding,
+                groups,
+                bias_numpy,
+                return_reshaped_inputs=return_reshaped_inputs,
+            )
+
+            if return_reshaped_inputs:
+                return (torch.from_numpy(ret_numpy[0]), torch.from_numpy(ret_numpy[1]))
+            else:
+                return torch.from_numpy(ret_numpy).to(str(_input.device))
 
     def check_store_offline(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
@@ -397,13 +434,13 @@ class HalutConv2d(_ConvNd):
         if self.halut_active[0]:
             if self.padding_mode != "zeros":
                 raise Exception("padding_mode != zeros not supported with Halut")
-            elif self.halut is None:
+            elif "cpu" in str(self.weight.device) and self.halut is None:
                 raise Exception("halut is not set")
             else:
                 return self.conv2d(  # type: ignore[return-value]
                     _input,
                     weight,
-                    self.halut,
+                    self.halut,  # type: ignore[arg-type]
                     bias,
                     self.stride,
                     self.padding,  # type: ignore[arg-type]
