@@ -1,6 +1,8 @@
 import cupy as cp  # type: ignore[import]
 import torch
 
+from halutmatmul.cuda.kernels import READ_ACC_LUT_KERNEL_SPLIT_FACTOR
+
 MAX_THREADS = 1024
 SHARED_MEM_PER_BLOCK = 49152
 
@@ -8,7 +10,7 @@ SHARED_MEM_PER_BLOCK = 49152
 def run_encode_kernel(
     kernel: cp.RawKernel,
     N: int,
-    K: int,
+    D: int,
     A: torch.Tensor,
     hash_info: torch.Tensor,
     C: int,
@@ -22,7 +24,7 @@ def run_encode_kernel(
     kernel(
         (blocks,),
         block_dim,
-        (cupy_A, cupy_hash_info, encoded, N, K, N * K),
+        (cupy_A, cupy_hash_info, encoded, N, D, N * D),
         # shared_mem=4 * (8 + 3) * C * 4,
     )
     torch_A = torch.from_dlpack(encoded)
@@ -47,7 +49,7 @@ def run_read_acc_lut_kernel(
     C: int,
     K: int,
 ) -> torch.Tensor:
-    split_factor = 8
+    split_factor = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
     rows_per_block = calc_rows_per_block_read_acc_lut_kernel(split_factor, C, K)
     block_dim = (rows_per_block, split_factor)
     blocks_x = N // rows_per_block + (1 if N % rows_per_block else 0)

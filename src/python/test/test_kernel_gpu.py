@@ -14,6 +14,7 @@ try:
     from halutmatmul.cuda.kernels import (
         create_encode_kernel,
         create_read_acc_lut_kernel,
+        READ_ACC_LUT_KERNEL_SPLIT_FACTOR,
     )
     from halutmatmul.cuda.functions import (
         run_encode_kernel,
@@ -22,12 +23,12 @@ try:
     )
 
     def encode_helper(
-        N: int, K: int, M: int, C: int, a: float, b: float, device: torch.device
+        N: int, D: int, M: int, C: int, a: float, b: float, device: torch.device
     ) -> None:
         print("========TEST========")
-        print(f"params: ({N},{K},{M}), C: {C}, dev: {device}")
-        A = (np.random.random((N, K)) + b) * a
-        B = (np.random.random((K, M)) + b) * a
+        print(f"params: ({N},{D},{M}), C: {C}, dev: {device}")
+        A = (np.random.random((N, D)) + b) * a
+        B = (np.random.random((D, M)) + b) * a
         store_array = hm.learn_halut_offline(
             A,
             B,
@@ -37,7 +38,7 @@ try:
             run_optimized=True,
         )
 
-        A_2_numpy = (np.random.random((N, K)) + b) * a
+        A_2_numpy = (np.random.random((N, D)) + b) * a
 
         res_opt = hm.maddness_encode_opt(
             A_2_numpy, store_array[hm.HalutOfflineStorage.HASH_TABLES]
@@ -58,7 +59,7 @@ try:
 
         halut_encode_kernel = create_encode_kernel(C, num_splits, info_offset)
         torch_result = run_encode_kernel(
-            kernel=halut_encode_kernel, N=N, K=K, A=A_2, hash_info=hash_info, C=C
+            kernel=halut_encode_kernel, N=N, D=D, A=A_2, hash_info=hash_info, C=C
         )
 
         numpy_result = torch_result.detach().cpu().numpy()
@@ -85,7 +86,7 @@ try:
             start_gpu = cp.cuda.Event()
             end_gpu = cp.cuda.Event()
             start_gpu.record()
-            _ = run_encode_kernel(halut_encode_kernel, N, K, A_2, hash_info, C)
+            _ = run_encode_kernel(halut_encode_kernel, N, D, A_2, hash_info, C)
             end_gpu.record()
             end_gpu.synchronize()
             t_gpu = cp.cuda.get_elapsed_time(start_gpu, end_gpu)
@@ -101,12 +102,19 @@ try:
         )
 
     def read_acc_lut_helper(
-        N: int, K: int, M: int, C: int, a: float, b: float, device: torch.device
+        N: int,
+        D: int,
+        M: int,
+        C: int,
+        a: float,
+        b: float,
+        device: torch.device,
+        K: int = 16,
     ) -> None:
         print("========TEST========")
-        print(f"params: ({N},{K},{M}), C: {C}, dev: {device}")
-        A = (np.random.random((N, K)) + b) * a
-        B = (np.random.random((K, M)) + b) * a
+        print(f"params: ({N},{D},{M}), C: {C}, dev: {device}")
+        A = (np.random.random((N, D)) + b) * a
+        B = (np.random.random((D, M)) + b) * a
         store_array = hm.learn_halut_offline(
             A,
             B,
@@ -116,25 +124,27 @@ try:
             run_optimized=True,
         )
 
-        A_2_numpy = (np.random.random((N, K)) + b) * a
+        A_2_numpy = (np.random.random((N, D)) + b) * a
         # new_halut = HalutMatmul().from_numpy(store_array)
         # res_expected = new_halut.matmul_online(A_2_numpy)
         A_enc_numpy = hm.maddness_encode_opt(
             A_2_numpy, store_array[HalutOfflineStorage.HASH_TABLES]
         )
-        offsets = np.arange(C, dtype=np.int32) * 16
+        offsets = np.arange(C, dtype=np.int32) * K
         A_enc_numpy = A_enc_numpy + offsets
         A_enc = torch.from_numpy(A_enc_numpy.astype(np.int32)).to(device)
         lut = torch.from_numpy(
             store_array[HalutOfflineStorage.LUT].astype(np.float32)
         ).to(device)
 
-        rows_per_block = calc_rows_per_block_read_acc_lut_kernel(8, C, 16)
+        rows_per_block = calc_rows_per_block_read_acc_lut_kernel(
+            READ_ACC_LUT_KERNEL_SPLIT_FACTOR, C, K
+        )
         halut_read_acc_lut_kernel = create_read_acc_lut_kernel(
-            C, K=16, blocks=8, rows=rows_per_block
+            C, K=K, blocks=8, rows=rows_per_block
         )
         torch_result = run_read_acc_lut_kernel(
-            kernel=halut_read_acc_lut_kernel, N=N, M=M, lut=lut, A_enc=A_enc, C=C, K=16
+            kernel=halut_read_acc_lut_kernel, N=N, M=M, lut=lut, A_enc=A_enc, C=C, K=K
         )
 
         numpy_result = torch_result.detach().cpu().numpy()
@@ -173,7 +183,7 @@ try:
             end_gpu = cp.cuda.Event()
             start_gpu.record()
             _ = run_read_acc_lut_kernel(
-                halut_read_acc_lut_kernel, N=N, M=M, lut=lut, A_enc=A_enc, C=C, K=16
+                halut_read_acc_lut_kernel, N=N, M=M, lut=lut, A_enc=A_enc, C=C, K=K
             )
             end_gpu.record()
             end_gpu.synchronize()
@@ -202,7 +212,7 @@ try:
         ],
     )
     def untest_encode_kernel(
-        N: int, K: int, M: int, C: int, a: float, b: float
+        N: int, D: int, M: int, C: int, a: float, b: float
     ) -> None:
         device_id = 1
         if not torch.cuda.is_available():
@@ -213,14 +223,14 @@ try:
             "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
         )
 
-        encode_helper(N, K, M, C, a, b, device)
+        encode_helper(N, D, M, C, a, b, device)
 
     @pytest.mark.parametrize(
-        "N, K, M, C, a, b",
+        "N, D, M, C, a, b",
         [
-            (N, K, M, C, a, b)
+            (N, D, M, C, a, b)
             for N in [20000, 200000, 1000000]
-            for K in [64, 256]
+            for D in [64, 256]
             for M in [64, 128]
             for C in [16, 32, 64]
             for a in [1.0]
@@ -228,7 +238,7 @@ try:
         ],
     )
     def test_read_acc_lut_kernel(
-        N: int, K: int, M: int, C: int, a: float, b: float
+        N: int, D: int, M: int, C: int, a: float, b: float
     ) -> None:
         device_id = 1
         if not torch.cuda.is_available():
@@ -238,7 +248,8 @@ try:
         device = torch.device(
             "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
         )
-        read_acc_lut_helper(N, K, M, C, a, b, device)
+        read_acc_lut_helper(N, D, M, C, a, b, device)
 
-except ImportError:
+except ImportError as e:
+    print(e)
     print("not supported without GPU")
