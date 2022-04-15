@@ -21,7 +21,7 @@ def conv2d_helper_gpu(
     C: int = 16,
     a: float = 1.0,
     b: float = 0.0,
-    rel_error: float = 0.3,
+    rel_error: float = 0.4,
 ) -> None:
     torch.manual_seed(4419)
 

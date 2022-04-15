@@ -62,7 +62,7 @@ def halut_helper(
         model,
         state_dict,
         imagenet_val,
-        batch_size_inference=128,
+        batch_size_inference=112,
         batch_size_store=batch_size_store,
         data_path=halut_data_path,
         device=device,

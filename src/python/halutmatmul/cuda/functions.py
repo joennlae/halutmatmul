@@ -339,8 +339,6 @@ def halut_conv2d_gpu(
     )
     tensor_weights = weights_cupy.reshape((groups, rcout, cin, height, width))
 
-    ret = cp.zeros((batch_size, groups, out_y, out_x, rcout), dtype=input_cupy.dtype)
-
     if return_reshaped_inputs:
         (_, _, newshape_a, newshape_b, _, _,) = calc_newaxes_and_newshape_and_old_cp(
             input_cupy_im2col[:, 0], tensor_weights[0], ((1, 4, 5), (1, 2, 3))
@@ -362,18 +360,33 @@ def halut_conv2d_gpu(
             input_b[g] += input_b_temp
         return (torch.from_dlpack(input_a[0]), torch.from_dlpack(input_b[0]))
     else:
-        for g in range(groups):
-            ret[:, g] += tensordot_gpu(
-                input_cupy_im2col[:, g],
-                tensor_weights[g],
+        if groups == 1:
+            ret = tensordot_gpu(
+                input_cupy_im2col[:, 0],
+                tensor_weights[0],
                 ((1, 4, 5), (1, 2, 3)),
                 encode_kernel=encode_kernel,
                 read_acc_lut_kernel=read_acc_lut_kernel,
                 L=L_cupy,
                 H=H_cupy,
             )
+            ret = cp.moveaxis(ret, 3, 1).reshape(batch_size, cout, out_y, out_x)
+        else:
+            ret = cp.zeros(
+                (batch_size, groups, out_y, out_x, rcout), dtype=input_cupy.dtype
+            )
+            for g in range(groups):
+                ret[:, g] += tensordot_gpu(
+                    input_cupy_im2col[:, g],
+                    tensor_weights[g],
+                    ((1, 4, 5), (1, 2, 3)),
+                    encode_kernel=encode_kernel,
+                    read_acc_lut_kernel=read_acc_lut_kernel,
+                    L=L_cupy,
+                    H=H_cupy,
+                )
 
-    ret = cp.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
+            ret = cp.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
 
     if bias is not None:
         bias = cp.broadcast_to(
