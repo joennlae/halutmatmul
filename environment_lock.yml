@@ -13,8 +13,8 @@ dependencies:
   - black=22.3.0=pyhd8ed1ab_0
   - blas=1.0=mkl
   - bzip2=1.0.8=hb9a14ef_9
-  - ca-certificates=2021.10.26=h06a4308_2
-  - certifi=2021.10.8=py39h06a4308_0
+  - ca-certificates=2022.3.29=h06a4308_0
+  - certifi=2021.10.8=py39h06a4308_2
   - cffi=1.14.6=py39h400218f_0
   - cfgv=3.3.1=pyhd8ed1ab_0
   - chardet=4.0.0=py39h06a4308_1003
@@ -79,7 +79,7 @@ dependencies:
   - numpy-base=1.21.2=py39h40791c5_7
   - olefile=0.46=pyhd3eb1b0_0
   - openh264=2.1.0=hd408876_0
-  - openssl=1.1.1n=h166bdaf_0
+  - openssl=1.1.1n=h7f8727e_0
   - packaging=21.0=py39h1546d3d_4
   - pathspec=0.9.0=pyhd8ed1ab_0
   - pillow=8.4.0=py39h5aabda8_0
