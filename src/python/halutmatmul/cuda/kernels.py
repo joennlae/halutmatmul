@@ -5,6 +5,8 @@ import cupy as cp  # type: ignore[import]
 
 import halutmatmul.halutmatmul as hm
 
+READ_ACC_LUT_KERNEL_SPLIT_FACTOR = 8
+
 
 def create_encode_kernel(
     C: int = 16, num_splits: int = 4, info_offset: int = 8
