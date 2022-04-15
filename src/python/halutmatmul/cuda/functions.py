@@ -1,10 +1,9 @@
 import cupy as cp  # type: ignore[import]
 import torch
 
-from halutmatmul.cuda.kernels import READ_ACC_LUT_KERNEL_SPLIT_FACTOR
-
 MAX_THREADS = 1024
 SHARED_MEM_PER_BLOCK = 49152
+READ_ACC_LUT_KERNEL_SPLIT_FACTOR = 8
 
 
 def run_encode_kernel(
@@ -66,6 +65,53 @@ def run_read_acc_lut_kernel(
         block_dim,
         (cupy_lut, cupy_A_enc, result, N, M),
         # shared_mem=4 * (8 + 3) * C * 4,
+    )
+    torch_res = torch.from_dlpack(result)
+    return torch_res
+
+
+def halutmatmul_gpu(
+    encode_kernel: cp.RawKernel,
+    read_acc_lut_kernel: cp.RawKernel,
+    A: torch.Tensor,
+    L: torch.Tensor,
+    H: torch.Tensor,
+) -> torch.Tensor:
+    N = A.shape[0]
+    D = A.shape[1]
+    M = L.shape[0]
+    C = L.shape[1]
+    K = L.shape[2]
+
+    # encode
+    rows_per_block_encode = 64 // (C // 16)
+    blocks = N // rows_per_block_encode + (1 if N % rows_per_block_encode else 0)
+    block_dim_encode = (rows_per_block_encode, C)
+    encoded = cp.zeros((N, C), dtype=cp.int32)
+    cupy_A = cp.ascontiguousarray(cp.from_dlpack(A.detach()))
+    cupy_hash_info = cp.ascontiguousarray(cp.from_dlpack(H.detach()))
+    encode_kernel(
+        (blocks,),
+        block_dim_encode,
+        (cupy_A, cupy_hash_info, encoded, N, D, N * D),
+    )
+
+    # read accumulate LUTs
+    split_factor = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
+    rows_per_block_ral = calc_rows_per_block_read_acc_lut_kernel(split_factor, C, K)
+    block_dim_ral = (rows_per_block_ral, split_factor)
+    blocks_x = N // rows_per_block_ral + (1 if N % rows_per_block_ral else 0)
+    blocks_y = M // split_factor + (1 if M % split_factor else 0)
+    grid_dim = (blocks_x, blocks_y)
+    result = cp.zeros((N, M), dtype=cp.float32)
+    cupy_lut = cp.ascontiguousarray(cp.from_dlpack(L.detach()))
+
+    used_shared_mem = rows_per_block_ral * C * 4 + C * K * split_factor * 4
+    assert used_shared_mem <= SHARED_MEM_PER_BLOCK
+    read_acc_lut_kernel(
+        grid_dim,
+        block_dim_ral,
+        (cupy_lut, encoded, result, N, M),
     )
     torch_res = torch.from_dlpack(result)
     return torch_res

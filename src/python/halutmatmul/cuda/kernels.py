@@ -2,10 +2,12 @@ import os
 import re
 from pathlib import Path
 import cupy as cp  # type: ignore[import]
+import numpy as np
 
-import halutmatmul.halutmatmul as hm
-
-READ_ACC_LUT_KERNEL_SPLIT_FACTOR = 8
+from halutmatmul.cuda.functions import (
+    READ_ACC_LUT_KERNEL_SPLIT_FACTOR,
+    calc_rows_per_block_read_acc_lut_kernel,
+)
 
 
 def create_encode_kernel(
@@ -80,3 +82,18 @@ def create_read_acc_lut_kernel(
             "halut_read_acc_lut",
         )
         return halut_read_acc_lut_kernel
+
+
+def create_kernels_halutmatmul(
+    C: int = 16, K: int = 16
+) -> tuple[cp.RawKernel, cp.RawKernel]:
+    # encode kernel
+    num_splits = int(np.log2(K))
+    info_offset = K // 2
+    encode_kernel = create_encode_kernel(C, num_splits, info_offset)
+
+    # read accumulate lut kernel
+    blocks = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
+    rows = calc_rows_per_block_read_acc_lut_kernel(blocks, C, K)
+    read_acc_lut_kernel = create_read_acc_lut_kernel(C, K, blocks, rows)
+    return (encode_kernel, read_acc_lut_kernel)
