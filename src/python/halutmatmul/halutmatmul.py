@@ -421,8 +421,8 @@ class HalutMatmul:
         splits = split_lists_to_numpy(self.splits_lists)
         store_array = np.array(
             [
-                splits,
-                self.luts,
+                splits.astype(np.float32),
+                self.luts.astype(np.float32),
                 np.array(
                     [
                         self.offset,

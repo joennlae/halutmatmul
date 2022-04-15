@@ -147,13 +147,17 @@ class HalutHelper:
                     k + ".halut_active": torch.ones(1, dtype=torch.bool),
                     k
                     + ".hash_buckets": torch.from_numpy(
-                        store_array[hm.HalutOfflineStorage.HASH_TABLES]
+                        store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(
+                            np.float32
+                        )
                     ),
                     k
-                    + ".lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
+                    + ".lut": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.LUT].astype(np.float32)
+                    ),
                     k
                     + ".halut_config": torch.from_numpy(
-                        store_array[hm.HalutOfflineStorage.CONFIG]
+                        store_array[hm.HalutOfflineStorage.CONFIG].astype(np.float32)
                     ),
                 }
             )
