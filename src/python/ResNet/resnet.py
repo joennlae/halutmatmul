@@ -201,22 +201,55 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
 
     # pylint: disable=W0212
-    def write_inputs_to_disk(self, path: str = ".data/") -> None:
+    def write_inputs_to_disk(
+        self,
+        batch_size: int,
+        iteration: int,
+        total_iterations: int,
+        path: str = ".data/",
+    ) -> None:
         def store(module: nn.Module, prefix: str = "") -> None:
             if hasattr(module, "store_input"):
                 if module.store_input:
-                    assert hasattr(module, "input_storage_a") and hasattr(
+                    assert hasattr(module, "input_storage_a") or hasattr(
                         module, "input_storage_b"
                     )
-                    print("store inputs for module", prefix + module._get_name())
-                    np_array_a = (
-                        module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
-                    )
-                    np.save(path + "/" + prefix[:-1] + END_STORE_A, np_array_a)
-                    np_array_b = (
-                        module.input_storage_b.detach().cpu().numpy()  # type: ignore[operator]
-                    )
-                    np.save(path + "/" + prefix[:-1] + END_STORE_B, np_array_b)
+                    if hasattr(module, "input_storage_a"):
+                        print(
+                            "store inputs for module",
+                            prefix + module._get_name(),
+                            module.input_storage_a.shape,
+                            module.input_storage_a.shape[0]  # type: ignore[index]
+                            * module.input_storage_a.shape[1]  # type: ignore[index]
+                            * 4
+                            / (1024 * 1024 * 1024),
+                            " GB",
+                        )
+                        np_array_a = (
+                            module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
+                        )
+                        np.save(
+                            path
+                            + "/"
+                            + prefix[:-1]
+                            + f"_{str(batch_size)}_{str(iteration)}_{str(total_iterations)}"
+                            + END_STORE_A,
+                            np_array_a,
+                        )
+                        module.input_storage_a = None  # type: ignore[assignment]
+                    if hasattr(module, "input_storage_b"):
+                        np_array_b = (
+                            module.input_storage_b.detach().cpu().numpy()  # type: ignore[operator]
+                        )
+                        np.save(
+                            path
+                            + "/"
+                            + prefix[:-1]
+                            + f"_{str(batch_size)}_{str(iteration)}_{str(total_iterations)}"
+                            + END_STORE_B,
+                            np_array_b,
+                        )
+                        module.input_storage_b = None  # type: ignore[assignment]
             for name, child in module._modules.items():
                 if child is not None:
                     store(child, prefix + name + ".")

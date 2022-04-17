@@ -35,14 +35,22 @@ def helper_halut(
     new_halut = hm.HalutMatmul()
     new_halut.from_numpy(store_array)
 
-    time_learning = (
-        timeit.Timer(functools.partial(hm.learn_halut_offline, *[A, B, C])).timeit(5)
-        * 1000
-        / 5
-    )
+    # time_learning = (
+    #     timeit.Timer(functools.partial(hm.learn_halut_offline, *[A, B, C])).timeit(5)
+    #     * 1000
+    #     / 5
+    # )
 
-    print("Time learning: %.2f ms" % (time_learning))
+    # import cProfile
+    # from pstats import SortKey
+    # with cProfile.Profile() as pr:
+    #     hm.learn_halut_offline(A, B, C)
+    #     pr.disable()
+    #     pr.print_stats(sort=SortKey.CUMULATIVE)
+
+    # print("Time learning: %.2f ms" % (time_learning))
     print(new_halut.stats())
+    print(new_halut.get_params())
 
     # accuracy test
     A_2 = (np.random.random((N // 4, K)) + b) * a

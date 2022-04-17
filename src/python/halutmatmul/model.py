@@ -99,7 +99,7 @@ class HalutHelper:
         if keys_to_store:
             self.run_for_input_storage(state_dict_to_store)
 
-    def store_all(self) -> None:
+    def store_all(self, iterations: int = 1) -> None:
         dict_to_add = OrderedDict(
             [
                 (k + ".store_input", torch.ones(1, dtype=torch.bool))
@@ -107,15 +107,15 @@ class HalutHelper:
             ]
         )
         state_dict_to_store = OrderedDict(self.state_dict_base | dict_to_add)
-        self.run_for_input_storage(state_dict_to_store)
+        self.run_for_input_storage(state_dict_to_store, iterations=iterations)
 
     def run_for_input_storage(
-        self, state_dict: "OrderedDict[str, torch.Tensor]"
+        self, state_dict: "OrderedDict[str, torch.Tensor]", iterations: int = 1
     ) -> None:
         loaded_data = DataLoader(
             self.dataset,
             batch_size=self.batch_size_store,
-            num_workers=8,
+            num_workers=16,
             drop_last=False,
             pin_memory=True,
         )
@@ -125,11 +125,20 @@ class HalutHelper:
         with torch.no_grad():
             for n_iter, (image, _) in enumerate(loaded_data):
                 image = image.to(self.device)
-                if n_iter > 1:
-                    continue
+                if n_iter > iterations:
+                    break
+                print(
+                    "iteration for storage: ",
+                    image.shape,
+                    f" {n_iter + 1}/{iterations}",
+                )
                 self.model(image)
-
-        self.model.write_inputs_to_disk(path=self.data_path)  # type: ignore [operator]
+                self.model.write_inputs_to_disk(
+                    batch_size=image.shape[0],
+                    iteration=n_iter,
+                    total_iterations=iterations,
+                    path=self.data_path,  # type: ignore [operator]
+                )
 
     def run_halut_offline_training(self) -> "OrderedDict[str, torch.Tensor]":
         additional_dict: Dict[str, torch.Tensor] = dict([])

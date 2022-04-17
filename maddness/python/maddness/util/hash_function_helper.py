@@ -4,7 +4,7 @@ import numba
 import numpy as np
 
 
-@numba.njit(fastmath=True, cache=True)
+@numba.njit(fastmath=True, cache=True, parallel=False)
 def _cumsse_cols(X):
     # TODO: can be optimized with numpy
     N, D = X.shape
@@ -27,7 +27,9 @@ def _cumsse_cols(X):
 
 # @_memory.cache
 def optimal_split_val(
-    X, dim, X_orig=None,
+    X,
+    dim,
+    X_orig=None,
 ):
 
     X_orig = X if X_orig is None else X_orig

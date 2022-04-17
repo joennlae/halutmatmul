@@ -1,5 +1,5 @@
 # pylint: disable=C0302, C1802, C0209, R1705, W0201
-import os
+import os, resource
 from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 
@@ -121,7 +121,7 @@ def init_and_learn_hash_function(
     K = 16
 
     X = X.astype(np.float32)
-    X_res = X.copy()
+    X_res = X.copy().astype(np.float32)
     X_orig = X
 
     # TODO: stored with height D but could be stored with height of amount of idx as rest is zero!
@@ -160,6 +160,11 @@ def init_and_learn_hash_function(
                 # update centroid here in case we want to regularize it somehow
                 all_prototypes[c, b] = centroid
 
+        ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print(
+            f"Learning progress {X.shape}-{C}-{K}: {c}/{C} "
+            f"({(ram_usage / (1024 * 1024)):.3f} GB)"
+        )
     return X_res, all_splits, all_prototypes, all_buckets
 
 
@@ -177,7 +182,9 @@ def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
     return group_ids
 
 
-def maddness_encode(X: np.ndarray, multisplits_lists: list[list[MultiSplit]]) -> np.ndarray:
+def maddness_encode(
+    X: np.ndarray, multisplits_lists: list[list[MultiSplit]]
+) -> np.ndarray:
     N, _ = X.shape
     C = len(multisplits_lists)
     A_enc = np.empty((N, C), dtype=np.int32, order="F")  # column-major
@@ -378,16 +385,16 @@ class MaddnessMatmul:
         self._set_A(A)
         self._set_B(B)
         return self._calc_matmul(
-            self.A_enc, # type: ignore[arg-type]
-            self.luts, # type: ignore[arg-type]
+            self.A_enc,  # type: ignore[arg-type]
+            self.luts,  # type: ignore[arg-type]
             offset=self.offset,
-            scale=self.scale
+            scale=self.scale,
         )
 
     def matmul_online(self, A: np.ndarray) -> np.ndarray:
         self._set_A(A)
         return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale # type: ignore[arg-type]
+            self.A_enc, self.luts, offset=self.offset, scale=self.scale  # type: ignore[arg-type]
         )
 
     def reset(self) -> None:

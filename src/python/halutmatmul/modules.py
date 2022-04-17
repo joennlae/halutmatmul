@@ -99,13 +99,16 @@ class HalutLinear(Linear):
             )
 
     def check_store_offline(self, _input: Tensor) -> None:
-        if (
-            self.store_input[0]
-            and self.input_storage_a is None
-            and self.input_storage_b is None
-        ):
-            self.input_storage_a = _input.clone()
-            self.input_storage_b = self.weight.clone().transpose(1, 0)
+        if self.store_input[0]:
+            if self.input_storage_a is None and self.input_storage_b is None:
+                self.input_storage_a = _input.clone().cpu().detach()
+                self.input_storage_b = (
+                    self.weight.clone().cpu().transpose(1, 0).detach()
+                )
+            else:
+                self.input_storage_a = torch.cat(
+                    (self.input_storage_a, _input.clone().cpu()), 0  # type: ignore[arg-type]
+                )
 
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
@@ -360,7 +363,7 @@ class HalutConv2d(_ConvNd):
     ) -> Union[Tensor, tuple[Tensor, Tensor]]:
         assert dilation in (1, (1, 1))
         if "cuda" in str(_input.device):
-            if any(
+            if self.halut_active[0] and any(
                 not hasattr(self, x) for x in ("encode_kernel", "read_acc_lut_kernel")
             ):
                 raise Exception("CUDA kernels not defined or loaded!")
@@ -370,15 +373,22 @@ class HalutConv2d(_ConvNd):
             ret_tensor = halut_conv2d_gpu(
                 _input=_input,
                 weights=weight,
-                encode_kernel=self.encode_kernel,
-                read_acc_lut_kernel=self.read_acc_lut_kernel,
-                L=self.lut,
-                H=self.hash_buckets,
+                encode_kernel=self.encode_kernel if self.halut_active[0] else None,
+                read_acc_lut_kernel=self.read_acc_lut_kernel
+                if self.halut_active[0]
+                else None,
+                L=self.lut
+                if self.halut_active[0]
+                else torch.ones(1).to(str(_input.device)),
+                H=self.hash_buckets
+                if self.halut_active[0]
+                else torch.ones(1).to(str(_input.device)),
                 kernel_size=self.kernel_size,
                 stride=stride,
                 padding=padding,
                 groups=groups,
                 bias=self.bias,
+                return_reshaped_inputs=return_reshaped_inputs,
             )
             if return_reshaped_inputs:
                 return ret_tensor[0], ret_tensor[1]
@@ -408,11 +418,7 @@ class HalutConv2d(_ConvNd):
     def check_store_offline(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
     ) -> None:
-        if (
-            self.store_input[0]
-            and self.input_storage_a is None
-            and self.input_storage_b is None
-        ):
+        if self.store_input[0]:
             (input_a, input_b) = self.conv2d(
                 _input,
                 weight,
@@ -424,8 +430,19 @@ class HalutConv2d(_ConvNd):
                 self.groups,
                 return_reshaped_inputs=True,
             )
-            self.input_storage_a = input_a.clone()
-            self.input_storage_b = input_b.clone()
+            print(
+                "storing input in ram ",
+                input_a.shape,
+                input_a.shape[0] * input_a.shape[1] * 4 / (1024 * 1024 * 1024),
+                " GB",
+            )
+            if self.input_storage_a is None and self.input_storage_b is None:
+                self.input_storage_a = input_a.cpu().detach()
+                self.input_storage_b = input_b.cpu().detach()
+            else:
+                self.input_storage_a = torch.cat(
+                    (self.input_storage_a, input_a.cpu().detach()), 0  # type: ignore[arg-type]
+                )
 
     def _conv_forward(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
