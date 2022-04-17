@@ -120,7 +120,7 @@ def conv2d_helper_gpu(
         for b in [0.0]
     ],
 )
-def test_conv2d_module_gpu(
+def untest_conv2d_module_gpu(
     in_channels: int,
     out_channels: int,
     image_x_y: int,

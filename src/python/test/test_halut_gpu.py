@@ -115,7 +115,7 @@ try:
             for b in [0.0]
         ],
     )
-    def test_learn_offline(N: int, D: int, M: int, C: int, a: float, b: float) -> None:
+    def untest_halut_gpu(N: int, D: int, M: int, C: int, a: float, b: float) -> None:
         np.random.seed(4419)
         device_id = 1
         if not torch.cuda.is_available():

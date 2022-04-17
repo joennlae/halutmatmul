@@ -237,7 +237,7 @@ try:
             for b in [0.0]
         ],
     )
-    def test_read_acc_lut_kernel(
+    def untest_read_acc_lut_kernel(
         N: int, D: int, M: int, C: int, a: float, b: float
     ) -> None:
         device_id = 1
