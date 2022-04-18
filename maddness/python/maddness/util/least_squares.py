@@ -1,13 +1,24 @@
 # type: ignore
 import numba
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn import linear_model
 
 from maddness.util.hash_function_helper import create_codebook_start_end_idxs
 
 
 @numba.njit(fastmath=True, cache=True)
-def _densify_A_enc(A_enc, K=16):
+def sparsify_and_int8_A_enc(A_enc, K=16):
+    """
+    returns X_binary from an encoded Matrix [N, C] vals (0-K)
+    to
+    [[0 0 0 ... 0 0 0]
+     [0 0 1 ... 0 0 0]
+     ...
+     [0 0 0 ... 0 0 0]
+     [0 0 0 ... 1 0 0]
+     [0 0 0 ... 0 0 0]]
+    """
     N, C = A_enc.shape
     D = C * K
     out = np.zeros((N, D), np.int8)
@@ -16,16 +27,29 @@ def _densify_A_enc(A_enc, K=16):
             code_left = A_enc[n, c]
             dim_left = (K * c) + code_left
             out[n, dim_left] = 1
-
     return out
 
 
-def _fit_ridge_enc(A_enc=None, Y=None, K=16, lamda=1, X_bin=None):
-    if X_bin is None:
-        X_bin = _densify_A_enc(A_enc, K=K)
-    est = linear_model.Ridge(fit_intercept=False, alpha=lamda)
-    est.fit(X_bin, Y)
-    return est.coef_.T
+def _fit_ridge_enc(A_enc=None, Y=None, K=16, lamda=1, X_binary=None):
+    """
+    minimize loss of |Y - Xw|^2 + alpha * |w|^2
+    X is binary in our case -> w without entry in X
+    X [N, C * K]
+    Y [N, C]
+    W [D, C * K] -> W.T [C * K, D] later reshaped to
+    [C, K, D] -> prototype dimensons
+    """
+    if X_binary is None:
+        X_binary = sparsify_and_int8_A_enc(A_enc, K=K)
+    print(X_binary.shape, Y.shape)
+    X_binary_sparse = csr_matrix(X_binary)
+    est = linear_model.Ridge(
+        fit_intercept=False, alpha=lamda, solver="auto", copy_X=False
+    )
+    est.fit(X_binary_sparse, Y)
+    w = est.coef_.T
+    print(est.get_params())
+    return w
 
 
 @numba.njit(fastmath=True, cache=True)
@@ -94,7 +118,7 @@ def _XW_encoded(A_enc, W, K=16):
 # equation 8 in paper
 def encoded_lstsq(
     A_enc=None,
-    X_bin=None,
+    X_binary=None,
     Y=None,
     K=16,
     XtX=None,
@@ -103,7 +127,7 @@ def encoded_lstsq(
     stable_ridge=True,
 ):
     if stable_ridge:
-        return _fit_ridge_enc(A_enc=A_enc, Y=Y, X_bin=X_bin, K=K, lamda=1)
+        return _fit_ridge_enc(A_enc=A_enc, Y=Y, X_binary=X_binary, K=K, lamda=1)
 
     if XtX is None:
         XtX = _XtA_encoded(A_enc, K=K).astype(np.float32)
@@ -148,7 +172,7 @@ def _sparse_encoded_lstsq_elim_v2(
     assert nnz_per_centroid >= int(np.ceil(M / number_of_codebooks))
     assert nnz_per_centroid <= M
 
-    X_bin = _densify_A_enc(A_enc, K=K)
+    X_binary = sparsify_and_int8_A_enc(A_enc, K=K)
 
     if not stable_ridge:
         # precompute XtX and XtY and create initial dense W
@@ -174,7 +198,7 @@ def _sparse_encoded_lstsq_elim_v2(
         XtY = XtY * scale
 
         W = encoded_lstsq(
-            X_bin=X_bin,
+            X_binary=X_binary,
             Y=Y,
             XtX=XtX,
             XtY=XtY,
@@ -184,7 +208,7 @@ def _sparse_encoded_lstsq_elim_v2(
 
         XtX = np.asfarray(XtX)  # since we'll be slicing columns
     else:  # stable_ridge is True
-        W = encoded_lstsq(X_bin=X_bin, Y=Y, stable_ridge=stable_ridge)
+        W = encoded_lstsq(X_binary=X_binary, Y=Y, stable_ridge=stable_ridge)
 
     # score all blocks of W
     all_scores = np.empty((number_of_codebooks, M), dtype=np.float32)  # C x M
@@ -271,8 +295,8 @@ def _sparse_encoded_lstsq_elim_v2(
         keep_idxs = np.where(w != 0)[0]
 
         if stable_ridge:
-            X_bin_subs = X_bin[:, keep_idxs]
-            w_subs = _fit_ridge_enc(X_bin=X_bin_subs, Y=Y[:, m])
+            X_binary_subs = X_binary[:, keep_idxs]
+            w_subs = _fit_ridge_enc(X_binary=X_binary_subs, Y=Y[:, m])
         else:
             xty = XtY[:, m]
             use_XtX = XtX[keep_idxs][:, keep_idxs]
@@ -287,6 +311,7 @@ def _sparse_encoded_lstsq_elim_v2(
 
     # print(f"returning {ret_idxs.shape[1]} nonzeros per centroid...")
     return W_sparse, ret_idxs
+
 
 # pylint: disable=R1705
 def sparse_encoded_lstsq(A_enc, Y, K=16, nnz_blocks=-1, **kwargs):

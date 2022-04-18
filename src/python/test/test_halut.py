@@ -50,7 +50,7 @@ def helper_halut(
 
     # print("Time learning: %.2f ms" % (time_learning))
     print(new_halut.stats())
-    print(new_halut.get_params())
+    # print(new_halut.get_params())
 
     # accuracy test
     A_2 = (np.random.random((N // 4, K)) + b) * a

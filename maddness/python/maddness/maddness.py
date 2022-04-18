@@ -121,10 +121,9 @@ def init_and_learn_hash_function(
     K = 16
 
     X = X.astype(np.float32)
-    X_res = X.copy().astype(np.float32)
+    X_error = X.copy().astype(np.float32)
     X_orig = X
 
-    # TODO: stored with height D but could be stored with height of amount of idx as rest is zero!
     all_prototypes = np.zeros((C, K, D), dtype=np.float32)
     all_splits: List = []
     pq_idxs = create_codebook_start_end_idxs(X, C, algo=pq_perm_algo)
@@ -137,12 +136,12 @@ def init_and_learn_hash_function(
         idxs = np.arange(start_idx, end_idx)
         # in original code there is other selections based on PCA and disjoint PCA
 
-        use_X_res = X_res[:, idxs]
+        use_X_error = X_error[:, idxs]
         use_X_orig = X_orig[:, idxs]
 
         # learn codebook to soak current residuals
         multisplits, _, buckets = learn_binary_tree_splits(
-            use_X_res, X_orig=use_X_orig, return_prototypes=False, return_buckets=True
+            use_X_error, X_orig=use_X_orig, return_prototypes=False, return_buckets=True
         )
 
         for split in multisplits:
@@ -151,21 +150,29 @@ def init_and_learn_hash_function(
         all_buckets.append(buckets)
 
         # update residuals and store prototypes
+        # idxs = IDs that were look at for current codebook
+        # buck.point_ids = rows that landed in certain K
+        #   [    0     5    21 ... 99950 99979 99999] (N=100000)
+        # X_error = is here still the A input
+        # remove centroid from all the points that lie in a certain codebook
+        # set prototype value
         centroid = np.zeros(D, dtype=np.float32)
         for b, buck in enumerate(buckets):
+            # print(b, idxs, buck.point_ids, centroid, buck.col_means())
             if len(buck.point_ids):
                 centroid[:] = 0
                 centroid[idxs] = buck.col_means()
-                X_res[buck.point_ids] -= centroid
+                X_error[buck.point_ids] -= centroid
                 # update centroid here in case we want to regularize it somehow
                 all_prototypes[c, b] = centroid
 
+        # X_error = A_input - all_centroids
         ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         print(
-            f"Learning progress {X.shape}-{C}-{K}: {c}/{C} "
+            f"Learning progress {X.shape}-{C}-{K}: {c + 1}/{C} "
             f"({(ram_usage / (1024 * 1024)):.3f} GB)"
         )
-    return X_res, all_splits, all_prototypes, all_buckets
+    return X_error, all_splits, all_prototypes, all_buckets
 
 
 def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
@@ -200,18 +207,19 @@ def learn_proto_and_hash_function(
     _, D = X.shape
     K = 16
     used_perm_algo = "start"  # or end
-    # X_orig = X.astype(np.float32)
+    X_orig = X.astype(np.float32)
 
-    X_res, all_splits, all_prototypes, _ = init_and_learn_hash_function(
+    # X_error = X_orig - centroid shape: [N, D]
+    X_error, all_splits, all_prototypes, _ = init_and_learn_hash_function(
         X, C, pq_perm_algo=used_perm_algo
     )
 
-    # mse_orig = (X_orig * X_orig).mean()
-    # mse0 = (X_res * X_res).mean()
-    # print("X_res mse / X mse: ", mse0 / mse_orig)
+    mse_orig = (X_orig * X_orig).mean()
+    mse0 = (X_error * X_error).mean()
+    print("X_error mse / X mse: ", mse0 / mse_orig)
 
-    # mse = np.square(X_orig - X_res).mean()
-    # print("mse", mse)
+    mse = np.square(X_orig - X_error).mean()
+    print("mse", mse)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
     A_enc = maddness_encode(X, all_splits)
@@ -219,21 +227,26 @@ def learn_proto_and_hash_function(
     # optimizing prototypes
     if lut_work_const != 1:  # if it's 1, equivalent to just doing PQ
         if lut_work_const < 0:
-            # print("fitting dense lstsq to X_res")
-            W = encoded_lstsq(A_enc=A_enc, Y=X_res)
+            # print("fitting dense lstsq to X_error")
+            W = encoded_lstsq(A_enc=A_enc, Y=X_error)
         else:
             W, _ = sparse_encoded_lstsq(
-                A_enc, X_res, nnz_blocks=lut_work_const, pq_perm_algo=used_perm_algo
+                A_enc, X_error, nnz_blocks=lut_work_const, pq_perm_algo=used_perm_algo
             )
 
         all_prototypes_delta = W.reshape(C, K, D)
         all_prototypes += all_prototypes_delta
 
         # check how much improvement we got
-        X_res -= _XW_encoded(A_enc, W)  # if we fit to X_res
-        # mse_res = (X_res * X_res).mean()
-        # print("X_res mse / X mse after lstsq: ", mse_res / mse_orig)
+        X_error -= _XW_encoded(A_enc, W)  # if we fit to X_error
+        mse_res = (X_error * X_error).mean()
+        print("X_error mse / X mse after lstsq: ", mse_res / mse_orig)
 
+    ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print(
+        f"After Ridge regression {X.shape}-{C}-{K}"
+        f"({(ram_usage / (1024 * 1024)):.3f} GB)"
+    )
     return all_splits, all_prototypes
 
 
