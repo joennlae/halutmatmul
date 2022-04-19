@@ -1,5 +1,8 @@
+import glob
 import os
 from math import ceil
+import re
+from typing import Callable
 from timeit import default_timer as timer
 from multiprocessing import Process, JoinableQueue
 import numpy as np
@@ -29,11 +32,16 @@ def learn_halut(
     r: int,
     data_path: str,
     batch_size: int,
-    iterations: int,
     store_path: str,
     K: int = 16,
 ) -> None:
     print("start learning", l, C, r)
+    print(os.environ)
+    files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
+    files = [x.split("/")[-1] for x in files]
+    assert len(files) == 1
+    configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
+    iterations = int(configs_reg[2])
     a_numpy = np.load(data_path + f"/{l}_{batch_size}_{0}_{iterations}" + END_STORE_A)
     files_to_load = ceil(r / batch_size)
     rows_per_batch = a_numpy.shape[0]
@@ -69,16 +77,22 @@ def learn_halut(
     )
     halut_numpy = hm.learn_halut_offline(a_numpy, b_numpy, C)
     print(f"Store in {save_path}: {halut_numpy.nbytes / (1024 * 1024)} MB")
+    _exists = os.path.exists(store_path)
+    if not _exists:
+        os.makedirs(store_path)
+        print(f"created directory {store_path}")
     np.save(save_path, halut_numpy)
 
 
-def worker(name: str, queue: JoinableQueue) -> None:
+def worker(name: str, queue: JoinableQueue, func: Callable) -> None:
     while True:
         params = queue.get()
         print(f"{name}, start: {params}")
         start = timer()
-        learn_halut(*(params))
-        # Notify the queue that the "work item" has been processed.
+        try:
+            func(*(params))
+        except Exception as e:
+            print("EXCEPTION: ", e)
         queue.task_done()
         end = timer()
         print(f"{name}, end: {params}")
@@ -91,26 +105,22 @@ def learn_halut_multi_core(
     rows: list[int],
     data_path: str,
     batch_size: int,
-    iterations: int,
     store_path: str,
 ) -> None:
-    WORKERS = 12
+    WORKERS = 2
     queue: JoinableQueue = JoinableQueue()
 
     for l in layers_to_learn:
         for C in C_all:
             for r in rows:
-                params = (l, C, r, data_path, batch_size, iterations, store_path)
+                params = (l, C, r, data_path, batch_size, store_path)
                 queue.put_nowait(params)
 
     processes: list[Process] = []
     for i in range(WORKERS):
         process = Process(
             target=worker,
-            args=(
-                f"worker-{i}",
-                queue,
-            ),
+            args=(f"worker-{i}", queue, learn_halut),
         )
         process.daemon = True
         process.start()
@@ -122,3 +132,58 @@ def learn_halut_multi_core(
         process.kill()
 
     print("====")
+
+
+class LearnDictInfo:
+    C = 0
+    ROWS = 1
+
+
+def learn_halut_multi_core_dict(
+    dict_to_learn: dict[str, list[int]],
+    data_path: str,
+    batch_size: int,
+    store_path: str,
+    amount_of_workers: int = 1,
+) -> None:
+
+    if amount_of_workers > 1:
+        print(
+            "WARNING: will set to amount_of_workers=1 as there is a "
+            "multiprocessing bug in cpython with np.multiply."
+        )
+        amount_of_workers = 1
+
+    WORKERS = amount_of_workers
+    queue: JoinableQueue = JoinableQueue()
+
+    for k, v in dict_to_learn.items():
+        params = (
+            k,
+            v[LearnDictInfo.C],
+            v[LearnDictInfo.ROWS],
+            data_path,
+            batch_size,
+            store_path,
+        )
+        if amount_of_workers == 1:
+            learn_halut(*(params))
+        else:
+            queue.put_nowait(params)
+
+    processes: list[Process] = []
+    for i in range(WORKERS):
+        process = Process(
+            target=worker,
+            args=(f"worker-{i}", queue, learn_halut),
+        )
+        process.daemon = True
+        process.start()
+        processes.append(process)
+
+    queue.join()
+
+    for process in processes:
+        process.kill()
+
+    print("==== FINISHED LEARNING (exited all tasks) =======")

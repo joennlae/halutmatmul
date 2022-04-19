@@ -64,10 +64,16 @@ def test_cifar10_inference() -> None:
         )
 
         halut_model = HalutHelper(
-            model, state_dict, cifar_10_val, data_path=tmpdirname + "/.data"
+            model,
+            state_dict,
+            cifar_10_val,
+            data_path=tmpdirname + "/.data",
+            learned_path=tmpdirname + "/.data/learned",
+            workers_offline_training=2,
         )
         halut_model.print_available_module()
-        halut_model.activate_halut_module("fc", 16)
-        halut_model.activate_halut_module("layer4.2.conv3", 16)
+        halut_model.activate_halut_module("fc", 16, 10000)
+        halut_model.activate_halut_module("layer4.2.conv3", 16, 10000)
         accuracy = halut_model.run_inference()
-        assert accuracy >= 0.9333
+        accuracy = halut_model.run_inference()  # check if stored used
+        assert accuracy >= 0.9318

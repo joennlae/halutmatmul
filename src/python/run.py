@@ -61,8 +61,8 @@ def cifar_inference() -> None:
 
     halut_model = HalutHelper(model, state_dict, cifar_10_val)
     halut_model.print_available_module()
-    halut_model.activate_halut_module("fc", 16)
-    halut_model.activate_halut_module("layer4.2.conv3", 16)
+    halut_model.activate_halut_module("fc", 16, 10000)
+    halut_model.activate_halut_module("layer4.2.conv3", 16, 10000)
     halut_model.run_inference()
 
 
@@ -133,7 +133,6 @@ def learn_halut_from_offline_data(
         rows=rows,
         data_path=data_path,
         batch_size=batch_size,
-        iterations=iterations,
         store_path=path,
     )
 

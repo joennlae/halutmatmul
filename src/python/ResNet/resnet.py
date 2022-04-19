@@ -207,8 +207,15 @@ class ResNet(nn.Module):
         iteration: int,
         total_iterations: int,
         path: str = ".data/",
+        additional_dict: Optional[dict[str, int]] = None,
     ) -> None:
         def store(module: nn.Module, prefix: str = "") -> None:
+            if (
+                additional_dict is not None
+                and prefix[:-1] in additional_dict
+                and iteration > additional_dict[prefix[:-1]]
+            ):
+                return  # do not store to much
             if hasattr(module, "store_input"):
                 if module.store_input:
                     assert hasattr(module, "input_storage_a") or hasattr(
@@ -237,7 +244,7 @@ class ResNet(nn.Module):
                             np_array_a,
                         )
                         module.input_storage_a = None  # type: ignore[assignment]
-                    if hasattr(module, "input_storage_b"):
+                    if hasattr(module, "input_storage_b") and iteration == 0:
                         np_array_b = (
                             module.input_storage_b.detach().cpu().numpy()  # type: ignore[operator]
                         )
@@ -249,7 +256,7 @@ class ResNet(nn.Module):
                             + END_STORE_B,
                             np_array_b,
                         )
-                        module.input_storage_b = None  # type: ignore[assignment]
+                    module.input_storage_b = None  # type: ignore[assignment]
             for name, child in module._modules.items():
                 if child is not None:
                     store(child, prefix + name + ".")

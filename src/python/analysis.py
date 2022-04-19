@@ -70,7 +70,7 @@ def halut_helper(
     halut_model.print_available_module()
     for k, v in halut_modules.items():
         print("activate", k, v)
-        halut_model.activate_halut_module(k, v)
+        halut_model.activate_halut_module(k, v, 256)
     halut_model.run_inference()
     print(halut_model.get_stats())
     return halut_model.get_stats()

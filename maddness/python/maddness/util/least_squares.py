@@ -42,11 +42,11 @@ def _fit_ridge_enc(A_enc=None, Y=None, K=16, lamda=1, X_binary=None):
     if X_binary is None:
         X_binary = sparsify_and_int8_A_enc(A_enc, K=K)
     print(X_binary.shape, Y.shape)
-    X_binary_sparse = csr_matrix(X_binary)
+    # X_binary_sparse = csr_matrix(X_binary) # will change solver from cholesky to sparse_cg
     est = linear_model.Ridge(
         fit_intercept=False, alpha=lamda, solver="auto", copy_X=False
     )
-    est.fit(X_binary_sparse, Y)
+    est.fit(X_binary, Y)
     w = est.coef_.T
     print(est.get_params())
     return w

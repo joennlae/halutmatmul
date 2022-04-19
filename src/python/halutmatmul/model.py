@@ -1,20 +1,28 @@
 # pylint: disable=C0209
-import json
+import glob, re, json
+from math import ceil
 from pathlib import Path
 from collections import OrderedDict
-from typing import Any, Dict, TypeVar
+from typing import Any, Dict, Literal, Optional, TypeVar, Union
 from timeit import default_timer as timer
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from ResNet.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
+from halutmatmul.learn import learn_halut_multi_core_dict
 
 T_co = TypeVar("T_co", covariant=True)
 
 DEFAULT_BATCH_SIZE_OFFLINE = 512
 DEFAULT_BATCH_SIZE_INFERENCE = 128
-DATA_PATH = "/scratch1/janniss/data"
+DATA_PATH = "/scratch2/janniss/resnet_input_data"
+
+
+class HalutModuleConfig:
+    C = 0
+    ROWS = 1
+    K = 2
 
 
 def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
@@ -31,6 +39,33 @@ def check_file_exists(path: str) -> bool:
     return file_path.is_file()
 
 
+def check_file_exists_and_return_path(
+    base_path: str,
+    layers_name: str,
+    _type: Union[Literal["input"], Literal["learned"]],
+    C: int = 16,
+    rows: int = 256,
+    # K: int = 16,
+) -> list[str]:
+    files = glob.glob(base_path + "/*.npy")
+    files_res = []
+    if _type == "input":
+        regex_a = rf"{layers_name}.+_0_.+{END_STORE_A}"
+        regex_b = rf"{layers_name}.+_0_.+{END_STORE_B}"
+        pattern_a = re.compile(regex_a)
+        pattern_b = re.compile(regex_b)
+        files_a = [x for x in files if pattern_a.search(x)]
+        files_b = [x for x in files if pattern_b.search(x)]
+        files_res = files_a + files_b
+        assert len(files_res) == 0 or len(files_res) == 2
+    elif _type == "learned":
+        regex = rf"{layers_name}_{C}_{rows}.+\.npy"
+        pattern = re.compile(regex)
+        files_res = [x for x in files if pattern.search(x)]
+        assert len(files_res) == 0 or len(files_res) == 1
+    return files_res
+
+
 class HalutHelper:
     def __init__(
         self,
@@ -40,7 +75,9 @@ class HalutHelper:
         data_path: str = DATA_PATH,
         batch_size_store: int = DEFAULT_BATCH_SIZE_OFFLINE,
         batch_size_inference: int = DEFAULT_BATCH_SIZE_INFERENCE,
+        learned_path: str = DATA_PATH + "/learned/",
         device: torch.device = torch.device("cpu"),
+        workers_offline_training: int = 1,
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -48,19 +85,21 @@ class HalutHelper:
         self.batch_size_inference = batch_size_inference
         self.state_dict_base = state_dict
         self.editable_keys = editable_prefixes(state_dict)
-        self.halut_modules: Dict[str, int] = dict([])
+        self.learned_path = learned_path
+        self.halut_modules: Dict[str, list[int]] = dict([])
         self.data_path = data_path
         self.device = device
         self.stats: Dict[str, Any] = dict([])
+        self.workers_offline_training = workers_offline_training
 
-    def activate_halut_module(self, name: str, C: int) -> None:
+    def activate_halut_module(self, name: str, C: int, rows: int, K: int = 16) -> None:
         if name not in self.editable_keys:
             raise Exception(f"module {name} not in model")
 
         if name in self.halut_modules.keys():
             print(f"overwrite halut layer {name}")
 
-        self.halut_modules |= dict({name: C})
+        self.halut_modules |= dict({name: [C, rows, K]})
 
     def deactivate_halut_module(self, name: str) -> None:
         if name not in self.halut_modules.keys():
@@ -78,26 +117,25 @@ class HalutHelper:
             ret += f"\n{k}: C: {v}, {self.state_dict_base[k + '.weight'].shape}"
         return ret
 
-    def store_inputs(self) -> None:
-        keys_to_store = list(
-            filter(
-                lambda k: any(
-                    not check_file_exists(self.data_path + "/" + k + e)
-                    for e in (END_STORE_A, END_STORE_B)
-                ),
-                self.halut_modules.keys(),
-            )
-        )
-        print("keys to store", keys_to_store)
+    def store_inputs(self, dict_to_store: dict[str, int]) -> None:
+        print("keys to store", dict_to_store)
+        max_iterations = 1
+        for _, v in dict_to_store.items():
+            if v > max_iterations:
+                max_iterations = v
         dict_to_add = OrderedDict(
             [
                 (k + ".store_input", torch.ones(1, dtype=torch.bool))
-                for k in keys_to_store
+                for k in dict_to_store.keys()
             ]
         )
         state_dict_to_store = OrderedDict(self.state_dict_base | dict_to_add)
-        if keys_to_store:
-            self.run_for_input_storage(state_dict_to_store)
+        if dict_to_store:
+            self.run_for_input_storage(
+                state_dict_to_store,
+                iterations=max_iterations,
+                additional_dict=dict_to_store,
+            )
 
     def store_all(self, iterations: int = 1) -> None:
         dict_to_add = OrderedDict(
@@ -110,7 +148,10 @@ class HalutHelper:
         self.run_for_input_storage(state_dict_to_store, iterations=iterations)
 
     def run_for_input_storage(
-        self, state_dict: "OrderedDict[str, torch.Tensor]", iterations: int = 1
+        self,
+        state_dict: "OrderedDict[str, torch.Tensor]",
+        iterations: int = 1,
+        additional_dict: Optional[dict[str, int]] = None,
     ) -> None:
         loaded_data = DataLoader(
             self.dataset,
@@ -134,24 +175,76 @@ class HalutHelper:
                 )
                 self.model(image)
                 self.model.write_inputs_to_disk(
-                    batch_size=image.shape[0],
+                    batch_size=self.batch_size_store,
                     iteration=n_iter,
                     total_iterations=iterations,
                     path=self.data_path,  # type: ignore [operator]
+                    additional_dict=additional_dict,
                 )
 
-    def run_halut_offline_training(self) -> "OrderedDict[str, torch.Tensor]":
+    def run_halut_offline_training(self) -> None:
+        dict_to_store: dict[str, int] = dict([])
+        dict_to_learn: dict[str, list[int]] = dict([])
+        for k, args in self.halut_modules.items():
+            learned_files = check_file_exists_and_return_path(
+                self.learned_path,
+                k,
+                "learned",
+                args[HalutModuleConfig.C],
+                args[HalutModuleConfig.ROWS],
+            )
+            if len(learned_files) == 1:
+                continue
+            dict_to_learn[k] = [args[HalutModuleConfig.C], args[HalutModuleConfig.ROWS]]
+            paths = check_file_exists_and_return_path(self.data_path, k, "input")
+            # TODO: doesn't check if enough data is stored
+            if len(paths) != 2:
+                dict_to_store[k] = ceil(
+                    args[HalutModuleConfig.ROWS] / self.batch_size_store
+                )
+        self.store_inputs(dict_to_store)
+        learn_halut_multi_core_dict(
+            dict_to_learn,
+            data_path=self.data_path,
+            batch_size=self.batch_size_store,
+            store_path=self.learned_path,
+            amount_of_workers=self.workers_offline_training,
+        )
+
+    def prepare_state_dict(self) -> "OrderedDict[str, torch.Tensor]":
         additional_dict: Dict[str, torch.Tensor] = dict([])
-        for k, C in self.halut_modules.items():
-            input_a = np.load(self.data_path + "/" + k + END_STORE_A)
-            input_b = np.load(self.data_path + "/" + k + END_STORE_B)
-            print(f"Learn Layer {k}: a: {input_a.shape}, b: {input_b.shape}")
-            self.stats[k + ".input_a_shape"] = input_a.shape
-            self.stats[k + ".input_b_shape"] = input_b.shape
-            start = timer()
-            store_array = hm.learn_halut_offline(input_a, input_b, C)
-            end = timer()
-            self.stats[k + ".halut_learning_time"] = end - start
+        for k, args in self.halut_modules.items():
+            learned_files = check_file_exists_and_return_path(
+                self.learned_path,
+                k,
+                "learned",
+                args[HalutModuleConfig.C],
+                args[HalutModuleConfig.ROWS],
+            )
+            if len(learned_files) == 1:
+                store_array = np.load(learned_files[0], allow_pickle=True)
+                splitted = learned_files[0].split("/")[-1]
+                configs_reg = re.findall(r"(?<=-)(\d+)", splitted)
+                n = int(configs_reg[0])
+                d = int(configs_reg[0])
+                m = store_array[hm.HalutOfflineStorage.LUT].shape[2]
+                print(f"Learn Layer {k}: a: {(n, d)}, b: {(d, m)}")
+                self.stats[k + ".learned_a_shape"] = (n, d)
+                self.stats[k + ".learned_b_shape"] = (d, m)
+                self.stats[k + ".C"] = args[HalutModuleConfig.C]
+                self.stats[k + ".rows"] = args[HalutModuleConfig.ROWS]
+                self.stats[k + ".K"] = args[HalutModuleConfig.K]
+                self.stats[k + ".stored_array_size"] = store_array.nbytes
+                self.stats[k + ".L_size"] = (
+                    store_array[hm.HalutOfflineStorage.LUT].astype(np.float32).nbytes
+                )
+                self.stats[k + ".H_size"] = (
+                    store_array[hm.HalutOfflineStorage.HASH_TABLES]
+                    .astype(np.float32)
+                    .nbytes
+                )
+            else:
+                raise Exception("learned file not found!")
             additional_dict = additional_dict | dict(
                 {
                     k + ".halut_active": torch.ones(1, dtype=torch.bool),
@@ -169,6 +262,7 @@ class HalutHelper:
                     + ".halut_config": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.CONFIG].astype(np.float32)
                     ),
+                    k + ".store_input": torch.zeros(1, dtype=torch.bool),
                 }
             )
         self.stats["halut_layers"] = json.dumps(self.halut_modules)
@@ -178,12 +272,10 @@ class HalutHelper:
         return self.stats
 
     def run_inference(self) -> float:
-        self.store_inputs()
         print("Start training of Halutmatmul")
-        start = timer()
-        state_dict_with_halut = self.run_halut_offline_training()
-        end = timer()
-        print("Training time: %.2f s" % (end - start))
+        self.run_halut_offline_training()
+        print("Start preparing state_dict")
+        state_dict_with_halut = self.prepare_state_dict()
         print("Load state dict")
         start = timer()
         self.model.load_state_dict(state_dict_with_halut, strict=False)
