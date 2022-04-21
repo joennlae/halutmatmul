@@ -125,7 +125,7 @@ def learn_halut_from_offline_data(
     print(layers_to_learn)
     # parameters
     C_all = [16, 32, 64]
-    rows = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 40 * 256]
+    rows = [1, 2, 4, 8]  # [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 40 * 256]
 
     learn_halut_multi_core(
         C_all=C_all,

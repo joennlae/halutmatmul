@@ -36,7 +36,6 @@ def learn_halut(
     K: int = 16,
 ) -> None:
     print("start learning", l, C, r)
-    print(os.environ)
     files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
     assert len(files) == 1

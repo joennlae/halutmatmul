@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, Dataset
 from ResNet.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
+from halutmatmul.modules import ErrorTuple
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -59,7 +60,7 @@ def check_file_exists_and_return_path(
         files_res = files_a + files_b
         assert len(files_res) == 0 or len(files_res) == 2
     elif _type == "learned":
-        regex = rf"{layers_name}_{C}_{rows}.+\.npy"
+        regex = rf"{layers_name}_{C}_{rows}-.+\.npy"
         pattern = re.compile(regex)
         files_res = [x for x in files if pattern.search(x)]
         assert len(files_res) == 0 or len(files_res) == 1
@@ -78,6 +79,7 @@ class HalutHelper:
         learned_path: str = DATA_PATH + "/learned/",
         device: torch.device = torch.device("cpu"),
         workers_offline_training: int = 1,
+        report_error: bool = False,
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -91,6 +93,7 @@ class HalutHelper:
         self.device = device
         self.stats: Dict[str, Any] = dict([])
         self.workers_offline_training = workers_offline_training
+        self.report_error = report_error
 
     def activate_halut_module(self, name: str, C: int, rows: int, K: int = 16) -> None:
         if name not in self.editable_keys:
@@ -203,6 +206,7 @@ class HalutHelper:
                     args[HalutModuleConfig.ROWS] / self.batch_size_store
                 )
         self.store_inputs(dict_to_store)
+        print(dict_to_learn, dict_to_store)
         learn_halut_multi_core_dict(
             dict_to_learn,
             data_path=self.data_path,
@@ -226,9 +230,9 @@ class HalutHelper:
                 splitted = learned_files[0].split("/")[-1]
                 configs_reg = re.findall(r"(?<=-)(\d+)", splitted)
                 n = int(configs_reg[0])
-                d = int(configs_reg[0])
+                d = int(configs_reg[1])
                 m = store_array[hm.HalutOfflineStorage.LUT].shape[2]
-                print(f"Learn Layer {k}: a: {(n, d)}, b: {(d, m)}")
+                print(f"Use Layer {k}: a: {(n, d)}, b: {(d, m)}")
                 self.stats[k + ".learned_a_shape"] = (n, d)
                 self.stats[k + ".learned_b_shape"] = (d, m)
                 self.stats[k + ".C"] = args[HalutModuleConfig.C]
@@ -263,12 +267,24 @@ class HalutHelper:
                         store_array[hm.HalutOfflineStorage.CONFIG].astype(np.float32)
                     ),
                     k + ".store_input": torch.zeros(1, dtype=torch.bool),
+                    k + ".report_error": torch.ones(1, dtype=torch.bool)
+                    if self.report_error
+                    else torch.zeros(1, dtype=torch.bool),
                 }
             )
         self.stats["halut_layers"] = json.dumps(self.halut_modules)
         return OrderedDict(self.state_dict_base | additional_dict)
 
     def get_stats(self) -> Dict[str, Any]:
+        if self.report_error:
+            for k in self.halut_modules.keys():
+                submodule = self.model.get_submodule(k)
+                errors = submodule.get_error()  # type: ignore[operator]
+                self.stats[k + ".mae"] = errors[ErrorTuple.MAE]
+                self.stats[k + ".mse"] = errors[ErrorTuple.MSE]
+                self.stats[k + ".mape"] = errors[ErrorTuple.MAPE]
+                self.stats[k + ".scaled_error"] = errors[ErrorTuple.SCALED_ERROR]
+                self.stats[k + ".scaled_shift"] = errors[ErrorTuple.SCALED_SHIFT]
         return self.stats
 
     def run_inference(self) -> float:

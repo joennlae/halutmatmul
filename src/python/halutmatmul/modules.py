@@ -234,6 +234,35 @@ def halut_conv2d_cpu(
     return ret
 
 
+def error_numpy(
+    actual: torch.Tensor,
+    desired: torch.Tensor,
+) -> np.ndarray:
+    _min = np.min(desired)
+    _max = np.max(desired)
+    actual_cupy_std = (actual - _min) / (_max - _min)
+    desired_cupy_std = (desired - _min) / (_max - _min)
+    _range = (-1, 1)
+    actual_cupy_scaled = actual_cupy_std * (_range[1] - _range[0]) + _range[0]
+    desired_cupy_scaled = desired_cupy_std * (_range[1] - _range[0]) + _range[0]
+    mae = np.mean(np.abs((actual - desired)))
+    mse = np.mean((actual - desired) ** 2)
+    mape = np.mean(np.abs(actual - desired) / (1 + np.abs(desired)))
+    scaled_absolut_error = np.mean(np.abs(actual_cupy_scaled - desired_cupy_scaled))
+    scaled_shift = np.mean(actual_cupy_scaled - desired_cupy_scaled)
+
+    return np.array((mae, mse, mape, scaled_absolut_error, scaled_shift))
+
+
+class ErrorTuple:
+    MAE = 0
+    MSE = 1
+    MAPE = 2
+    SCALED_ERROR = 3
+    SCALED_SHIFT = 4
+    MAX = 5
+
+
 class HalutConv2d(_ConvNd):
     __doc__ = r"""Applies a 2D convolution over an input signal composed of several input
     planes.
@@ -288,6 +317,10 @@ class HalutConv2d(_ConvNd):
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
+        self.report_error = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
+        self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.halut: Optional[HalutMatmul] = None
 
@@ -415,6 +448,18 @@ class HalutConv2d(_ConvNd):
             else:
                 return torch.from_numpy(ret_numpy).to(str(_input.device))
 
+    def get_error(self) -> np.ndarray:
+        if not self.report_error[0]:
+            raise Exception("get_error() called without error reporting active")
+        errors = np.zeros(ErrorTuple.MAX, dtype=np.float64)
+        total_input_images = 0
+        for elem in self.errors:
+            if elem[0] > 0:
+                total_input_images += elem[0]
+                errors += elem[1] * elem[0]
+        errors /= total_input_images
+        return errors
+
     def check_store_offline(
         self, _input: Tensor, weight: Tensor, bias: Optional[Tensor]
     ) -> None:
@@ -454,7 +499,7 @@ class HalutConv2d(_ConvNd):
             elif "cpu" in str(self.weight.device) and self.halut is None:
                 raise Exception("halut is not set")
             else:
-                return self.conv2d(  # type: ignore[return-value]
+                ret_tensor = self.conv2d(
                     _input,
                     weight,
                     self.halut,  # type: ignore[arg-type]
@@ -464,6 +509,30 @@ class HalutConv2d(_ConvNd):
                     self.dilation,
                     self.groups,
                 )
+                if self.report_error[0]:
+                    torch_ret = F.conv2d(
+                        _input,
+                        weight,
+                        bias,
+                        self.stride,
+                        self.padding,
+                        self.dilation,
+                        self.groups,
+                    )
+                    if "cuda" in str(_input.device):
+                        # pylint: disable=import-outside-toplevel
+                        from halutmatmul.cuda.functions import error_cupy
+
+                        res_error = error_cupy(
+                            ret_tensor, torch_ret  # type: ignore[arg-type]
+                        )
+                        self.errors.append((_input.shape[0], res_error))
+                    else:
+                        res_error = error_numpy(
+                            ret_tensor, torch_ret  # type: ignore[arg-type]
+                        )
+                        self.errors.append((_input.shape[0], res_error))
+                return ret_tensor  # type: ignore[return-value]
         else:
             if self.padding_mode != "zeros":
                 return F.conv2d(

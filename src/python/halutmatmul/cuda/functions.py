@@ -4,6 +4,8 @@ import cupy as cp  # type: ignore[import]
 import torch
 from torch.types import _int, _size
 
+from halutmatmul.modules import ErrorTuple
+
 MAX_THREADS = 1024
 SHARED_MEM_PER_BLOCK = 49152
 READ_ACC_LUT_KERNEL_SPLIT_FACTOR = 8
@@ -397,3 +399,29 @@ def halut_conv2d_gpu(
         )
         ret = ret + bias
     return torch.from_dlpack(ret)
+
+
+def error_cupy(
+    actual: torch.Tensor,
+    desired: torch.Tensor,
+) -> np.ndarray:
+    actual_cupy = cp.asarray(cp.from_dlpack(actual.detach()))
+    desired_cupy = cp.asarray(cp.from_dlpack(desired.detach()))
+    _min = cp.min(desired_cupy)
+    _max = cp.max(desired_cupy)
+    actual_cupy_std = (actual_cupy - _min) / (_max - _min)
+    desired_cupy_std = (desired_cupy - _min) / (_max - _min)
+    _range = (-1, 1)
+    actual_cupy_scaled = actual_cupy_std * (_range[1] - _range[0]) + _range[0]
+    desired_cupy_scaled = desired_cupy_std * (_range[1] - _range[0]) + _range[0]
+    mae = cp.asnumpy(cp.mean(cp.abs((actual_cupy - desired_cupy))))
+    mse = cp.asnumpy(cp.mean((actual_cupy - desired_cupy) ** 2))
+    mape = cp.asnumpy(
+        cp.mean(cp.abs(actual_cupy - desired_cupy) / (1 + cp.abs(desired_cupy)))
+    )
+    scaled_absolut_error = cp.asnumpy(
+        cp.mean(cp.abs(actual_cupy_scaled - desired_cupy_scaled))
+    )
+    scaled_shift = cp.asnumpy(cp.mean(actual_cupy_scaled - desired_cupy_scaled))
+
+    return np.array((mae, mse, mape, scaled_absolut_error, scaled_shift))
