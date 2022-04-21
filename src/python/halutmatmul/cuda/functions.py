@@ -35,13 +35,18 @@ def run_encode_kernel(
     return torch_A
 
 
-def calc_rows_per_block_read_acc_lut_kernel(split_factor: int, C: int, K: int) -> int:
+def calc_rows_per_block_read_acc_lut_kernel(
+    split_factor: int, C: int, K: int
+) -> tuple[int, int]:
     rows_per_block = MAX_THREADS // split_factor
     used_shared_mem = rows_per_block * C * 4 + C * K * split_factor * 4
     while used_shared_mem > SHARED_MEM_PER_BLOCK:
         rows_per_block //= 2
         used_shared_mem = rows_per_block * C * 4 + C * K * split_factor * 4
-    return rows_per_block
+        if rows_per_block == 2:
+            split_factor //= 2
+            rows_per_block = MAX_THREADS // split_factor
+    return (rows_per_block, split_factor)
 
 
 def run_read_acc_lut_kernel(
@@ -54,7 +59,9 @@ def run_read_acc_lut_kernel(
     K: int,
 ) -> torch.Tensor:
     split_factor = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
-    rows_per_block = calc_rows_per_block_read_acc_lut_kernel(split_factor, C, K)
+    rows_per_block, split_factor = calc_rows_per_block_read_acc_lut_kernel(
+        split_factor, C, K
+    )
     block_dim = (rows_per_block, split_factor)
     blocks_x = N // rows_per_block + (1 if N % rows_per_block else 0)
     blocks_y = M // split_factor + (1 if M % split_factor else 0)
@@ -125,7 +132,9 @@ def halutmatmul_gpu_cupy(
 
     # read accumulate LUTs
     split_factor = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
-    rows_per_block_ral = calc_rows_per_block_read_acc_lut_kernel(split_factor, C, K)
+    rows_per_block_ral, split_factor = calc_rows_per_block_read_acc_lut_kernel(
+        split_factor, C, K
+    )
     block_dim_ral = (rows_per_block_ral, split_factor)
     blocks_x = N // rows_per_block_ral + (1 if N % rows_per_block_ral else 0)
     blocks_y = M // split_factor + (1 if M % split_factor else 0)

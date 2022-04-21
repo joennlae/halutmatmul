@@ -94,6 +94,6 @@ def create_kernels_halutmatmul(
 
     # read accumulate lut kernel
     blocks = READ_ACC_LUT_KERNEL_SPLIT_FACTOR
-    rows = calc_rows_per_block_read_acc_lut_kernel(blocks, C, K)
+    rows, blocks = calc_rows_per_block_read_acc_lut_kernel(blocks, C, K)
     read_acc_lut_kernel = create_read_acc_lut_kernel(C, K, blocks, rows)
     return (encode_kernel, read_acc_lut_kernel)

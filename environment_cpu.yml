@@ -22,6 +22,10 @@ dependencies:
   # cpu stuff
   - cpuonly
   - pip
+  # analysis
+  - pandas
+  - seaborn
+  - matplotlib
   - pip:
     - cupy-cuda112
 prefix: /home/msc22f5/.conda/envs/halutmatmul

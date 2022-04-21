@@ -231,10 +231,13 @@ class HalutHelper:
                 configs_reg = re.findall(r"(?<=-)(\d+)", splitted)
                 n = int(configs_reg[0])
                 d = int(configs_reg[1])
-                m = store_array[hm.HalutOfflineStorage.LUT].shape[2]
+                m = store_array[hm.HalutOfflineStorage.LUT].shape[0]
                 print(f"Use Layer {k}: a: {(n, d)}, b: {(d, m)}")
                 self.stats[k + ".learned_a_shape"] = (n, d)
                 self.stats[k + ".learned_b_shape"] = (d, m)
+                self.stats[k + ".learned_n"] = n
+                self.stats[k + ".learned_m"] = m
+                self.stats[k + ".learned_d"] = d
                 self.stats[k + ".C"] = args[HalutModuleConfig.C]
                 self.stats[k + ".rows"] = args[HalutModuleConfig.ROWS]
                 self.stats[k + ".K"] = args[HalutModuleConfig.K]

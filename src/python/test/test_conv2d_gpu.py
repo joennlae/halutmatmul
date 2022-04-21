@@ -110,12 +110,12 @@ def conv2d_helper_gpu(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b",
     [
         (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b)
-        for in_channels in [64, 512, 2048]
-        for out_channels in [64, 512, 2048]
+        for in_channels in [128, 512, 2048]
+        for out_channels in [128, 512, 2048]
         for image_x_y in [14, 28, 56]
         for kernel_size in [1, 3]
         for bias in [False]  # True, False
-        for C in [16, 32, 64]
+        for C in [16, 32, 64, 96, 128]
         for a in [1.0]
         for b in [0.0]
     ],

@@ -4,3 +4,6 @@
 [submodule "maddness/cpp/lib/Catch2"]
 	path = maddness/cpp/lib/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "src/python/results"]
+	path = src/python/results
+	url = https://github.com/joennlae/halutdata

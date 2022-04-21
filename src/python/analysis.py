@@ -119,7 +119,18 @@ def run_test(
         "layer4.2.conv1",
     ]
 
-    result_base_path = "./results/accuracy/single_layer/training_data/"
+    tests = [
+        "layer4.0.conv1",
+        "layer4.0.conv3",
+        "layer4.1.conv1",
+        "layer3.0.conv3",
+        "layer3.1.conv1",
+        "layer3.1.conv3",
+        "layer2.0.conv1",
+        "layer3.0.conv1",
+    ]
+
+    result_base_path = "./results/data/accuracy/single_layer/training_data/"
     # C_all = [16, 32, 64]
     rows = [
         1,
@@ -133,10 +144,10 @@ def run_test(
         256,
         512,
         1024,
-        2048,
-        4096,
-        8192,
-        40 * 256,
+        # 2048,
+        # 4096,
+        # 8192,
+        # 40 * 256,
     ]
     for k in tests:
         for r in rows:
@@ -148,12 +159,12 @@ def run_test(
             if len(files_res) == 1:
                 print("alread done")
                 continue
-            learned_files = check_file_exists_and_return_path(
-                learned_path, k, "learned", C, r
-            )
-            if len(learned_files) == 0:
-                print(f"not learned {k} C: {C}, r: {r}")
-                continue
+            # learned_files = check_file_exists_and_return_path(
+            #     learned_path, k, "learned", C, r
+            # )
+            # if len(learned_files) == 0:
+            #     print(f"not learned {k} C: {C}, r: {r}")
+            #     continue
             res = halut_analysis_helper(
                 cuda_id,
                 batch_size_store=256,

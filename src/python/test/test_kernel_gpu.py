@@ -137,11 +137,11 @@ try:
             store_array[HalutOfflineStorage.LUT].astype(np.float32)
         ).to(device)
 
-        rows_per_block = calc_rows_per_block_read_acc_lut_kernel(
+        rows_per_block, split_factor = calc_rows_per_block_read_acc_lut_kernel(
             READ_ACC_LUT_KERNEL_SPLIT_FACTOR, C, K
         )
         halut_read_acc_lut_kernel = create_read_acc_lut_kernel(
-            C, K=K, blocks=8, rows=rows_per_block
+            C, K=K, blocks=split_factor, rows=rows_per_block
         )
         torch_result = run_read_acc_lut_kernel(
             kernel=halut_read_acc_lut_kernel, N=N, M=M, lut=lut, A_enc=A_enc, C=C, K=K
