@@ -1,7 +1,6 @@
 from collections import OrderedDict
 from test.utils.utils import helper_test_module
 import torch
-import numpy as np
 import pytest
 
 from halutmatmul.modules import HalutConv2d, halut_conv2d_cpu

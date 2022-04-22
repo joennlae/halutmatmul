@@ -120,7 +120,7 @@ def run_test(
         "layer4.2.conv1",
     ]
 
-    tests = [
+    tests_bad = [
         "layer4.0.conv1",
         "layer4.0.conv3",
         "layer4.1.conv1",
@@ -183,7 +183,7 @@ def run_test(
     continue_i = ContinueI()
 
     rows.reverse()
-    tests_to_skip = {"layer3.1.conv3": [[128, 1]]}
+    tests_to_skip = {"layer3.1.conv3": [[128, 1]], "layer1.0.conv2": [[64, 1]]}
     # pylint: disable=consider-iterating-dictionary, too-many-nested-blocks
     for k in conv3x3:
         for r in rows:

@@ -1,11 +1,11 @@
-from turtle import width
-from typing import Any, Optional, Union
-import numpy as np
+import math
+from typing import Optional, Union
 import cupy as cp  # type: ignore[import]
 import torch
+import numpy as np
+
 from torch.nn.common_types import _size_any_t
 
-from halutmatmul.modules import ErrorTuple
 
 MAX_THREADS = 1024
 SHARED_MEM_PER_BLOCK = 49152
@@ -205,30 +205,28 @@ def halut_conv2d_gpu(
         else (padding[0], padding[0], padding[1], padding[1])
     )
 
-    if padding[0] > 0 or padding[2] > 0:
-        _input = _input[
-            :,
-            :,
-            -padding[2] : _input.shape[2] + padding[3],
-            -padding[0] : _input.shape[3] + padding[1],
-        ]
     cout, _, kernel_height, kernel_width = weights.shape
     stride_y, stride_x = stride
+    # reference https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
     out_y, out_x = (
-        (
-            (_input.shape[2] + padding[3] + padding[2])
-            - dilation[0] * (kernel_height - stride_y)
-            - 1
-        )
-        // stride_y
-        + 1,
-        (
-            (_input.shape[3] + padding[0] + padding[1])
-            - dilation[1] * (kernel_width - stride_x)
-            - 1
-        )
-        // stride_x
-        + 1,
+        math.floor(
+            (
+                (_input.shape[2] + padding[3] + padding[2])
+                - dilation[0] * (kernel_height - 1)
+                - 1
+            )
+            / stride_y
+            + 1
+        ),
+        math.floor(
+            (
+                (_input.shape[3] + padding[0] + padding[1])
+                - dilation[1] * (kernel_width - 1)
+                - 1
+            )
+            / stride_x
+            + 1
+        ),
     )
     ret = torch.reshape(result_tensor, (batch_size, cout, out_y, out_x))
 

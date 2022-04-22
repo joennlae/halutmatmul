@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 
 from halutmatmul.modules import HalutConv2d
-from halutmatmul.cuda.functions import halut_conv2d_gpu
 import halutmatmul.halutmatmul as hm
 
 
@@ -24,6 +23,9 @@ def conv2d_helper_gpu(
     b: float = 0.0,
     rel_error: float = 0.4,
 ) -> None:
+    # pylint: disable=import-outside-toplevel
+    from halutmatmul.cuda.functions import halut_conv2d_gpu
+
     torch.manual_seed(4419)
 
     weights = torch.rand(
