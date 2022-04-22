@@ -29,7 +29,9 @@ class HalutModuleConfig:
 def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
     keys_weights = list(filter(lambda k: "weight" in k, state_dict.keys()))
     keys_conv_fc = list(
-        filter(lambda k: any(v in k for v in ("fc", "conv")), keys_weights)
+        filter(
+            lambda k: any(v in k for v in ("fc", "conv", "downsample.0")), keys_weights
+        )
     )
     keys = [v[: -(len(".weight"))] for v in keys_conv_fc]
     return keys

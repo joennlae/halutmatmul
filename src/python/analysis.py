@@ -84,6 +84,7 @@ def halut_analysis_helper(
 def run_test(
     cuda_id: int, halut_data_path: str, dataset_path: str, learned_path: str, C: int
 ) -> None:
+    # pylint: disable=unused-variable
     tests = [
         "layer4.2.conv3",
         "layer1.0.conv1",
@@ -149,8 +150,34 @@ def run_test(
         # 8192,
         # 40 * 256,
     ]
-    for k in tests:
+
+    downsampled = [
+        "layer1.0.downsample.0",
+        "layer2.0.downsample.0",
+        "layer3.0.downsample.0",
+        "layer4.0.downsample.0",
+    ]
+
+    class ContinueI(Exception):
+        pass
+
+    continue_i = ContinueI()
+
+    rows.reverse()
+    tests_to_skip = {"layer3.1.conv3": [[128, 1]]}
+    # pylint: disable=consider-iterating-dictionary, too-many-nested-blocks
+    for k in downsampled:
         for r in rows:
+            try:
+                if k in tests_to_skip.keys():
+                    to_skip = tests_to_skip[k]
+                    for skipper in to_skip:
+                        print("skipper", skipper)
+                        if C == skipper[0] and r == skipper[1]:
+                            print("skipped test")
+                            raise continue_i
+            except ContinueI:
+                continue
             files = glob.glob(result_base_path + "/*.json")
             files_res = []
             regex = rf"{k}_{C}_{r}\.json"

@@ -22,7 +22,7 @@ def check_is_more_than_enough(C: int, K: int, N: int, D: int) -> bool:
     ram_usage = N * D * 4 * 2  # cumsse reallocates
     print(f"RAM usage {ram_usage / (1024 * 1024 * 1024)} GB")
     # MAX_RAM = 25 * 1024 * 1024 * 1024  # 30 GB
-    return N > 3000000
+    return N > 10000000
     # return ram_usage > MAX_RAM
 
 
