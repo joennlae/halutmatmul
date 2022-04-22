@@ -1,8 +1,9 @@
+from turtle import width
 from typing import Any, Optional, Union
 import numpy as np
 import cupy as cp  # type: ignore[import]
 import torch
-from torch.types import _int, _size
+from torch.nn.common_types import _size_any_t
 
 from halutmatmul.modules import ErrorTuple
 
@@ -151,137 +152,6 @@ def halutmatmul_gpu_cupy(
     return result
 
 
-def calc_newaxes_and_newshape_and_old_cp(
-    a: cp.ndarray,
-    b: cp.ndarray,
-    axes: Union[int, list[int], Any] = 2,
-) -> tuple[
-    list[int], list[int], tuple[int, int], tuple[int, int], list[int], list[int]
-]:
-    try:
-        iter(axes)  # type: ignore[arg-type]
-    # pylint: disable=W0703
-    except Exception:
-        axes_a = list(range(-axes, 0))  # type: ignore[operator]
-        axes_b = list(range(0, axes))  # type: ignore[arg-type]
-    else:
-        axes_a, axes_b = axes  # type: ignore[misc, assignment]
-    try:
-        na = len(axes_a)
-        axes_a = list(axes_a)
-    except TypeError:
-        axes_a = [axes_a]  # type: ignore[list-item]
-        na = 1
-    try:
-        nb = len(axes_b)
-        axes_b = list(axes_b)
-    except TypeError:
-        axes_b = [axes_b]  # type: ignore[list-item]
-        nb = 1
-    as_ = a.shape
-    nda = a.ndim
-    bs = b.shape
-    ndb = b.ndim
-    equal = True
-    if na != nb:
-        equal = False
-    else:
-        for k in range(na):
-            if as_[axes_a[k]] != bs[axes_b[k]]:
-                equal = False
-                break
-            if axes_a[k] < 0:
-                axes_a[k] += nda
-            if axes_b[k] < 0:
-                axes_b[k] += ndb
-    if not equal:
-        raise ValueError("shape-mismatch for sum")
-
-    # Move the axes to sum over to the end of "a"
-    # and to the front of "b"
-    notin = [k for k in range(nda) if k not in axes_a]
-    newaxes_a = notin + axes_a
-    N2 = 1
-    for axis in axes_a:
-        N2 *= as_[axis]
-    newshape_a = (int(np.multiply.reduce([as_[ax] for ax in notin])), N2)
-    olda = [as_[axis] for axis in notin]
-
-    notin = [k for k in range(ndb) if k not in axes_b]
-    newaxes_b = axes_b + notin
-    N2 = 1
-    for axis in axes_b:
-        N2 *= bs[axis]
-    newshape_b = (N2, int(np.multiply.reduce([bs[ax] for ax in notin])))
-    oldb = [bs[axis] for axis in notin]
-
-    return (newaxes_a, newaxes_b, newshape_a, newshape_b, olda, oldb)
-
-
-# pylint: disable=R0201
-def tensordot_gpu(
-    A: cp.ndarray,
-    B: cp.ndarray,
-    axes: Union[int, list[int], Any],
-    encode_kernel: cp.RawKernel,
-    read_acc_lut_kernel: cp.RawKernel,
-    L: cp.ndarray,
-    H: cp.ndarray,
-    return_reshaped_inputs: bool = False,
-) -> Union[cp.ndarray, tuple[cp.ndarray, cp.ndarray]]:
-    # https://github.com/numpy/numpy/blob/145ed90f638c1a12ce5b06e9100421f99783f431/numpy/core/numeric.py#L950
-
-    """Example
-    padding=0, kernel_size=(3, 3), stride=1
-
-    IN: (128, 64, 112, 112)
-    width: (64, 64, 3, 3)
-    after Im2col (np.lib.stride_tricks.as_strided): (128, 64, 110, 110, 3, 3)
-    np.tensordot(IN, width, ((1,4,5),(1,2,3)))
-
-    at transpose: (128, 64, 110, 110, 3, 3) -> (128, 110, 110, 64, 3, 3)
-    newaxes_a: [0, 2, 3, 1, 4, 5]
-    bt transpose: (64, 64, 3, 3) -> (64, 3, 3, 64)
-    newaxes_b: [1, 2, 3, 0]
-    newshape_a: (1548800, 576)
-    newshape_B: (576, 64)
-
-    (1548800, 64) -> (128, 64, 110, 110)
-    olda: [128, 110, 110]
-    oldb: [64]
-    olda + oldb: [128, 110, 110, 64]
-    OUT: (128, 110, 110, 64)
-
-    needs to be reshaped later to match conv2d output
-    np.moveaxis(ret,4,2).reshape(batch_size, channels_out, out_y, out_x)
-    """
-
-    (
-        newaxes_a,
-        newaxes_b,
-        newshape_a,
-        newshape_b,
-        olda,
-        oldb,
-    ) = calc_newaxes_and_newshape_and_old_cp(A, B, axes)
-
-    at = A.transpose(newaxes_a).reshape(newshape_a)
-    if return_reshaped_inputs:
-        bt = B.transpose(newaxes_b).reshape(newshape_b)
-        return (at, bt)
-
-    # numpy
-
-    res = halutmatmul_gpu_cupy(
-        encode_kernel=encode_kernel,
-        read_acc_lut_kernel=read_acc_lut_kernel,
-        A=at,
-        L=L,
-        H=H,
-    )
-    return res.reshape(olda + oldb)
-
-
 def halut_conv2d_gpu(
     _input: torch.Tensor,
     weights: torch.Tensor,
@@ -289,24 +159,46 @@ def halut_conv2d_gpu(
     read_acc_lut_kernel: cp.RawKernel,
     L: cp.ndarray,
     H: cp.ndarray,
-    kernel_size: Union[_int, _size] = (1, 1),
-    stride: Union[_int, _size] = (1, 1),
-    padding: Union[_int, _size] = 0,
-    groups: int = 1,
+    kernel_size: _size_any_t = (1, 1),
+    stride: _size_any_t = (1, 1),
+    padding: _size_any_t = 0,
+    dilation: _size_any_t = 1,
     bias: Optional[torch.Tensor] = None,
     return_reshaped_inputs: bool = False,  # needed for storage
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    unfold_ops = torch.nn.Unfold(
+        kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
+    )
+    unfolded = unfold_ops(_input).transpose(1, 2)
+    unfolded = torch.reshape(unfolded, (-1, unfolded.size(2)))
 
-    input_cupy = cp.asarray(cp.from_dlpack(_input.detach()))
-    weights_cupy = cp.asarray(cp.from_dlpack(weights.detach()))
+    if return_reshaped_inputs:
+        weights_prepared = weights.view(weights.size(0), -1).t()
+        return (unfolded, weights_prepared)
+
+    unfolded_cupy = cp.asarray(cp.from_dlpack(unfolded.detach()))
     H_cupy = cp.asarray(cp.from_dlpack(H.detach()))
     L_cupy = cp.asarray(cp.from_dlpack(L.detach()))
-    kernel_size = (
-        (kernel_size, kernel_size)
-        if isinstance(kernel_size, int)
-        else (kernel_size[0], kernel_size[1])
+    ret = halutmatmul_gpu_cupy(
+        encode_kernel=encode_kernel,
+        read_acc_lut_kernel=read_acc_lut_kernel,
+        A=unfolded_cupy,
+        L=L_cupy,
+        H=H_cupy,
     )
+
+    batch_size = _input.size(0)
+    result_tensor = torch.from_dlpack(ret)
+    result_tensor = torch.reshape(
+        result_tensor, (batch_size, -1, result_tensor.size(1))
+    ).transpose(1, 2)
+
     stride = (stride, stride) if isinstance(stride, int) else (stride[0], stride[1])
+    dilation = (
+        (dilation, dilation)
+        if isinstance(dilation, int)
+        else (dilation[0], dilation[1])
+    )
     padding = (
         (padding,) * 4
         if isinstance(padding, int)
@@ -314,100 +206,39 @@ def halut_conv2d_gpu(
     )
 
     if padding[0] > 0 or padding[2] > 0:
-        input_cupy = input_cupy[
+        _input = _input[
             :,
             :,
-            -padding[2] : input_cupy.shape[2] + padding[3],
-            -padding[0] : input_cupy.shape[3] + padding[1],
+            -padding[2] : _input.shape[2] + padding[3],
+            -padding[0] : _input.shape[3] + padding[1],
         ]
-    # pylint: disable=C0301
-    # inspiration https://github.com/geohot/tinygrad/blob/7ad60eb8b21a3a1f1f538b6e9f216a03d8267e74/tinygrad/ops/ops_cpu.py#L167
-    cout, cin, height, width = weights_cupy.shape
-    stride_x, stride_y = stride
-    batch_size, cin_ = input_cupy.shape[0], input_cupy.shape[1]
+    cout, _, kernel_height, kernel_width = weights.shape
+    stride_y, stride_x = stride
     out_y, out_x = (
-        (input_cupy.shape[2] - (height - stride_y)) // stride_y,
-        (input_cupy.shape[3] - (width - stride_x)) // stride_x,
-    )
-    assert cin * groups == cin_
-    assert cout % groups == 0
-    rcout = cout // groups
-
-    input_cupy = input_cupy.reshape(
-        batch_size, groups, cin, input_cupy.shape[2], input_cupy.shape[3]
-    )
-
-    # im2col
-    input_cupy_im2col = cp.lib.stride_tricks.as_strided(
-        input_cupy,
-        shape=(batch_size, groups, cin, out_y, out_x, height, width),
-        strides=(
-            *input_cupy.strides[0:3],
-            input_cupy.strides[3] * stride_y,
-            input_cupy.strides[4] * stride_x,
-            *input_cupy.strides[3:5],
-        ),
-    )
-    tensor_weights = weights_cupy.reshape((groups, rcout, cin, height, width))
-
-    if return_reshaped_inputs:
-        (_, _, newshape_a, newshape_b, _, _,) = calc_newaxes_and_newshape_and_old_cp(
-            input_cupy_im2col[:, 0], tensor_weights[0], ((1, 4, 5), (1, 2, 3))
+        (
+            (_input.shape[2] + padding[3] + padding[2])
+            - dilation[0] * (kernel_height - stride_y)
+            - 1
         )
-        input_a = cp.zeros((groups, *newshape_a))
-        input_b = cp.zeros((groups, *newshape_b))
-        for g in range(groups):
-            (input_a_temp, input_b_temp) = tensordot_gpu(
-                input_cupy_im2col[:, 0],
-                tensor_weights[0],
-                ((1, 4, 5), (1, 2, 3)),
-                encode_kernel=encode_kernel,
-                read_acc_lut_kernel=read_acc_lut_kernel,
-                L=L_cupy,
-                H=H_cupy,
-                return_reshaped_inputs=return_reshaped_inputs,
-            )  # halut does not need to be passed
-            input_a[g] += input_a_temp
-            input_b[g] += input_b_temp
-        return (torch.from_dlpack(input_a[0]), torch.from_dlpack(input_b[0]))
-    else:
-        if groups == 1:
-            ret = tensordot_gpu(
-                input_cupy_im2col[:, 0],
-                tensor_weights[0],
-                ((1, 4, 5), (1, 2, 3)),
-                encode_kernel=encode_kernel,
-                read_acc_lut_kernel=read_acc_lut_kernel,
-                L=L_cupy,
-                H=H_cupy,
-            )
-            ret = cp.moveaxis(ret, 3, 1).reshape(batch_size, cout, out_y, out_x)
-        else:
-            ret = cp.zeros(
-                (batch_size, groups, out_y, out_x, rcout), dtype=input_cupy.dtype
-            )
-            for g in range(groups):
-                ret[:, g] += tensordot_gpu(
-                    input_cupy_im2col[:, g],
-                    tensor_weights[g],
-                    ((1, 4, 5), (1, 2, 3)),
-                    encode_kernel=encode_kernel,
-                    read_acc_lut_kernel=read_acc_lut_kernel,
-                    L=L_cupy,
-                    H=H_cupy,
-                )
-
-            ret = cp.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
+        // stride_y
+        + 1,
+        (
+            (_input.shape[3] + padding[0] + padding[1])
+            - dilation[1] * (kernel_width - stride_x)
+            - 1
+        )
+        // stride_x
+        + 1,
+    )
+    ret = torch.reshape(result_tensor, (batch_size, cout, out_y, out_x))
 
     if bias is not None:
-        bias = cp.broadcast_to(
-            cp.repeat(cp.asarray(cp.from_dlpack(bias.detach())), out_y * out_x).reshape(
-                (cout, out_y, out_x)
-            ),
+        bias = torch.broadcast_to(
+            bias.repeat(out_y * out_x).reshape((cout, out_y, out_x)),
             (batch_size, cout, out_y, out_x),
         )
         ret = ret + bias
-    return torch.from_dlpack(ret)
+    return ret
 
 
 def error_cupy(

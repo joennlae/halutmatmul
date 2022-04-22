@@ -4,7 +4,8 @@ import torch
 import numpy as np
 import pytest
 
-from halutmatmul.modules import HalutConv2d, halut_conv2d_cpu
+from halutmatmul.modules import HalutConv2d
+from halutmatmul.cuda.functions import halut_conv2d_gpu
 import halutmatmul.halutmatmul as hm
 
 
@@ -35,20 +36,22 @@ def conv2d_helper_gpu(
     ) * a
     input_test = (torch.rand((batch_size, in_channels, image_x_y, image_x_y)) + b) * a
 
-    learn_numpy = input_learn.detach().cpu().numpy()
-    weights_numpy = weights.detach().cpu().numpy()
-    bias_numpy = bias_weights.detach().cpu().numpy()
-
-    input_a, input_b = halut_conv2d_cpu(
-        learn_numpy,
-        weights_numpy,
-        hm.HalutMatmul(),
+    padding = 1
+    input_a_torch, input_b_torch = halut_conv2d_gpu(
+        input_learn,
+        weights,
+        L=None,
+        H=None,
+        read_acc_lut_kernel=None,
+        encode_kernel=None,
         kernel_size=kernel_size,
         stride=stride,
-        groups=groups,
-        bias=bias_numpy,
+        padding=padding,
+        bias=bias_weights,
         return_reshaped_inputs=True,
     )
+    input_a = input_a_torch.detach().cpu().numpy()
+    input_b = input_b_torch.detach().cpu().numpy()
 
     store_array = hm.learn_halut_offline(input_a, input_b, C=C, lut_work_const=-1)
 
@@ -110,10 +113,10 @@ def conv2d_helper_gpu(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b",
     [
         (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b)
-        for in_channels in [128, 512, 2048]
-        for out_channels in [128, 512, 2048]
-        for image_x_y in [14, 28, 56]
-        for kernel_size in [1, 3]
+        for in_channels in [32, 128, 512, 2048]
+        for out_channels in [32, 128, 512, 2048]
+        for image_x_y in [7, 14, 28, 56]
+        for kernel_size in [3]
         for bias in [False]  # True, False
         for C in [16, 32, 64, 96, 128]
         for a in [1.0]
@@ -141,7 +144,7 @@ def untest_conv2d_module_gpu(
     batch_size = 128  # 32, 64
 
     stride = 1
-    groups = 1
+    groups = 1  # only 1 supported
     conv2d_helper_gpu(
         in_channels=in_channels,
         out_channels=out_channels,

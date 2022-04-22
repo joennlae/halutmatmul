@@ -38,6 +38,11 @@ def learn_halut(
     print("start learning", l, C, r)
     files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
+    print(files)
+    if len(files) > 1:
+        # will take the one with more
+        # ['layer1.0.conv2_256_0_10_A.npy', 'layer1.0.conv2_256_0_4_A.npy']
+        files.sort()
     assert len(files) == 1
     configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
     iterations = int(configs_reg[2])

@@ -10,6 +10,7 @@ from torch.nn.modules import Linear
 from torch.nn.common_types import _size_2_t
 from torch.types import _int, _size
 from torch.nn.modules.utils import _pair
+from torch.nn.common_types import _size_any_t
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
@@ -388,13 +389,13 @@ class HalutConv2d(_ConvNd):
         weight: Tensor,
         halut: HalutMatmul,
         bias: Optional[Tensor] = None,
-        stride: Union[_int, _size] = 1,
-        padding: Union[_int, _size] = 0,
-        dilation: Union[_int, _size] = 1,
+        stride: _size_any_t = 1,
+        padding: _size_any_t = 0,
+        dilation: _size_any_t = 1,
         groups: _int = 1,
         return_reshaped_inputs: bool = False,  # needed for storage
     ) -> Union[Tensor, tuple[Tensor, Tensor]]:
-        assert dilation in (1, (1, 1))
+        assert groups == 1
         if "cuda" in str(_input.device):
             if self.halut_active[0] and any(
                 not hasattr(self, x) for x in ("encode_kernel", "read_acc_lut_kernel")
@@ -419,7 +420,7 @@ class HalutConv2d(_ConvNd):
                 kernel_size=self.kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=groups,
+                dilation=dilation,
                 bias=self.bias,
                 return_reshaped_inputs=return_reshaped_inputs,
             )
@@ -495,7 +496,7 @@ class HalutConv2d(_ConvNd):
         self.check_store_offline(_input, weight, bias)
         if self.halut_active[0]:
             if self.padding_mode != "zeros":
-                raise Exception("padding_mode != zeros not supported with Halut")
+                raise Exception("padding_mode != zeros not yet supported with Halut")
             elif "cpu" in str(self.weight.device) and self.halut is None:
                 raise Exception("halut is not set")
             else:

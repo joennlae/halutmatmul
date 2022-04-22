@@ -158,6 +158,25 @@ def run_test(
         "layer4.0.downsample.0",
     ]
 
+    conv3x3 = [
+        "layer1.0.conv2",
+        "layer1.1.conv2",
+        "layer1.2.conv2",
+        "layer2.0.conv2",
+        "layer2.1.conv2",
+        "layer2.2.conv2",
+        "layer2.3.conv2",
+        "layer3.0.conv2",
+        "layer3.1.conv2",
+        "layer3.2.conv2",
+        "layer3.3.conv2",
+        "layer3.4.conv2",
+        "layer3.5.conv2",
+        "layer4.0.conv2",
+        "layer4.1.conv2",
+        "layer4.2.conv2",
+    ]
+
     class ContinueI(Exception):
         pass
 
@@ -166,7 +185,7 @@ def run_test(
     rows.reverse()
     tests_to_skip = {"layer3.1.conv3": [[128, 1]]}
     # pylint: disable=consider-iterating-dictionary, too-many-nested-blocks
-    for k in downsampled:
+    for k in conv3x3:
         for r in rows:
             try:
                 if k in tests_to_skip.keys():
@@ -215,3 +234,11 @@ if __name__ == "__main__":
     parser.add_argument("-C", type=int, help="C")
     args = parser.parse_args()
     run_test(args.cuda_id, args.halutdata, args.dataset, args.learned, args.C)
+
+    # run_test(
+    #     1,
+    #     "/scratch2/janniss/resnet_input_data",
+    #     "/scratch2/janniss/imagenet",
+    #     "/scratch2/janniss/learned",
+    #     64,
+    # )
