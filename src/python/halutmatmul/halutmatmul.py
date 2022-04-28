@@ -179,9 +179,7 @@ def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
     for c in range(C):
         splits.append([])
         for v in range(num_splits):
-            vals = numpy_array[c, v, 0 : pow(2, v)].astype(
-                np.int32
-            )  # TODO: what when float values allowed??
+            vals = numpy_array[c, v, 0 : pow(2, v)]
             dim = int(numpy_array[c, v, length])
             scaleby = numpy_array[c, v, length + 1]
             offset = numpy_array[c, v, length + 2]
@@ -390,7 +388,7 @@ def apply_hash_function_opt(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
     num_splits = splits.shape[0]
     length = splits.shape[1] - 3
     for i in range(num_splits):
-        vals = splits[i, 0 : pow(2, i)].astype(np.int32)
+        vals = splits[i, 0 : pow(2, i)]
         vals = vals[group_ids]
         dim = int(splits[i, length])
         scaleby = splits[i, length + 1]
