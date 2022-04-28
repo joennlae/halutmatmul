@@ -2,7 +2,8 @@
 # heavily inspired from https://github.com/dblalock/bolt
 from __future__ import annotations
 from functools import reduce
-from typing import Any, List, Optional, Union
+import resource
+from typing import Any, Dict, List, Optional, Union
 import sys
 from pathlib import Path
 
@@ -16,9 +17,14 @@ from numba import prange
 
 from maddness.maddness import (
     MultiSplit,
-    learn_proto_and_hash_function,
+    init_and_learn_hash_function,
     maddness_lut,
     maddness_quantize_luts,
+)
+from maddness.util.least_squares import (  # type: ignore[attr-defined]
+    encoded_lstsq,
+    sparse_encoded_lstsq,
+    _XW_encoded,
 )
 
 
@@ -35,6 +41,25 @@ class HalutConfig:
     QUANTIZE_LUT = 3
     UPCAST_EVERY = 4
     MAX = 5
+
+
+def learn_halut_offline_report(
+    A: np.ndarray,
+    B: np.ndarray,
+    C: int = 16,
+    lut_work_const: int = -1,
+    quantize_lut: bool = False,
+    run_optimized: bool = True,
+) -> tuple[np.ndarray, Dict[str, Any]]:
+    mn = HalutMatmul(
+        C, lut_work_const, quantize_lut=quantize_lut, run_optimized=run_optimized
+    )
+    mn.learn_offline(A, B)
+
+    # print(mn.get_params())
+    # print(mn.get_stats())
+
+    return mn.to_numpy(), mn.get_stats()
 
 
 def learn_halut_offline(
@@ -266,6 +291,83 @@ def read_luts_quantized_opt(
     return total_result
 
 
+class ProtoHashReport:
+    MSE_ERROR = 0
+    MSV_ORIG = 1
+    MSE_ERROR_DIV_MSV_ORIG = 2
+    MEAN_X = 3
+    MSE_RES = 4
+    MSE_RES_DIV_MSV_ORIG = 5
+    RAM_USAGE = 6
+
+
+def learn_proto_and_hash_function(
+    X: np.ndarray, C: int, lut_work_const: int = -1
+) -> tuple[list[list[MultiSplit]], np.ndarray, np.ndarray]:
+    _, D = X.shape
+    K = 16
+    used_perm_algo = "start"  # or end
+    X_orig = X.astype(np.float32)
+
+    # X_error = X_orig - centroid shape: [N, D]
+    X_error, all_splits, all_prototypes, _ = init_and_learn_hash_function(
+        X, C, pq_perm_algo=used_perm_algo
+    )
+
+    msv_orig = (X_orig * X_orig).mean()
+    mse_error = (X_error * X_error).mean()
+    print(
+        "X_error mse / X mean squared value: ",
+        mse_error / msv_orig,
+        mse_error,
+        msv_orig,
+        np.mean(X_orig),
+    )
+
+    squared_diff = np.square(X_orig - X_error).mean()
+    print("Error to Original squared diff", squared_diff)
+    # optimize prototypes discriminatively conditioned on assignments
+    # applying g(A) [N, C] with values from 0-K (50000, 16)
+    A_enc = maddness_encode_opt(X, split_lists_to_numpy(all_splits))
+
+    # optimizing prototypes
+    if lut_work_const != 1:  # if it's 1, equivalent to just doing PQ
+        if lut_work_const < 0:
+            # print("fitting dense lstsq to X_error")
+            W = encoded_lstsq(A_enc=A_enc, Y=X_error)
+        else:
+            W, _ = sparse_encoded_lstsq(
+                A_enc, X_error, nnz_blocks=lut_work_const, pq_perm_algo=used_perm_algo
+            )
+
+        all_prototypes_delta = W.reshape(C, K, D)
+        all_prototypes += all_prototypes_delta
+
+        # check how much improvement we got
+        X_error -= _XW_encoded(A_enc, W)  # if we fit to X_error
+        mse_res = (X_error * X_error).mean()
+
+        print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
+
+    ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print(
+        f"After Ridge regression {X.shape}-{C}-{K}"
+        f"({(ram_usage / (1024 * 1024)):.3f} GB)"
+    )
+    report_array = np.array(
+        [
+            mse_error,
+            msv_orig,
+            mse_error / msv_orig,
+            np.mean(X_orig),
+            mse_res,
+            mse_res / msv_orig,
+            ram_usage / (1024 * 1024),
+        ]
+    )
+    return all_splits, all_prototypes, report_array
+
+
 @numba.jit(parallel=True, nopython=True)
 def read_luts_opt(
     A_raveled: np.ndarray,
@@ -351,11 +453,16 @@ class HalutMatmul:
         assert self.upcast_every in (1, 2, 4, 8, 16, 32, 64, 128, 256)
         self.accumulate_how = "mean"  # sum
 
+        self.stats_dict: Dict[str, Any] = dict([])
+
     def __repr__(self) -> str:
         return f"<HalutMatmul {self.get_params()}>"
 
     def __str__(self) -> str:
         return self.get_params()
+
+    def get_stats(self) -> Dict[str, Any]:
+        return self.stats_dict
 
     def get_params(self) -> str:
         params = "=============== \nHalutmatmul parameters\n"
@@ -408,9 +515,22 @@ class HalutMatmul:
         _, D = A.shape
         if D < self.C:
             raise Exception("D < C: {} < {}".format(D, self.C))
-        self.splits_lists, self.prototypes = learn_proto_and_hash_function(
-            A, self.C, lut_work_const=self.lut_work_const
-        )
+        (
+            self.splits_lists,
+            self.prototypes,
+            report_array,
+        ) = learn_proto_and_hash_function(A, self.C, lut_work_const=self.lut_work_const)
+        self.stats_dict["MSE_ERROR"] = report_array[ProtoHashReport.MSE_ERROR]
+        self.stats_dict["MSV_ORIG"] = report_array[ProtoHashReport.MSV_ORIG]
+        self.stats_dict["MSE_ERROR_DIV_MSV_ORIG"] = report_array[
+            ProtoHashReport.MSE_ERROR_DIV_MSV_ORIG
+        ]
+        self.stats_dict["MSE_RES"] = report_array[ProtoHashReport.MSE_RES]
+        self.stats_dict["MEAN_X"] = report_array[ProtoHashReport.MEAN_X]
+        self.stats_dict["MSE_RES_DIV_MSV_ORIG"] = report_array[
+            ProtoHashReport.MSE_RES_DIV_MSV_ORIG
+        ]
+        self.stats_dict["RAM_USAGE"] = report_array[ProtoHashReport.RAM_USAGE]
 
     def _check_if_learned(self) -> None:
         if not self.is_learned():

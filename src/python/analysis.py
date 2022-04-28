@@ -131,7 +131,7 @@ def run_test(
         "layer3.0.conv1",
     ]
 
-    result_base_path = "./results/data/accuracy/single_layer/training_data/"
+    result_base_path = "./results/data/accuracy/single_layer/updated_learning/"
     # C_all = [16, 32, 64]
     rows = [
         1,
@@ -143,8 +143,8 @@ def run_test(
         64,
         128,
         256,
-        512,
-        1024,
+        # 512,
+        # 1024,
         # 2048,
         # 4096,
         # 8192,
@@ -177,15 +177,32 @@ def run_test(
         "layer4.2.conv2",
     ]
 
+    layers_interesting = [
+        "layer1.1.conv3",
+        "layer2.0.conv1",
+        "layer2.3.conv3",
+        "layer3.0.conv1",
+        "layer3.0.conv3",
+        "layer3.3.conv3",
+        "layer4.0.conv1",
+        "layer4.0.conv3",
+        "layer4.1.conv1",
+        "layer4.2.conv3",
+    ]
+
     class ContinueI(Exception):
         pass
 
     continue_i = ContinueI()
 
     rows.reverse()
-    tests_to_skip = {"layer3.1.conv3": [[128, 1]], "layer1.0.conv2": [[64, 1]]}
+    tests_to_skip = {
+        "layer3.1.conv3": [[128, 1]],
+        # "layer1.0.conv2": [[64, 1]],
+        # "layer1.1.conv2": [[64, 1024]],
+    }
     # pylint: disable=consider-iterating-dictionary, too-many-nested-blocks
-    for k in conv3x3:
+    for k in layers_interesting:
         for r in rows:
             try:
                 if k in tests_to_skip.keys():

@@ -14,23 +14,21 @@ from maddness.util.hash_function_helper import (  # type: ignore[attr-defined]
     create_codebook_start_end_idxs,
 )
 
-# from joblib import Memory
-# _memory = Memory(".", verbose=0)
 
-# @_memory.cache
 def learn_binary_tree_splits(
     X: np.ndarray,
     nsplits: int = 4,  # levels of resulting binary hash tree
     return_prototypes: bool = True,
-    return_buckets: bool = False,
+    # return_buckets: bool = False,
     X_orig: Optional[np.ndarray] = None,
-    check_x_dims: int = 4,  # can be used to check more or less dims with max losses
+    check_x_dims: int = 8,  # can be used to check more or less dims with max losses
+    learn_quantize_params: bool = False,
 ) -> Tuple[list, int, Union[list, np.ndarray]]:
     assert nsplits <= 4  # >4 splits means >16 split_vals for this func's impl
 
-    X = X.astype(np.float32)
+    X = X.copy().astype(np.float32)
     N, D = X.shape  # D amount of IDx per codebook
-    X_orig = X if X_orig is None else X_orig
+    X_orig = X.copy() if X_orig is None else X_orig.copy()
 
     # initially, one big bucket with everything
     buckets = [
@@ -43,14 +41,18 @@ def learn_binary_tree_splits(
 
     splits = []
     col_losses = np.zeros(D, dtype=np.float32)
+    OFFSET = 0.0
+    SCALE_BY = 1.0
+    X = X * SCALE_BY + OFFSET
+    # X_orig = X_orig + OFFSET
     for _ in range(nsplits):
         # in the original code there are more strategies: eigenvec, bucket_eigenvecs, kurtosis
         # dim_heuristic == "bucket_sse":
         col_losses[:] = 0  # set all zero
         for buck in buckets:
-            col_losses += buck.col_sum_sqs()
-        try_dims = np.argsort(col_losses)[
-            -check_x_dims:
+            col_losses += buck.col_sum_sqs()  # return variance
+        try_dims = np.argsort(col_losses)[::-1][
+            :check_x_dims
         ]  # choose biggest column losses
         losses = np.zeros(len(try_dims), dtype=X.dtype)
         all_split_vals = []  # vals chosen by each bucket/group for each dim
@@ -75,23 +77,26 @@ def learn_binary_tree_splits(
         use_split_vals = all_split_vals[best_tried_dim_idx]
         split = MultiSplit(dim=best_dim, vals=use_split_vals)
 
-        # simple version, which also handles 1 bucket: just set min
-        # value to be avg of min splitval and xval, and max value to
-        # be avg of max splitval and xval
-        x = X[:, best_dim]  # Vector (50000, 1)
-        offset = (np.min(x) + np.min(use_split_vals)) / 2
-        upper_val = (np.max(x) + np.max(use_split_vals)) / 2 - offset
-        # TODO: why this specific scale value??
-        scale = 254.0 / upper_val
-        # if learn_quantize_params == "int16":
-        scale = 2.0 ** int(np.log2(scale))
+        if learn_quantize_params:
+            # simple version, which also handles 1 bucket: just set min
+            # value to be avg of min splitval and xval, and max value to
+            # be avg of max splitval and xval
+            x = X[:, best_dim]  # Vector (50000, 1)
+            offset = (np.min(x) + np.min(use_split_vals)) / 2
+            upper_val = (np.max(x) + np.max(use_split_vals)) / 2 - offset
+            # TODO: why this specific scale value??
+            scale = 254.0 / upper_val
+            # if learn_quantize_params == "int16":
+            scale = 2.0 ** int(np.log2(scale))
 
-        split.offset = offset
-        split.scaleby = scale
-        split.vals = (split.vals - split.offset) * split.scaleby
-        # TODO: look at clippings
-        split.vals = np.clip(split.vals, 0, 255).astype(np.int32)
-
+            split.offset = offset
+            split.scaleby = scale
+            split.vals = (split.vals - split.offset) * split.scaleby
+            # TODO: look at clippings
+            split.vals = np.clip(split.vals, 0, 255).astype(np.int32)
+        else:
+            split.offset = OFFSET
+            split.scaleby = SCALE_BY
         splits.append(split)
 
         # apply this split to get next round of buckets
@@ -108,12 +113,10 @@ def learn_binary_tree_splits(
         prototypes = np.vstack([buck.col_means() for buck in buckets])
         assert prototypes.shape == (len(buckets), X.shape[1])
         return splits, loss, prototypes
-    if return_buckets:
-        return splits, loss, buckets
+    # if return_buckets:
     return splits, loss, buckets
 
 
-# @_memory.cache
 def init_and_learn_hash_function(
     X: np.ndarray, C: int, pq_perm_algo: str = "start"
 ) -> Tuple[np.ndarray, list, np.ndarray, list]:
@@ -141,7 +144,7 @@ def init_and_learn_hash_function(
 
         # learn codebook to soak current residuals
         multisplits, _, buckets = learn_binary_tree_splits(
-            use_X_error, X_orig=use_X_orig, return_prototypes=False, return_buckets=True
+            use_X_error, X_orig=use_X_orig, return_prototypes=False
         )
 
         for split in multisplits:
@@ -214,12 +217,12 @@ def learn_proto_and_hash_function(
         X, C, pq_perm_algo=used_perm_algo
     )
 
-    mse_orig = (X_orig * X_orig).mean()
-    mse0 = (X_error * X_error).mean()
-    print("X_error mse / X mse: ", mse0 / mse_orig)
+    msv_orig = (X_orig * X_orig).mean()
+    mse_error = (X_error * X_error).mean()
+    print("X_error mse / X mean squared value: ", mse_error / msv_orig)
 
-    mse = np.square(X_orig - X_error).mean()
-    print("mse", mse)
+    squared_diff = np.square(X_orig - X_error).mean()
+    print("Error to Original squared diff", squared_diff)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
     A_enc = maddness_encode(X, all_splits)
@@ -240,7 +243,8 @@ def learn_proto_and_hash_function(
         # check how much improvement we got
         X_error -= _XW_encoded(A_enc, W)  # if we fit to X_error
         mse_res = (X_error * X_error).mean()
-        print("X_error mse / X mse after lstsq: ", mse_res / mse_orig)
+
+        print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
 
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print(

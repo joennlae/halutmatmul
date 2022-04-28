@@ -9,19 +9,19 @@ def _cumsse_cols(X):
     # TODO: can be optimized with numpy
     N, D = X.shape
     cumsses = np.empty((N, D), X.dtype)
-    cumX_row = np.empty(D, X.dtype)
-    cumX2_row = np.empty(D, X.dtype)
+    cumX_column = np.empty(D, X.dtype)
+    cumX2_column = np.empty(D, X.dtype)
     for j in range(D):
-        cumX_row[j] = X[0, j]
-        cumX2_row[j] = X[0, j] * X[0, j]
+        cumX_column[j] = X[0, j]
+        cumX2_column[j] = X[0, j] * X[0, j]
         cumsses[0, j] = 0  # no err in bucket with 1 element
     for i in range(1, N):
         one_over_count = 1.0 / (i + 1)
         for j in range(D):
-            cumX_row[j] += X[i, j]
-            cumX2_row[j] += X[i, j] * X[i, j]
-            meanX = cumX_row[j] * one_over_count
-            cumsses[i, j] = cumX2_row[j] - (cumX_row[j] * meanX)
+            cumX_column[j] += X[i, j]
+            cumX2_column[j] += X[i, j] * X[i, j]
+            meanX = cumX_column[j] * one_over_count
+            cumsses[i, j] = cumX2_column[j] - (cumX_column[j] * meanX)
     return cumsses
 
 
@@ -49,10 +49,57 @@ def optimal_split_val(
 
     best_idx = np.argmin(sses)
     next_idx = min(N - 1, best_idx + 1)
-    col = X_orig[:, dim]
+    col = X[:, dim]
     best_val = (col[sort_idxs[best_idx]] + col[sort_idxs[next_idx]]) / 2
 
     return best_val, sses[best_idx]
+
+
+@numba.njit(fastmath=True, cache=True, parallel=False)
+def calculate_loss(
+    X: np.ndarray, split_n: int, dim: int, idxs: np.ndarray
+) -> tuple[float, float]:
+    X = X[idxs].copy()
+    sorted_ids = np.argsort(X[:, dim])
+    X = X[sorted_ids]
+    X0 = X[:split_n]
+    X1 = X[split_n:]
+
+    assert X0.shape[0] + X1.shape[0] == X.shape[0]
+
+    X0_div = X0.shape[0] if X0.shape[0] > 0 else 1
+    X1_div = X1.shape[0] if X1.shape[0] > 0 else 1
+    # print(X0, X1, X0.shape, X1.shape)
+    X0_error = 1 / X0_div * np.sum(X0, axis=0)
+    X1_error = 1 / X1_div * np.sum(X1, axis=0)
+
+    bucket_0_error = np.sum(np.square(X0 - X1_error))
+    bucket_1_error = np.sum(np.square(X1 - X0_error))
+
+    # print(
+    #     X.shape,
+    #     X0.shape,
+    #     X1.shape,
+    #     X0_error.shape,
+    #     X1_error.shape,
+    #     bucket_0_error,
+    #     bucket_1_error,
+    # )
+    return X[split_n, dim], bucket_0_error + bucket_1_error
+
+
+@numba.njit(cache=True, parallel=True)
+def optimal_split_val_new(
+    X: np.ndarray, dim: int, idxs: np.ndarray
+) -> tuple[float, float]:
+    losses = np.zeros(X.shape[0])
+    split_vals = np.zeros(X.shape[0])
+    # pylint: disable=not-an-iterable
+    for i in numba.prange(X.shape[0]):
+        split_vals[i], losses[i] = calculate_loss(X, i, dim, idxs)
+    arg_min = np.argmin(losses)
+    print("returned loss", split_vals[arg_min], losses[arg_min])
+    return split_vals[arg_min], losses[arg_min]
 
 
 class Bucket:
@@ -82,7 +129,8 @@ class Bucket:
 
         self.N = len(point_ids)
         self.id = bucket_id
-
+        if self.N == 0:
+            print("created empty bucket: ", self.id)
         # this is just so that we can store the point ids as array instead of
         # set, while still retaining option to run our old code that needs
         # them to be a set for efficient inserts and deletes
@@ -141,25 +189,21 @@ class Bucket:
         id1 = id0 + 1
         if X is None or self.N < 2:  # copy of this bucket + an empty bucket
             return (self.deepcopy(bucket_id=id0), Bucket(D=self.D, bucket_id=id1))
-        assert dim is not None
-        assert val is not None
         assert self.point_ids is not None
         my_idxs = np.asarray(self.point_ids)
 
-        # print("my_idxs shape, dtype", my_idxs.shape, my_idxs.dtype)
-        X = X[my_idxs]
+        X = X_orig[my_idxs]
         X_orig = X if X_orig is None else X_orig[my_idxs]
-        mask = X_orig[:, dim] < val
+        mask = X[:, dim] > val  #
         not_mask = ~mask
-        X0 = X[mask]
-        X1 = X[not_mask]
-        ids0 = my_idxs[mask]
-        ids1 = my_idxs[not_mask]
+        X0 = X[not_mask]
+        X1 = X[mask]
+        ids0 = my_idxs[not_mask]
+        ids1 = my_idxs[mask]
 
         def create_bucket(points, ids, bucket_id):
             sumX = points.sum(axis=0) if len(ids) else None
             sumX2 = (points * points).sum(axis=0) if len(ids) else None
-            # return Bucket(N=len(ids), D=self.D, point_ids=ids,
             return Bucket(
                 D=self.D, point_ids=ids, sumX=sumX, sumX2=sumX2, bucket_id=bucket_id
             )
@@ -173,6 +217,7 @@ class Bucket:
         if X_orig is not None:
             X_orig = X_orig[my_idxs]
         return optimal_split_val(X[my_idxs], dim, X_orig=X_orig)
+        # return optimal_split_val_new(X, dim, my_idxs)
 
     def col_means(self):
         return self.sumX.astype(np.float64) / max(1, self.N)
