@@ -34,3 +34,11 @@ conda env create -f environment_gpu.yml --prefix /scratch2/janniss/conda/halutma
 
 conda activate /scratch2/janniss/conda/halutmatmul_gpu
 ```
+
+On CPU servers
+
+```
+conda env create -f environment_cpu.yml --prefix /scratch/janniss/conda/halutmatmul_cpu
+```
+
+Don't forget to change path in `~/.condarc`

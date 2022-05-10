@@ -1,9 +1,11 @@
 import timeit
 import functools
+
 from test.utils.utils import error_hist_numpy
 import pytest
 import torch
 import numpy as np
+from halutmatmul.functions import halut_encode_opt
 
 from halutmatmul.halutmatmul import HalutMatmul, HalutOfflineStorage
 
@@ -40,7 +42,7 @@ try:
 
         A_2_numpy = (np.random.random((N, D)) + b) * a
 
-        res_opt = hm.maddness_encode_opt(
+        res_opt = halut_encode_opt(
             A_2_numpy, store_array[hm.HalutOfflineStorage.HASH_TABLES]
         )
 
@@ -72,7 +74,7 @@ try:
         cpu_time = (
             timeit.Timer(
                 functools.partial(
-                    hm.maddness_encode_opt,
+                    halut_encode_opt,
                     *(A_2_numpy, store_array[hm.HalutOfflineStorage.HASH_TABLES]),
                 )
             ).timeit(5)
@@ -127,7 +129,7 @@ try:
         A_2_numpy = (np.random.random((N, D)) + b) * a
         # new_halut = HalutMatmul().from_numpy(store_array)
         # res_expected = new_halut.matmul_online(A_2_numpy)
-        A_enc_numpy = hm.maddness_encode_opt(
+        A_enc_numpy = halut_encode_opt(
             A_2_numpy, store_array[HalutOfflineStorage.HASH_TABLES]
         )
         offsets = np.arange(C, dtype=np.int32) * K

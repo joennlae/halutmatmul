@@ -4,6 +4,7 @@ channels:
   - pytorch-nightly
   - conda-forge
   - defaults
+  - conda-forge/label/scikit-learn_rc
 dependencies:
   - python=3.9
   - black
@@ -12,7 +13,7 @@ dependencies:
   - numba
   - joblib
   - scipy
-  - scikit-learn
+  - scikit-learn=1.1
   - pytest
   - pre-commit
   - mypy=0.942

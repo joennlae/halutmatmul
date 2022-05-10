@@ -1,7 +1,9 @@
 import glob
+import json
 import os
 from math import ceil
 import re
+from typing import Any
 import numpy as np
 
 from ResNet.resnet import END_STORE_A, END_STORE_B
@@ -14,9 +16,10 @@ def analyze_halut(
     r: int,
     data_path: str,
     batch_size: int,
+    encoding_algorithm: int,
     # pylint: disable=unused-argument
     K: int = 16,
-) -> None:
+) -> dict[str, Any]:
     print("start learning", l, C, r)
     files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
@@ -58,7 +61,9 @@ def analyze_halut(
         np.count_nonzero(a_numpy == 0) / (a_numpy.shape[0] * a_numpy.shape[1]) * 100,
     )
     print("range B", np.min(b_numpy), np.max(b_numpy))
-    _, report_dict = hm.learn_halut_offline_report(a_numpy, b_numpy, C)
+    _, report_dict = hm.learn_halut_offline_report(
+        a_numpy, b_numpy, C, encoding_algorithm=encoding_algorithm
+    )
 
     report_dict["layer_name"] = l
     report_dict["zeros_percentage"] = (
@@ -66,6 +71,8 @@ def analyze_halut(
     )
 
     print(report_dict)
+
+    return report_dict
 
 
 layers = [
@@ -81,6 +88,22 @@ layers = [
     "layer4.2.conv3",
 ]
 if __name__ == "__main__":
-    layer_name = layers[0]
+    report_dicts = []
+    layer_name = layers[6]
     for layer_name in layers:
-        analyze_halut(layer_name, 16, 16, "/scratch2/janniss/resnet_input_data", 256)
+        for algo in [0, 1]:
+            report = analyze_halut(
+                layer_name,
+                64,
+                16,
+                "/scratch2/janniss/resnet_input_data",
+                256,
+                algo,
+            )
+            report_dicts.append(report)
+    print(report_dicts)
+    with open(
+        "halut_learning_64.json",
+        "w",
+    ) as fp:
+        json.dump(report_dicts, fp, sort_keys=True, indent=4)

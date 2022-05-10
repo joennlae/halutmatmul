@@ -14,9 +14,8 @@ from torch.nn.common_types import _size_any_t
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
-from halutmatmul.halutmatmul import (
-    HalutConfig,
-    HalutMatmul,
+from halutmatmul.halutmatmul import EncodingAlgorithm, HalutConfig, HalutMatmul
+from halutmatmul.functions import (
     calc_newaxes_and_newshape_and_old,
     tensordot,
 )
@@ -321,6 +320,10 @@ class HalutConv2d(_ConvNd):
         self.report_error = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
+        # only for FULL PQ
+        self.prototypes = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.halut: Optional[HalutMatmul] = None
@@ -358,6 +361,20 @@ class HalutConv2d(_ConvNd):
                 ],
                 dtype=object,
             )
+
+            if (
+                int(state_dict[prefix + "halut_config"][HalutConfig.ENCODING_ALGORITHM])
+                == EncodingAlgorithm.FULL_PQ
+            ):
+                if prefix + "prototypes" not in state_dict.keys():
+                    raise Exception(f"'{prefix}parameters' not in state_dict")
+                self.prototypes = Parameter(
+                    state_dict[prefix + "prototypes"]
+                    .clone()
+                    .to(str(self.weight.device)),
+                    requires_grad=False,
+                )
+
             if "cuda" in str(self.weight.device):
                 # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
                 from halutmatmul.cuda.kernels import create_kernels_halutmatmul

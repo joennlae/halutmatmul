@@ -206,7 +206,7 @@ def maddness_encode(
 # @_memory.cache
 def learn_proto_and_hash_function(
     X: np.ndarray, C: int, lut_work_const: int = -1
-) -> Tuple[list[list[MultiSplit]], np.ndarray]:
+) -> Tuple[list[list[MultiSplit]], np.ndarray, np.ndarray]:
     _, D = X.shape
     K = 16
     used_perm_algo = "start"  # or end
@@ -219,7 +219,13 @@ def learn_proto_and_hash_function(
 
     msv_orig = (X_orig * X_orig).mean()
     mse_error = (X_error * X_error).mean()
-    print("X_error mse / X mean squared value: ", mse_error / msv_orig)
+    print(
+        "X_error mse / X mean squared value: ",
+        mse_error / msv_orig,
+        mse_error,
+        msv_orig,
+        np.mean(X_orig),
+    )
 
     squared_diff = np.square(X_orig - X_error).mean()
     print("Error to Original squared diff", squared_diff)
@@ -251,7 +257,18 @@ def learn_proto_and_hash_function(
         f"After Ridge regression {X.shape}-{C}-{K}"
         f"({(ram_usage / (1024 * 1024)):.3f} GB)"
     )
-    return all_splits, all_prototypes
+    report_array = np.array(
+        [
+            mse_error,
+            msv_orig,
+            mse_error / msv_orig,
+            np.mean(X_orig),
+            mse_res,
+            mse_res / msv_orig,
+            ram_usage / (1024 * 1024),
+        ]
+    )
+    return all_splits, all_prototypes, report_array
 
 
 def maddness_lut(q: np.ndarray, all_prototypes: np.ndarray) -> np.ndarray:
@@ -306,7 +323,7 @@ class MaddnessMatmul:
         _, D = A.shape
         if D < self.C:
             raise Exception("D < C: {} < {}".format(D, self.C))
-        self.splits_lists, self.prototypes = learn_proto_and_hash_function(
+        self.splits_lists, self.prototypes, _ = learn_proto_and_hash_function(
             A, self.C, lut_work_const=self.lut_work_const
         )
 

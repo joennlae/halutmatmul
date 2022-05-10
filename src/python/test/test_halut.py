@@ -16,6 +16,7 @@ def helper_halut(
     b: float = 0.0,
     quantize_lut: bool = False,
     run_optimized: bool = True,
+    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> None:
     print("=====TEST=====")
     print(
@@ -31,6 +32,7 @@ def helper_halut(
         lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
+        encoding_algorithm=encoding_algorithm,
     )
     new_halut = hm.HalutMatmul()
     new_halut.from_numpy(store_array)
@@ -82,30 +84,39 @@ def helper_halut(
 
 
 @pytest.mark.parametrize(
-    "N, K, M, C, a, b, quantize_lut, run_optimized",
+    "N, K, M, C, a, b, encoding_algorithm",
     [
-        (N, K, M, C, a, b, q, r)
+        (N, K, M, C, a, b, e)
         for N in [2048, 4098]
         for K in [512]
         for M in [16, 64]
         for C in [4, 16, 32]
         for a in [1.0]  # 5.0
         for b in [0.0, 10.0]
-        for q in [True, False]
-        for r in [True, False]
+        for e in [
+            hm.EncodingAlgorithm.FOUR_DIM_HASH,
+            hm.EncodingAlgorithm.DECISION_TREE,
+            hm.EncodingAlgorithm.FULL_PQ,
+        ]
+        # for q in [True, False]
+        # for r in [True, False]
     ],
 )
 def test_learn_offline(
-    N: int,
-    K: int,
-    M: int,
-    C: int,
-    a: float,
-    b: float,
-    quantize_lut: bool,
-    run_optimized: bool,
+    N: int, K: int, M: int, C: int, a: float, b: float, encoding_algorithm: int
 ) -> None:
     np.random.seed(4419)
+
+    quantize_lut = False
+    run_optimized = True
     helper_halut(
-        N, K, M, C, a=a, b=b, quantize_lut=quantize_lut, run_optimized=run_optimized
+        N,
+        K,
+        M,
+        C,
+        a=a,
+        b=b,
+        quantize_lut=quantize_lut,
+        run_optimized=run_optimized,
+        encoding_algorithm=encoding_algorithm,
     )

@@ -2,29 +2,37 @@
 # heavily inspired from https://github.com/dblalock/bolt
 from __future__ import annotations
 from functools import reduce
-import resource
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 import sys
 from pathlib import Path
+
+import numpy as np
+
+import numba
+
+from halutmatmul.decision_tree import (
+    halut_encode_decision_tree,
+    halut_encode_pq,
+    learn_proto_and_hash_function_decision_tree,
+)
+from halutmatmul.functions import (
+    get_str_hash_buckets,
+    halut_encode_opt,
+    numpy_to_split_list,
+    read_luts_opt,
+    read_luts_quantized_opt,
+    split_lists_to_numpy,
+)
 
 sys.path.append(
     str(Path(__file__).parent) + "/../../../maddness/python/"
 )  # for maddness import
-import numpy as np
-
-import numba  # type: ignore [import]
-from numba import prange
 
 from maddness.maddness import (
     MultiSplit,
-    init_and_learn_hash_function,
+    learn_proto_and_hash_function,
     maddness_lut,
     maddness_quantize_luts,
-)
-from maddness.util.least_squares import (  # type: ignore[attr-defined]
-    encoded_lstsq,
-    sparse_encoded_lstsq,
-    _XW_encoded,
 )
 
 
@@ -32,6 +40,8 @@ class HalutOfflineStorage:
     HASH_TABLES = 0
     LUT = 1
     CONFIG = 2
+    PROTOTYPES = 3
+    MAX = 4
 
 
 class HalutConfig:
@@ -40,7 +50,24 @@ class HalutConfig:
     RUN_OPTIMIZED = 2
     QUANTIZE_LUT = 3
     UPCAST_EVERY = 4
-    MAX = 5
+    ENCODING_ALGORITHM = 5
+    MAX = 6
+
+
+class ProtoHashReport:
+    MSE_ERROR = 0
+    MSV_ORIG = 1
+    MSE_ERROR_DIV_MSV_ORIG = 2
+    MEAN_X = 3
+    MSE_RES = 4
+    MSE_RES_DIV_MSV_ORIG = 5
+    RAM_USAGE = 6
+
+
+class EncodingAlgorithm:
+    FOUR_DIM_HASH = 0
+    DECISION_TREE = 1
+    FULL_PQ = 2
 
 
 def learn_halut_offline_report(
@@ -50,9 +77,14 @@ def learn_halut_offline_report(
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
+    encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> tuple[np.ndarray, Dict[str, Any]]:
     mn = HalutMatmul(
-        C, lut_work_const, quantize_lut=quantize_lut, run_optimized=run_optimized
+        C,
+        lut_work_const,
+        quantize_lut=quantize_lut,
+        run_optimized=run_optimized,
+        encoding_algorithm=encoding_algorithm,
     )
     mn.learn_offline(A, B)
 
@@ -69,360 +101,30 @@ def learn_halut_offline(
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
+    encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> np.ndarray:
     mn = HalutMatmul(
-        C, lut_work_const, quantize_lut=quantize_lut, run_optimized=run_optimized
+        C,
+        lut_work_const,
+        quantize_lut=quantize_lut,
+        run_optimized=run_optimized,
+        encoding_algorithm=encoding_algorithm,
     )
     mn.learn_offline(A, B)
     return mn.to_numpy()
 
 
-def calc_newaxes_and_newshape_and_old(
-    a: np.ndarray,
-    b: np.ndarray,
-    axes: Union[int, list[int], Any] = 2,
-) -> tuple[
-    list[int], list[int], tuple[int, int], tuple[int, int], list[int], list[int]
-]:
-    try:
-        iter(axes)  # type: ignore[arg-type]
-    # pylint: disable=W0703
-    except Exception:
-        axes_a = list(range(-axes, 0))  # type: ignore[operator]
-        axes_b = list(range(0, axes))  # type: ignore[arg-type]
-    else:
-        axes_a, axes_b = axes  # type: ignore[misc, assignment]
-    try:
-        na = len(axes_a)
-        axes_a = list(axes_a)
-    except TypeError:
-        axes_a = [axes_a]  # type: ignore[list-item]
-        na = 1
-    try:
-        nb = len(axes_b)
-        axes_b = list(axes_b)
-    except TypeError:
-        axes_b = [axes_b]  # type: ignore[list-item]
-        nb = 1
-    as_ = a.shape
-    nda = a.ndim
-    bs = b.shape
-    ndb = b.ndim
-    equal = True
-    if na != nb:
-        equal = False
-    else:
-        for k in range(na):
-            if as_[axes_a[k]] != bs[axes_b[k]]:
-                equal = False
-                break
-            if axes_a[k] < 0:
-                axes_a[k] += nda
-            if axes_b[k] < 0:
-                axes_b[k] += ndb
-    if not equal:
-        raise ValueError("shape-mismatch for sum")
+ENCODING_FUNCTIONS = [
+    halut_encode_opt,  # FOUR_DIM_HASH
+    halut_encode_decision_tree,  # DECISION_TREE
+    halut_encode_pq,  # FULL_PQ
+]
 
-    # Move the axes to sum over to the end of "a"
-    # and to the front of "b"
-    notin = [k for k in range(nda) if k not in axes_a]
-    newaxes_a = notin + axes_a
-    N2 = 1
-    for axis in axes_a:
-        N2 *= as_[axis]
-    newshape_a = (int(np.multiply.reduce([as_[ax] for ax in notin])), N2)
-    olda = [as_[axis] for axis in notin]
-
-    notin = [k for k in range(ndb) if k not in axes_b]
-    newaxes_b = axes_b + notin
-    N2 = 1
-    for axis in axes_b:
-        N2 *= bs[axis]
-    newshape_b = (N2, int(np.multiply.reduce([bs[ax] for ax in notin])))
-    oldb = [bs[axis] for axis in notin]
-
-    return (newaxes_a, newaxes_b, newshape_a, newshape_b, olda, oldb)
-
-
-def get_str_hash_buckets(buckets: list[MultiSplit]) -> str:
-    ret_str = ""
-    for v in buckets:
-        ret_str += v.get_params() + "\n"
-    return ret_str
-
-
-def split_lists_to_numpy(buckets: list[list[MultiSplit]]) -> np.ndarray:
-    length = 0
-    for c in buckets:
-        for v in c:
-            length = v.vals.shape[0] if v.vals.shape[0] > length else length
-    i = k = 0
-    ret_array = np.zeros((len(buckets), len(buckets[0]), length + 3), dtype=np.float32)
-    for c in buckets:
-        k = 0
-        for v in c:
-            ret_array[i, k, 0 : pow(2, k)] = v.vals
-            ret_array[i, k, length] = v.dim
-            ret_array[i, k, length + 1] = v.scaleby
-            ret_array[i, k, length + 2] = v.offset
-            k += 1
-        i += 1
-    return ret_array
-
-
-def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
-    splits: list[list[MultiSplit]] = []
-    length = numpy_array.shape[2] - 3
-    C = numpy_array.shape[0]
-    num_splits = numpy_array.shape[1]
-    assert num_splits == np.log2(length) + 1
-    for c in range(C):
-        splits.append([])
-        for v in range(num_splits):
-            vals = numpy_array[c, v, 0 : pow(2, v)]
-            dim = int(numpy_array[c, v, length])
-            scaleby = numpy_array[c, v, length + 1]
-            offset = numpy_array[c, v, length + 2]
-            multi_split = MultiSplit(dim=dim, vals=vals, scaleby=scaleby, offset=offset)
-            splits[c].append(multi_split)
-    return splits
-
-
-# pylint: disable=R0201
-def tensordot(
-    a: np.ndarray,
-    b: np.ndarray,
-    axes: Union[int, list[int], Any] = 2,
-    return_reshaped_inputs: bool = False,
-    halut: Optional[HalutMatmul] = None,
-) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
-    # https://github.com/numpy/numpy/blob/145ed90f638c1a12ce5b06e9100421f99783f431/numpy/core/numeric.py#L950
-
-    """Example
-    padding=0, kernel_size=(3, 3), stride=1
-
-    IN: (128, 64, 112, 112)
-    W: (64, 64, 3, 3)
-    after Im2col (np.lib.stride_tricks.as_strided): (128, 64, 110, 110, 3, 3)
-    np.tensordot(IN, W, ((1,4,5),(1,2,3)))
-
-    at transpose: (128, 64, 110, 110, 3, 3) -> (128, 110, 110, 64, 3, 3)
-    newaxes_a: [0, 2, 3, 1, 4, 5]
-    bt transpose: (64, 64, 3, 3) -> (64, 3, 3, 64)
-    newaxes_b: [1, 2, 3, 0]
-    newshape_a: (1548800, 576)
-    newshape_B: (576, 64)
-
-    (1548800, 64) -> (128, 64, 110, 110)
-    olda: [128, 110, 110]
-    oldb: [64]
-    olda + oldb: [128, 110, 110, 64]
-    OUT: (128, 110, 110, 64)
-
-    needs to be reshaped later to match conv2d output
-    np.moveaxis(ret,4,2).reshape(batch_size, channels_out, out_y, out_x)
-    """
-
-    a, b = np.asarray(a), np.asarray(b)
-    (
-        newaxes_a,
-        newaxes_b,
-        newshape_a,
-        newshape_b,
-        olda,
-        oldb,
-    ) = calc_newaxes_and_newshape_and_old(a, b, axes)
-
-    at = a.transpose(newaxes_a).reshape(newshape_a)
-    bt = b.transpose(newaxes_b).reshape(newshape_b)
-    if return_reshaped_inputs:
-        return (at, bt)
-
-    # numpy
-    # res = np.dot(at, bt)
-    if halut is not None:
-        # import cProfile
-        # from pstats import SortKey
-        # with cProfile.Profile() as pr:
-        res = halut.matmul_online(at)
-        # pr.disable()
-        # pr.print_stats(sort=SortKey.CUMULATIVE)
-    else:
-        raise Exception("Halut was not passed as argument")
-    return res.reshape(olda + oldb)
-
-
-@numba.jit(parallel=True, nopython=True)
-def read_luts_quantized_opt(
-    A_raveled: np.ndarray,
-    A_shape: tuple[int, int],
-    B_luts: np.ndarray,
-    total_result: np.ndarray,
-    upcast_every: int,
-    C: int,
-    scale: float,
-    offset: float,
-) -> np.ndarray:
-    for i in prange((len(B_luts))):
-        lut = B_luts[i]
-        read_lut_1 = lut.ravel()[A_raveled].reshape(A_shape)
-        shape_new = (
-            read_lut_1.shape[0],
-            int(A_shape[0] * A_shape[1] / upcast_every / read_lut_1.shape[0]),
-            upcast_every,
-        )
-        read_lut = read_lut_1.reshape(shape_new)
-
-        # while read_lut.shape[-1] > 2:
-        for _ in range(np.log2(read_lut.shape[-1]) - 1):
-            read_lut = (read_lut[:, :, ::2] + read_lut[:, :, 1::2] + 1) // 2
-
-        read_lut = (read_lut[:, :, 0] + read_lut[:, :, 1] + 1) // 2
-        read_lut = read_lut.sum(axis=-1)  # clipping not needed
-        read_lut *= upcast_every  # convert mean to sum
-
-        bias = C / 4 * np.log2(upcast_every)
-        read_lut -= int(bias)
-
-        read_lut = (read_lut / scale) + offset
-        total_result[i] = read_lut
-    return total_result
-
-
-class ProtoHashReport:
-    MSE_ERROR = 0
-    MSV_ORIG = 1
-    MSE_ERROR_DIV_MSV_ORIG = 2
-    MEAN_X = 3
-    MSE_RES = 4
-    MSE_RES_DIV_MSV_ORIG = 5
-    RAM_USAGE = 6
-
-
-def learn_proto_and_hash_function(
-    X: np.ndarray, C: int, lut_work_const: int = -1
-) -> tuple[list[list[MultiSplit]], np.ndarray, np.ndarray]:
-    _, D = X.shape
-    K = 16
-    used_perm_algo = "start"  # or end
-    X_orig = X.astype(np.float32)
-
-    # X_error = X_orig - centroid shape: [N, D]
-    X_error, all_splits, all_prototypes, _ = init_and_learn_hash_function(
-        X, C, pq_perm_algo=used_perm_algo
-    )
-
-    msv_orig = (X_orig * X_orig).mean()
-    mse_error = (X_error * X_error).mean()
-    print(
-        "X_error mse / X mean squared value: ",
-        mse_error / msv_orig,
-        mse_error,
-        msv_orig,
-        np.mean(X_orig),
-    )
-
-    squared_diff = np.square(X_orig - X_error).mean()
-    print("Error to Original squared diff", squared_diff)
-    # optimize prototypes discriminatively conditioned on assignments
-    # applying g(A) [N, C] with values from 0-K (50000, 16)
-    A_enc = maddness_encode_opt(X, split_lists_to_numpy(all_splits))
-
-    # optimizing prototypes
-    if lut_work_const != 1:  # if it's 1, equivalent to just doing PQ
-        if lut_work_const < 0:
-            # print("fitting dense lstsq to X_error")
-            W = encoded_lstsq(A_enc=A_enc, Y=X_error)
-        else:
-            W, _ = sparse_encoded_lstsq(
-                A_enc, X_error, nnz_blocks=lut_work_const, pq_perm_algo=used_perm_algo
-            )
-
-        all_prototypes_delta = W.reshape(C, K, D)
-        all_prototypes += all_prototypes_delta
-
-        # check how much improvement we got
-        X_error -= _XW_encoded(A_enc, W)  # if we fit to X_error
-        mse_res = (X_error * X_error).mean()
-
-        print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
-
-    ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    print(
-        f"After Ridge regression {X.shape}-{C}-{K}"
-        f"({(ram_usage / (1024 * 1024)):.3f} GB)"
-    )
-    report_array = np.array(
-        [
-            mse_error,
-            msv_orig,
-            mse_error / msv_orig,
-            np.mean(X_orig),
-            mse_res,
-            mse_res / msv_orig,
-            ram_usage / (1024 * 1024),
-        ]
-    )
-    return all_splits, all_prototypes, report_array
-
-
-@numba.jit(parallel=True, nopython=True)
-def read_luts_opt(
-    A_raveled: np.ndarray,
-    A_shape: tuple[int, int],
-    B_luts: np.ndarray,
-    total_result: np.ndarray,
-) -> np.ndarray:
-    for i in prange((len(B_luts))):
-        read_lut = B_luts[i].ravel()[A_raveled].reshape(A_shape)
-        read_lut = read_lut.sum(axis=-1)
-        total_result[i] = read_lut
-    return total_result
-
-
-@numba.jit(nopython=True, parallel=False)
-def apply_hash_function_opt(X: np.ndarray, splits: np.ndarray) -> np.ndarray:
-    N, _ = X.shape
-    # original code had a distinction: not sure why
-    group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
-    num_splits = splits.shape[0]
-    length = splits.shape[1] - 3
-    for i in range(num_splits):
-        vals = splits[i, 0 : pow(2, i)]
-        vals = vals[group_ids]
-        dim = int(splits[i, length])
-        scaleby = splits[i, length + 1]
-        offset = splits[i, length + 2]
-        x = X[:, dim] - offset
-        x = x * scaleby
-        indicators = x > vals
-        group_ids = (group_ids * 2) + indicators
-    return group_ids
-
-
-def apply_hash_function(X: np.ndarray, splits: List[MultiSplit]) -> np.ndarray:
-    N, _ = X.shape
-    nsplits = len(splits)
-    assert len(splits) >= 1
-    # original code had a distinction: not sure why
-    group_ids = np.zeros(N, dtype=np.int32)
-    for i in range(nsplits):
-        split = splits[i]
-        vals = split.vals[group_ids]
-        indicators = split.preprocess_x(X[:, split.dim]) > vals
-        group_ids = (group_ids * 2) + indicators
-    return group_ids
-
-
-@numba.jit(nopython=True, parallel=True)
-def maddness_encode_opt(X: np.ndarray, numpy_array: np.ndarray) -> np.ndarray:
-    N, _ = X.shape
-    C = numpy_array.shape[0]
-    A_enc = np.empty((C, N), dtype=np.int32)  # column-major
-    # split_lists = numpy_to_split_list(numpy_array)
-    for c in prange(C):
-        A_enc[c] = apply_hash_function_opt(X, numpy_array[c])
-    return np.ascontiguousarray(A_enc.T)
+LEARNING_FUNCTIONS = [
+    learn_proto_and_hash_function,  # FOUR_DIM_HASH
+    learn_proto_and_hash_function_decision_tree,  # DECISION_TREE
+    learn_proto_and_hash_function_decision_tree,  # FULL_PQ
+]
 
 
 class HalutMatmul:
@@ -432,21 +134,33 @@ class HalutMatmul:
         lut_work_const: int = -1,
         quantize_lut: bool = False,
         run_optimized: bool = True,
+        encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
     ) -> None:
-        self.splits_lists: list[list[MultiSplit]] = []
-        self.prototypes: np.ndarray = np.array([])
-        self.luts: np.ndarray = np.array([])
-        self.offset: float = 0.0
-        self.scale: float = 1.0
-        self.lut_work_const = lut_work_const
+
         self.C = C
         self.K = 16
+        self.encoding_algorithm = encoding_algorithm
+        self.prototypes: np.ndarray = np.array([])
+        self.luts: np.ndarray = np.array([])
+        self.optimized = run_optimized
+
+        self.encoding_function = ENCODING_FUNCTIONS[self.encoding_algorithm]
+        self.learning_function = LEARNING_FUNCTIONS[self.encoding_algorithm]
+
+        self.lut_work_const = lut_work_const
         self.A_enc: np.ndarray = np.array([])
+
+        # EncodingAlgorithm.FOUR_DIM_HASH
+        self.splits_lists: list[list[MultiSplit]] = []
+
+        # EncodingAlgorithm.DECISION_TREE
+        self.decision_trees: np.ndarray = np.array([])
 
         self.quantize_lut = quantize_lut
         self.upcast_every = 16
         self.upcast_every = min(self.C, self.upcast_every)
-        self.optimized = run_optimized
+        self.offset: float = 0.0
+        self.scale: float = 1.0
         # important otherwise wrong summation
         assert self.upcast_every in (1, 2, 4, 8, 16, 32, 64, 128, 256)
         self.accumulate_how = "mean"  # sum
@@ -509,15 +223,25 @@ class HalutMatmul:
             and self.scale is not None
         )
 
-    def _learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
-        _, D = A.shape
+    def learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
+        D = A.shape[1]
         if D < self.C:
             raise Exception("D < C: {} < {}".format(D, self.C))
         (
-            self.splits_lists,
+            return_split_list_or_decison_trees,
             self.prototypes,
             report_array,
-        ) = learn_proto_and_hash_function(A, self.C, lut_work_const=self.lut_work_const)
+        ) = self.learning_function(
+            A, self.C, lut_work_const=self.lut_work_const
+        )  # type: ignore[operator]
+        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+            self.splits_lists = return_split_list_or_decison_trees
+        elif self.encoding_algorithm in [
+            EncodingAlgorithm.DECISION_TREE,
+            EncodingAlgorithm.FULL_PQ,
+        ]:
+            self.decision_trees = return_split_list_or_decison_trees
+
         self.stats_dict["MSE_ERROR"] = report_array[ProtoHashReport.MSE_ERROR]
         self.stats_dict["MSV_ORIG"] = report_array[ProtoHashReport.MSV_ORIG]
         self.stats_dict["MSE_ERROR_DIV_MSV_ORIG"] = report_array[
@@ -536,7 +260,14 @@ class HalutMatmul:
 
     def to_numpy(self) -> np.ndarray:
         self._check_if_learned()
-        splits = split_lists_to_numpy(self.splits_lists)
+        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+            splits = split_lists_to_numpy(self.splits_lists)
+        elif self.encoding_algorithm in [
+            EncodingAlgorithm.DECISION_TREE,
+            EncodingAlgorithm.FULL_PQ,
+        ]:
+            splits = self.decision_trees.astype(np.float32)
+
         store_array = np.array(
             [
                 splits.astype(np.float32),
@@ -548,25 +279,41 @@ class HalutMatmul:
                         self.optimized,
                         self.quantize_lut,
                         self.upcast_every,
+                        self.encoding_algorithm,
                     ],
                     dtype=np.float32,
                 ),
+                self.prototypes.astype(np.float32),
             ],
             dtype=object,
         )
         return store_array
 
     def from_numpy(self, numpy_array: np.ndarray) -> HalutMatmul:
-        splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
-        self.splits_lists = numpy_to_split_list(splits_numpy)
-        self.luts = numpy_array[HalutOfflineStorage.LUT]
         config = numpy_array[HalutOfflineStorage.CONFIG]
+        self.encoding_algorithm = int(config[HalutConfig.ENCODING_ALGORITHM])
+        self.encoding_function = ENCODING_FUNCTIONS[self.encoding_algorithm]
+        self.learning_function = LEARNING_FUNCTIONS[self.encoding_algorithm]
+
+        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+            splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
+            self.splits_lists = numpy_to_split_list(splits_numpy)
+        elif self.encoding_algorithm in [
+            EncodingAlgorithm.DECISION_TREE,
+            EncodingAlgorithm.FULL_PQ,
+        ]:
+            self.decision_trees = numpy_array[HalutOfflineStorage.HASH_TABLES]
+
+        self.luts = numpy_array[HalutOfflineStorage.LUT]
         self.offset = config[HalutConfig.LUT_OFFSET]
         self.scale = config[HalutConfig.LUT_SCALE]
         upcast_every = int(config[HalutConfig.UPCAST_EVERY])
         self.optimized = bool(config[HalutConfig.RUN_OPTIMIZED])
         self.quantize_lut = bool(config[HalutConfig.QUANTIZE_LUT])
-        assert self.splits_lists and self.luts.shape[1]
+
+        if self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
+            self.prototypes = numpy_array[HalutOfflineStorage.PROTOTYPES]
+        # assert self.splits_lists and self.luts.shape[1]
         _, C, K = self.luts.shape
         self.C = C
         self.K = K
@@ -576,10 +323,10 @@ class HalutMatmul:
 
     # redefinition for convenience public function
     def learn_A(self, A: np.ndarray) -> None:
-        self._learn_hash_buckets_and_prototypes(A)
+        self.learn_hash_buckets_and_prototypes(A)
 
     def learn_offline(self, A: np.ndarray, B: np.ndarray) -> None:
-        self._learn_hash_buckets_and_prototypes(A)
+        self.learn_hash_buckets_and_prototypes(A)
         self._set_B(B)
         self._check_if_learned()
 
@@ -587,9 +334,9 @@ class HalutMatmul:
         self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None
     ) -> np.ndarray:
         if A_learn is None:
-            self._learn_hash_buckets_and_prototypes(A)
+            self.learn_hash_buckets_and_prototypes(A)
         else:
-            self._learn_hash_buckets_and_prototypes(A_learn)
+            self.learn_hash_buckets_and_prototypes(A_learn)
         self._set_A(A)
         self._set_B(B)
         return self._calc_matmul(
@@ -599,14 +346,20 @@ class HalutMatmul:
             scale=self.scale,
         )
 
-    def _encode_A(self, A: np.ndarray) -> np.ndarray:
-        idxs = maddness_encode_opt(A, split_lists_to_numpy(self.splits_lists))
+    def encode(self, A: np.ndarray) -> np.ndarray:
+        idxs = np.zeros((A.shape[0], self.C), np.int32)
+        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+            idxs = halut_encode_opt(A, split_lists_to_numpy(self.splits_lists))
+        elif self.encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
+            idxs = halut_encode_decision_tree(A, self.decision_trees)
+        elif self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
+            idxs = halut_encode_pq(A, self.decision_trees, self.prototypes)
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
         offsets = np.arange(self.C, dtype=np.int32) * self.K
         return idxs + offsets
 
     def _set_A(self, A: np.ndarray) -> None:
-        self.A_enc = self._encode_A(A)
+        self.A_enc = self.encode(A)
 
     def _set_B(self, B: np.ndarray) -> None:
         self.luts, self.offset, self.scale = self._create_lut(B.T)
@@ -702,13 +455,21 @@ class HalutMatmul:
             ret_str = f"Shape LUT: {self.luts.shape}, "
             ret_str += f"elements: {reduce(lambda x, y: x * y, self.luts.shape)} \n"
             ret_str += f"Actual storage LUT: {self.luts.nbytes / 1024} KB ({self.luts.dtype}) \n"
-            numpy_array = split_lists_to_numpy(self.splits_lists)
-            ret_str += f"Shaple splits_list: {numpy_array.shape}, "
-            ret_str += f"elements: {reduce(lambda x, y: x * y, numpy_array.shape)} \n"
-            ret_str += (
-                f"Actual storage splits_list: {numpy_array.nbytes / 1024} KB "
-                f"({numpy_array.dtype}) \n"
-            )
+            if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+                numpy_array = split_lists_to_numpy(self.splits_lists)
+                ret_str += f"Shaple splits_list: {numpy_array.shape}, "
+                ret_str += (
+                    f"elements: {reduce(lambda x, y: x * y, numpy_array.shape)} \n"
+                )
+                ret_str += (
+                    f"Actual storage splits_list: {numpy_array.nbytes / 1024} KB "
+                    f"({numpy_array.dtype}) \n"
+                )
+            elif self.encoding_algorithm in [
+                EncodingAlgorithm.FOUR_DIM_HASH,
+                EncodingAlgorithm.FULL_PQ,
+            ]:
+                pass  # TODO: add print function here
             return ret_str
         else:
             return "not learned"
