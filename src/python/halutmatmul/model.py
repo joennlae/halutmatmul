@@ -260,7 +260,7 @@ class HalutHelper:
                 {
                     k + ".halut_active": torch.ones(1, dtype=torch.bool),
                     k
-                    + ".hash_buckets": torch.from_numpy(
+                    + ".hash_buckets_or_prototypes": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(
                             np.float32
                         )

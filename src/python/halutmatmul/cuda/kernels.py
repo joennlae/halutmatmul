@@ -7,6 +7,7 @@ import numpy as np
 from halutmatmul.cuda.functions import (
     READ_ACC_LUT_KERNEL_SPLIT_FACTOR,
     calc_rows_per_block_read_acc_lut_kernel,
+    halut_encode_pq_tensor_interface,
 )
 from halutmatmul.halutmatmul import EncodingAlgorithm
 
@@ -131,13 +132,15 @@ def create_kernels_halutmatmul(
     B: int = 16,
     encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> tuple[cp.RawKernel, cp.RawKernel]:
-    encode_kernel = cp.RawKernel()
+    encode_kernel = None
     if encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
         num_splits = int(np.log2(K))
         info_offset = K // 2
         encode_kernel = create_encode_kernel_four_dim(C, num_splits, info_offset)
     elif encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
         encode_kernel = create_encode_kernel_decision_tree(C=C, depth=depth, B=B, K=K)
+    elif encoding_algorithm == EncodingAlgorithm.FULL_PQ:
+        encode_kernel = halut_encode_pq_tensor_interface
 
     # read accumulate lut kernel
     blocks = READ_ACC_LUT_KERNEL_SPLIT_FACTOR

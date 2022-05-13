@@ -1,5 +1,5 @@
 from test.test_resnet import test_cifar10_inference
-from test.test_conv2d_gpu import untest_conv2d_module_gpu
+from test.test_conv2d_gpu import test_conv2d_module_gpu
 from test.test_halut import test_learn_offline
 
 # from test.test_kernel_gpu import untest_read_acc_lut_kernel

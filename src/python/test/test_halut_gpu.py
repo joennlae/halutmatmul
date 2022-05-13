@@ -22,6 +22,7 @@ try:
         b: float,
         device: torch.device,
         K: int = 16,
+        encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
     ) -> None:
         print("========TEST========")
         print(f"params: ({N},{D},{M}), C: {C}, dev: {str(device)}")
@@ -34,6 +35,7 @@ try:
             lut_work_const=-1,
             quantize_lut=False,
             run_optimized=True,
+            encoding_algorithm=encoding_algorithm,
         )
 
         learn_halut = hm.HalutMatmul().from_numpy(store_array)
@@ -43,8 +45,17 @@ try:
         result_numpy = np.dot(A_2_numpy, B)
 
         A_2 = A_2_numpy.astype(np.float32)
-        hash_info_fp32 = store_array[hm.HalutOfflineStorage.HASH_TABLES]
-        encode_kernel, read_acc_lut_kernel = create_kernels_halutmatmul(C, K)
+        if encoding_algorithm in [
+            hm.EncodingAlgorithm.FOUR_DIM_HASH,
+            hm.EncodingAlgorithm.DECISION_TREE,
+        ]:
+            hash_info_fp32 = store_array[hm.HalutOfflineStorage.HASH_TABLES]
+        elif encoding_algorithm in [hm.EncodingAlgorithm.FULL_PQ]:
+            hash_info_fp32 = store_array[hm.HalutOfflineStorage.PROTOTYPES]
+
+        encode_kernel, read_acc_lut_kernel = create_kernels_halutmatmul(
+            C, K, encoding_algorithm=encoding_algorithm
+        )
 
         A_2_gpu = torch.from_numpy(A_2).to(device)
         L = torch.from_numpy(
@@ -63,7 +74,9 @@ try:
         gpu_result_numpy = cp.asnumpy(gpu_result)
 
         error_hist_numpy(gpu_result_numpy, result_numpy)
-        check_if_error_normal_dist_around_zero(gpu_result_numpy, result_numpy)
+        check_if_error_normal_dist_around_zero(
+            gpu_result_numpy, result_numpy, max_rel_error=0.3
+        )
 
         cpu_time = (
             timeit.Timer(
@@ -104,19 +117,27 @@ try:
         )
 
     @pytest.mark.parametrize(
-        "N, D, M, C, a, b",
+        "N, D, M, C, a, b, encoding_algorithm",
         [
-            (N, D, M, C, a, b)
-            for N in [10000, 20000]
-            for D in [512]
+            (N, D, M, C, a, b, e)
+            for N in [10000]
+            for D in [256, 512]
             for M in [128, 256]
             for C in [16, 32, 64]
             for a in [1.0]  # 5.0
             for b in [0.0]
+            for e in [
+                hm.EncodingAlgorithm.FOUR_DIM_HASH,
+                hm.EncodingAlgorithm.DECISION_TREE,
+                hm.EncodingAlgorithm.FULL_PQ,
+            ]
         ],
     )
-    def untest_halut_gpu(N: int, D: int, M: int, C: int, a: float, b: float) -> None:
+    def test_halut_gpu(
+        N: int, D: int, M: int, C: int, a: float, b: float, encoding_algorithm: int
+    ) -> None:
         np.random.seed(4419)
+        torch.manual_seed(4419)
         device_id = TEST_CUDA_DEVICE_ID
         if not torch.cuda.is_available():
             pytest.skip("need GPU to run")
@@ -124,7 +145,9 @@ try:
         device = torch.device(
             "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
         )
-        halut_gpu_helper(N, D, M, C, a=a, b=b, device=device)
+        halut_gpu_helper(
+            N, D, M, C, a=a, b=b, device=device, encoding_algorithm=encoding_algorithm
+        )
 
 except ImportError as e:
     print(e)

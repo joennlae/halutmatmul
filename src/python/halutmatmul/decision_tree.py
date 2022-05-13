@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import multiprocessing
 from unittest.mock import AsyncMockMixin
+import warnings
 from joblib import Parallel, delayed
 
 import numpy as np
@@ -111,16 +112,16 @@ def halut_encode_pq_tensor(X: torch.Tensor, prototypes: torch.Tensor) -> torch.T
     N, _ = X.shape
     C = prototypes.shape[0]
     K = prototypes.shape[1]
-    A_enc = torch.empty((C, N), dtype=torch.int32)  # column-major
+    A_enc = torch.empty((C, N), dtype=torch.int32, device=str(X.device))  # column-major
     pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo="start")
 
     for c in prange(C):
         start_idx, end_idx = pq_idxs[c]
-        idxs = torch.arange(start_idx, end_idx)
+        idxs = torch.arange(start_idx, end_idx, device=str(X.device))
         X_cut = X[:, idxs]
         A_enc[c] = apply_hash_function_pq_tensor(X_cut, prototypes[c][:, idxs])
 
-    offsets = torch.arange(C, dtype=torch.int32) * K
+    offsets = torch.arange(C, dtype=torch.int32, device=str(X.device)) * K
     return torch.Tensor.contiguous(A_enc.T) + offsets
 
 
@@ -190,6 +191,10 @@ def learn_decision_tree(
     centroids_list = []
     assignments_list = []
     scores = []
+
+    warnings.filterwarnings(
+        "ignore", category=UserWarning
+    )  # ignores empty cluster warning for kmeans
     for _ in range(iterations):
         centroids_, assignments_ = kmeans2(X, K, minit="points", iter=1)
         # kmeans = KMeans(n_clusters=K, n_init=1).fit(X)

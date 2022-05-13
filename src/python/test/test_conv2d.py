@@ -71,7 +71,7 @@ def conv2d_helper(
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "hash_buckets": torch.from_numpy(
+                "hash_buckets_or_prototypes": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES]
                 ),
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),

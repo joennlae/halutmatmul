@@ -23,7 +23,7 @@ def conv2d_helper_gpu(
     C: int = 16,
     a: float = 1.0,
     b: float = 0.0,
-    rel_error: float = 0.4,
+    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> None:
     # pylint: disable=import-outside-toplevel
     from halutmatmul.cuda.functions import halut_conv2d_gpu
@@ -36,9 +36,12 @@ def conv2d_helper_gpu(
     bias_weights = torch.rand((out_channels))
 
     input_learn = (
-        torch.rand((batch_size * 10, in_channels, image_x_y, image_x_y)) + b
+        torch.rand((batch_size * 2, in_channels, image_x_y, image_x_y)) + b
     ) * a
+    input_learn = torch.relu(input_learn)
+    print("MIN_MAX", torch.min(input_learn), torch.max(input_learn))
     input_test = (torch.rand((batch_size, in_channels, image_x_y, image_x_y)) + b) * a
+    input_test = torch.relu(input_test)
 
     padding = 1
     input_a_torch, input_b_torch = halut_conv2d_gpu(
@@ -57,7 +60,9 @@ def conv2d_helper_gpu(
     input_a = input_a_torch.detach().cpu().numpy()
     input_b = input_b_torch.detach().cpu().numpy()
 
-    store_array = hm.learn_halut_offline(input_a, input_b, C=C, lut_work_const=-1)
+    store_array = hm.learn_halut_offline(
+        input_a, input_b, C=C, lut_work_const=-1, encoding_algorithm=encoding_algorithm
+    )
 
     torch_module = torch.nn.Conv2d(
         in_channels, out_channels, kernel_size=kernel_size, stride=stride, bias=bias
@@ -85,8 +90,16 @@ def conv2d_helper_gpu(
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "hash_buckets": torch.from_numpy(
+                "hash_buckets_or_prototypes": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(np.float32)
+                    if encoding_algorithm
+                    in [
+                        hm.EncodingAlgorithm.FOUR_DIM_HASH,
+                        hm.EncodingAlgorithm.DECISION_TREE,
+                    ]
+                    else store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(
+                        np.float32
+                    )
                 ),
                 "lut": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.LUT].astype(np.float32)
@@ -97,6 +110,7 @@ def conv2d_helper_gpu(
             }
         )
     )
+
     halutmatmul_module.cuda()
     halutmatmul_module.eval()
     halutmatmul_module.to(device)
@@ -105,29 +119,39 @@ def conv2d_helper_gpu(
     print("======== TEST =========")
     print(
         f"params: C: {C}, in: {in_channels}, out: {out_channels}, bias: {bias}, "
-        f"input_learn: {input_learn.shape}, input_test: {input_test.shape}, a: {a}, b: {b}"
+        f"input_learn: {input_learn.shape}, input_test: {input_test.shape}, a: {a}, b: {b} "
+        f"encoding_algorithm: {encoding_algorithm}"
     )
     input_test = input_test.to(device)
     helper_test_module(
-        input_test, torch_module, halutmatmul_module, rel_error=rel_error
+        input_test,
+        torch_module,
+        halutmatmul_module,
+        rel_error=2.0,
+        scaled_error_max=0.02,
     )
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b",
+    "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b, encoding_algorithm",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b)
-        for in_channels in [32, 128, 512, 2048]
-        for out_channels in [32, 128, 512, 2048]
-        for image_x_y in [7, 14, 28, 56]
-        for kernel_size in [3]
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b, e)
+        for in_channels in [32]
+        for out_channels in [32]
+        for image_x_y in [7]  # 14, 28, 56
+        for kernel_size in [1, 3]
         for bias in [False]  # True, False
-        for C in [16, 32, 64, 96, 128]
-        for a in [1.0]
-        for b in [0.0]
+        for C in [16, 32]  # 32, 64 |  96, 128
+        for a in [9.0]
+        for b in [-0.35]
+        for e in [
+            hm.EncodingAlgorithm.FOUR_DIM_HASH,
+            hm.EncodingAlgorithm.DECISION_TREE,
+            hm.EncodingAlgorithm.FULL_PQ,
+        ]
     ],
 )
-def untest_conv2d_module_gpu(
+def test_conv2d_module_gpu(
     in_channels: int,
     out_channels: int,
     image_x_y: int,
@@ -136,6 +160,7 @@ def untest_conv2d_module_gpu(
     C: int,
     a: float,
     b: float,
+    encoding_algorithm: int,
 ) -> None:
 
     device_id = TEST_CUDA_DEVICE_ID
@@ -162,4 +187,5 @@ def untest_conv2d_module_gpu(
         C=C,
         a=a,
         b=b,
+        encoding_algorithm=encoding_algorithm,
     )

@@ -40,7 +40,7 @@ class HalutLinear(Linear):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_buckets = Parameter(
+        self.hash_buckets_or_prototypes = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
@@ -64,21 +64,26 @@ class HalutLinear(Linear):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets",
+                prefix + "hash_buckets_or_prototypes",
                 prefix + "lut",
                 prefix + "halut_config",
             )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_buckets = Parameter(
-                state_dict[prefix + "hash_buckets"].clone(), requires_grad=False
+            self.hash_buckets_or_prototypes = Parameter(
+                state_dict[prefix + "hash_buckets_or_prototypes"].clone(),
+                requires_grad=False,
             )
             self.lut = Parameter(
                 state_dict[prefix + "lut"].clone(), requires_grad=False
             )
             store_array = np.array(
                 [
-                    state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "hash_buckets_or_prototypes"]
+                    .clone()
+                    .detach()
+                    .cpu()
+                    .numpy(),
                     state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
                     state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
                 ],
@@ -88,14 +93,14 @@ class HalutLinear(Linear):
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets",
+                prefix + "hash_buckets_or_prototypes",
                 prefix + "lut",
                 prefix + "halut_config",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}halut_config' "
-                "paramters in state_dict"
+                f"not all '{prefix}hash_buckets_or_prototypes', '{prefix}lut', "
+                "'{prefix}halut_config' paramters in state_dict"
             )
 
     def check_store_offline(self, _input: Tensor) -> None:
@@ -307,10 +312,8 @@ class HalutConv2d(_ConvNd):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_buckets = Parameter(
-            torch.zeros(1, dtype=torch.bool), requires_grad=False
-        )
-        self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+        self.hash_buckets_or_prototypes = Parameter(torch.zeros(1), requires_grad=False)
+        self.lut = Parameter(torch.zeros(1), requires_grad=False)
         self.halut_config = Parameter(
             torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
         )
@@ -339,14 +342,16 @@ class HalutConv2d(_ConvNd):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets",
+                prefix + "hash_buckets_or_prototypes",
                 prefix + "lut",
                 prefix + "halut_config",
             )
         ):
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_buckets = Parameter(
-                state_dict[prefix + "hash_buckets"].clone().to(str(self.weight.device)),
+            self.hash_buckets_or_prototypes = Parameter(
+                state_dict[prefix + "hash_buckets_or_prototypes"]
+                .clone()
+                .to(str(self.weight.device)),
                 requires_grad=False,
             )
             self.lut = Parameter(
@@ -355,25 +360,16 @@ class HalutConv2d(_ConvNd):
             )
             store_array = np.array(
                 [
-                    state_dict[prefix + "hash_buckets"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "hash_buckets_or_prototypes"]
+                    .clone()
+                    .detach()
+                    .cpu()
+                    .numpy(),
                     state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
                     state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
                 ],
                 dtype=object,
             )
-
-            if (
-                int(state_dict[prefix + "halut_config"][HalutConfig.ENCODING_ALGORITHM])
-                == EncodingAlgorithm.FULL_PQ
-            ):
-                if prefix + "prototypes" not in state_dict.keys():
-                    raise Exception(f"'{prefix}parameters' not in state_dict")
-                self.prototypes = Parameter(
-                    state_dict[prefix + "prototypes"]
-                    .clone()
-                    .to(str(self.weight.device)),
-                    requires_grad=False,
-                )
 
             if "cuda" in str(self.weight.device):
                 # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
@@ -384,20 +380,28 @@ class HalutConv2d(_ConvNd):
                 (
                     self.encode_kernel,
                     self.read_acc_lut_kernel,
-                ) = create_kernels_halutmatmul(C=C, K=K)
+                ) = create_kernels_halutmatmul(
+                    C=C,
+                    K=K,
+                    encoding_algorithm=int(
+                        state_dict[prefix + "halut_config"][
+                            HalutConfig.ENCODING_ALGORITHM
+                        ]
+                    ),
+                )
             else:
                 self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets",
+                prefix + "hash_buckets_or_prototypes",
                 prefix + "lut",
                 prefix + "halut_config",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets', '{prefix}lut', '{prefix}halut_config' "
-                "paramters in state_dict"
+                f"not all '{prefix}hash_buckets_or_prototypes', '{prefix}lut', "
+                "'{prefix}halut_config' paramters in state_dict"
             )
 
     def conv2d(
@@ -428,12 +432,8 @@ class HalutConv2d(_ConvNd):
                 read_acc_lut_kernel=self.read_acc_lut_kernel
                 if self.halut_active[0]
                 else None,
-                L=self.lut
-                if self.halut_active[0]
-                else torch.ones(1).to(str(_input.device)),
-                H=self.hash_buckets
-                if self.halut_active[0]
-                else torch.ones(1).to(str(_input.device)),
+                L=self.lut,
+                H=self.hash_buckets_or_prototypes,
                 kernel_size=self.kernel_size,
                 stride=stride,
                 padding=padding,

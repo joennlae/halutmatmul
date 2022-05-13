@@ -5,6 +5,8 @@ from typing import Callable, Optional
 import torch
 import numpy as np
 
+from halutmatmul.modules import ErrorTuple, error_numpy
+
 
 # inspiration
 # https://github.com/geohot/tinygrad/blob/58ed46963efab46bbe17439b74f82a388fa593c2/test/test_ops.py#L4
@@ -13,6 +15,7 @@ def helper_test_module(
     torch_module: torch.nn.Module,
     halutmatmul_module: torch.nn.Module,
     rel_error: float = 0.2,
+    scaled_error_max: float = 0.2,
 ) -> None:
 
     out = torch_module(ts_input)
@@ -29,6 +32,24 @@ def helper_test_module(
     check_if_error_normal_dist_around_zero(
         ret.detach().cpu().numpy(), out.detach().cpu().numpy(), max_rel_error=rel_error
     )
+
+    scaled_error = 0.0
+    if "cuda" in str(out.device):
+        # pylint: disable=import-outside-toplevel
+        from halutmatmul.cuda.functions import error_cupy
+
+        res_error = error_cupy(ret, out)
+        res_error /= ts_input.shape[0]
+        print("SCALED_ERROR", res_error[ErrorTuple.SCALED_ERROR])
+        scaled_error = res_error[ErrorTuple.SCALED_ERROR]
+    else:
+        res_error = error_numpy(ret.detach().cpu().numpy(), out.detach().cpu().numpy())
+        res_error /= ts_input.shape[0]
+        print("SCALED_ERROR", res_error[ErrorTuple.SCALED_ERROR])
+        scaled_error = res_error[ErrorTuple.SCALED_ERROR]
+
+    # scaled error check
+    assert scaled_error < scaled_error_max
 
     torch_fp = (
         timeit.Timer(functools.partial(torch_module, ts_input)).timeit(5) * 1000 / 5

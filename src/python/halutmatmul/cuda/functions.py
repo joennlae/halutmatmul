@@ -6,6 +6,8 @@ import numpy as np
 
 from torch.nn.common_types import _size_any_t
 
+from halutmatmul.decision_tree import halut_encode_pq_tensor
+
 
 MAX_THREADS = 1024
 SHARED_MEM_PER_BLOCK = 49152
@@ -105,6 +107,20 @@ def halutmatmul_gpu(
     )
     torch_res = torch.from_dlpack(result)
     return torch_res
+
+
+def halut_encode_pq_tensor_interface(
+    _blocks: tuple,
+    _block_dim_encode: tuple,
+    args: tuple[cp.ndarray, cp.ndarray, cp.ndarray, int, int, int],
+) -> None:
+    A, H, encoded, N, D, _ = args
+    C = encoded.shape[1]
+    encoded_result = halut_encode_pq_tensor(
+        torch.reshape(torch.from_dlpack(A), (N, -1)),
+        torch.reshape(torch.from_dlpack(H), (C, -1, D)),
+    )
+    cp.copyto(encoded, cp.from_dlpack(encoded_result.detach()))
 
 
 def halutmatmul_gpu_cupy(
