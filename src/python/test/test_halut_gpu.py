@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import halutmatmul.halutmatmul as hm
 
-
+TEST_CUDA_DEVICE_ID = 0
 try:
     import cupy as cp  # type: ignore[import]
 
@@ -107,7 +107,7 @@ try:
         "N, D, M, C, a, b",
         [
             (N, D, M, C, a, b)
-            for N in [20000, 100000, 1000000]
+            for N in [10000, 20000]
             for D in [512]
             for M in [128, 256]
             for C in [16, 32, 64]
@@ -117,7 +117,7 @@ try:
     )
     def untest_halut_gpu(N: int, D: int, M: int, C: int, a: float, b: float) -> None:
         np.random.seed(4419)
-        device_id = 1
+        device_id = TEST_CUDA_DEVICE_ID
         if not torch.cuda.is_available():
             pytest.skip("need GPU to run")
         torch.cuda.set_device(device_id)

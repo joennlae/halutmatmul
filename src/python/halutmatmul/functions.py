@@ -115,7 +115,7 @@ def read_luts_quantized_opt(
 
 
 def create_codebook_start_end_idxs(
-    X: np.ndarray, number_of_codebooks: int, algo: Literal["start", "end"] = "start"
+    D: int, number_of_codebooks: int, algo: Literal["start", "end"] = "start"
 ) -> np.ndarray:
     """
     returns vector (C, 2)
@@ -127,7 +127,6 @@ def create_codebook_start_end_idxs(
     """
     assert algo in ("start", "end")
 
-    _, D = X.shape
     number_of_codebooks = int(number_of_codebooks)
     assert D >= number_of_codebooks
 

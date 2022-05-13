@@ -353,7 +353,7 @@ class HalutMatmul:
         elif self.encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
             idxs = halut_encode_decision_tree(A, self.decision_trees)
         elif self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
-            idxs = halut_encode_pq(A, self.decision_trees, self.prototypes)
+            idxs = halut_encode_pq(A, self.prototypes)
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
         offsets = np.arange(self.C, dtype=np.int32) * self.K
         return idxs + offsets

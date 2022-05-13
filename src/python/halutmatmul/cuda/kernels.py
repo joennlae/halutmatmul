@@ -8,9 +8,10 @@ from halutmatmul.cuda.functions import (
     READ_ACC_LUT_KERNEL_SPLIT_FACTOR,
     calc_rows_per_block_read_acc_lut_kernel,
 )
+from halutmatmul.halutmatmul import EncodingAlgorithm
 
 
-def create_encode_kernel(
+def create_encode_kernel_four_dim(
     C: int = 16, num_splits: int = 4, info_offset: int = 8
 ) -> cp.RawKernel:
     script_folder = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -39,6 +40,45 @@ def create_encode_kernel(
         # print(halut_encode_code)
         halut_encode_kernel = cp.RawKernel(
             halut_encode_code,  # defined in file kernels/encode.cu
+            "halut_encode",
+        )
+        return halut_encode_kernel
+
+
+def create_encode_kernel_decision_tree(
+    C: int = 16, depth: int = 4, K: int = 16, B: int = 16
+) -> cp.RawKernel:
+    script_folder = Path(os.path.dirname(os.path.abspath(__file__)))
+    file_to_open = script_folder / "kernels/encode_tree.cu"
+    with open(file_to_open, "r") as f:
+        halut_encode_code = f.read()
+
+        halut_encode_code = re.sub(
+            r"const int depth = \d+;\n",
+            "const int depth = " + str(depth) + ";\n",
+            halut_encode_code,
+            flags=re.MULTILINE,
+        )
+        halut_encode_code = re.sub(
+            r"const int B = \d+;\n",
+            "const int B = " + str(B) + ";\n",
+            halut_encode_code,
+            flags=re.MULTILINE,
+        )
+        halut_encode_code = re.sub(
+            r"const int K = \d+;\n",
+            "const int K = " + str(K) + ";\n",
+            halut_encode_code,
+            flags=re.MULTILINE,
+        )
+        halut_encode_code = re.sub(
+            r"const int C = \d+;\n",
+            "const int C = " + str(C) + ";\n",
+            halut_encode_code,
+            flags=re.MULTILINE,
+        )
+        halut_encode_kernel = cp.RawKernel(
+            halut_encode_code,  # defined in file kernels/encode_tree.cu
             "halut_encode",
         )
         return halut_encode_kernel
@@ -85,12 +125,19 @@ def create_read_acc_lut_kernel(
 
 
 def create_kernels_halutmatmul(
-    C: int = 16, K: int = 16
+    C: int = 16,
+    K: int = 16,
+    depth: int = 4,
+    B: int = 16,
+    encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> tuple[cp.RawKernel, cp.RawKernel]:
-    # encode kernel
-    num_splits = int(np.log2(K))
-    info_offset = K // 2
-    encode_kernel = create_encode_kernel(C, num_splits, info_offset)
+    encode_kernel = cp.RawKernel()
+    if encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
+        num_splits = int(np.log2(K))
+        info_offset = K // 2
+        encode_kernel = create_encode_kernel_four_dim(C, num_splits, info_offset)
+    elif encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
+        encode_kernel = create_encode_kernel_decision_tree(C=C, depth=depth, B=B, K=K)
 
     # read accumulate lut kernel
     blocks = READ_ACC_LUT_KERNEL_SPLIT_FACTOR

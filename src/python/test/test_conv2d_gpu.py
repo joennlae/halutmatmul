@@ -7,6 +7,8 @@ import pytest
 from halutmatmul.modules import HalutConv2d
 import halutmatmul.halutmatmul as hm
 
+TEST_CUDA_DEVICE_ID = 0
+
 
 def conv2d_helper_gpu(
     in_channels: int,
@@ -136,7 +138,7 @@ def untest_conv2d_module_gpu(
     b: float,
 ) -> None:
 
-    device_id = 1
+    device_id = TEST_CUDA_DEVICE_ID
     if not torch.cuda.is_available():
         pytest.skip("need GPU to run")
     torch.cuda.set_device(device_id)

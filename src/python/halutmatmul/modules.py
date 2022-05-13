@@ -384,7 +384,7 @@ class HalutConv2d(_ConvNd):
                 (
                     self.encode_kernel,
                     self.read_acc_lut_kernel,
-                ) = create_kernels_halutmatmul(C, K)
+                ) = create_kernels_halutmatmul(C=C, K=K)
             else:
                 self.halut = HalutMatmul().from_numpy(store_array)
         elif any(

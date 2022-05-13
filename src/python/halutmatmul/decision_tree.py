@@ -4,11 +4,14 @@ import resource
 import sys
 from pathlib import Path
 import multiprocessing
+from unittest.mock import AsyncMockMixin
 from joblib import Parallel, delayed
 
 import numpy as np
 import numba
 from numba import prange
+
+import torch
 
 from scipy.cluster.vq import kmeans2
 from sklearn.cluster import KMeans, BisectingKMeans
@@ -46,11 +49,11 @@ def apply_hash_function_decision_tree(
     N, _ = X.shape
     group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
 
-    K = decision_tree.shape[0] // 3
-    n_decisions = int(np.sqrt(K))
+    B = decision_tree.shape[0] // 3
+    n_decisions = int(np.sqrt(B))
     for depth in range(n_decisions):
         index_offet = 2**depth - 1
-        split_thresholds = decision_tree[group_ids + K + index_offet]
+        split_thresholds = decision_tree[group_ids + B + index_offet]
         dims = decision_tree[group_ids + index_offet].astype(np.int64)
         # x = X[np.arange(N), dims]
         # make it numba compatible
@@ -59,7 +62,7 @@ def apply_hash_function_decision_tree(
             x[i] = X[i, dims[i]]
         indicators = x > split_thresholds
         group_ids = (group_ids * 2) + indicators
-    group_ids = decision_tree[group_ids + 2 * K].astype(np.int32)
+    group_ids = decision_tree[group_ids + 2 * B].astype(np.int32)
     return group_ids
 
 
@@ -75,22 +78,26 @@ def halut_encode_decision_tree(X: np.ndarray, numpy_array: np.ndarray) -> np.nda
 
 
 def apply_hash_function_pq(X: np.ndarray, prototypes: np.ndarray) -> np.ndarray:
-    N = X.shape[0]
-    group_ids = np.zeros(N, dtype=np.int32)
-    for i in range(N):
-        group_ids[i] = np.argsort(
-            np.array([np.linalg.norm(X[i] - x) for x in prototypes])
-        )[:1]
+    group_ids = np.argsort(
+        np.array([np.linalg.norm(X - x, axis=1) for x in prototypes]).T, axis=1
+    )[:, :1].flatten()
     return group_ids
 
 
-def halut_encode_pq(
-    X: np.ndarray, numpy_array: np.ndarray, prototypes: np.ndarray
-) -> np.ndarray:
+def apply_hash_function_pq_tensor(
+    X: torch.Tensor, prototypes: torch.Tensor
+) -> torch.Tensor:
+    group_ids = torch.argsort(
+        torch.stack([torch.linalg.norm(X - x, axis=1) for x in prototypes]).T, dim=1
+    )[:, :1].flatten()
+    return group_ids
+
+
+def halut_encode_pq(X: np.ndarray, prototypes: np.ndarray) -> np.ndarray:
     N, _ = X.shape
-    C = numpy_array.shape[0]
+    C = prototypes.shape[0]
     A_enc = np.empty((C, N), dtype=np.int32)  # column-major
-    pq_idxs = create_codebook_start_end_idxs(X, C, algo="start")
+    pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo="start")
 
     for c in prange(C):
         start_idx, end_idx = pq_idxs[c]
@@ -98,6 +105,23 @@ def halut_encode_pq(
         X_cut = X[:, idxs]
         A_enc[c] = apply_hash_function_pq(X_cut, prototypes[c][:, idxs])
     return np.ascontiguousarray(A_enc.T)
+
+
+def halut_encode_pq_tensor(X: torch.Tensor, prototypes: torch.Tensor) -> torch.Tensor:
+    N, _ = X.shape
+    C = prototypes.shape[0]
+    K = prototypes.shape[1]
+    A_enc = torch.empty((C, N), dtype=torch.int32)  # column-major
+    pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo="start")
+
+    for c in prange(C):
+        start_idx, end_idx = pq_idxs[c]
+        idxs = torch.arange(start_idx, end_idx)
+        X_cut = X[:, idxs]
+        A_enc[c] = apply_hash_function_pq_tensor(X_cut, prototypes[c][:, idxs])
+
+    offsets = torch.arange(C, dtype=torch.int32) * K
+    return torch.Tensor.contiguous(A_enc.T) + offsets
 
 
 def tree_to_numpy(
@@ -257,7 +281,7 @@ def init_and_learn_hash_function_decision_tree(
 
     X = X.astype(np.float32)
     all_prototypes = np.zeros((C, K, D), dtype=np.float32)
-    pq_idxs = create_codebook_start_end_idxs(X, C, algo=pq_perm_algo)
+    pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo=pq_perm_algo)
 
     decision_trees = np.zeros((C, K * 3), dtype=np.float32)
 
@@ -296,25 +320,24 @@ def learn_proto_and_hash_function_decision_tree(
     offset = np.sum(offset, axis=1)
     X_error = X_orig - offset
 
-    A_enc_pq = halut_encode_pq(X, decision_trees, all_prototypes)
-
-    A_enc_offset_pq = A_enc_pq + offsets
-    offset = prototypes_reshape[A_enc_offset_pq]
-    offset = np.sum(offset, axis=1)
-    X_error_pq = X_orig - offset
     # Add comparision to PQ just with comparing to closest centroid
+    # A_enc_pq = halut_encode_pq(X, all_prototypes)
+    # A_enc_offset_pq = A_enc_pq + offsets
+    # offset = prototypes_reshape[A_enc_offset_pq]
+    # offset = np.sum(offset, axis=1)
+    # X_error_pq = X_orig - offset
 
     msv_orig = (X_orig * X_orig).mean()
     mse_error = (X_error * X_error).mean()
-    mse_error_pq = (X_error_pq * X_error_pq).mean()
+    # mse_error_pq = (X_error_pq * X_error_pq).mean()
     print(
         "X_error mse / X mean squared value: ",
         mse_error / msv_orig,
         mse_error,
         msv_orig,
         np.mean(X_orig),
-        mse_error_pq / msv_orig,
-        mse_error_pq,
+        # mse_error_pq / msv_orig,
+        # mse_error_pq,
     )
 
     squared_diff = np.square(X_orig - X_error).mean()
