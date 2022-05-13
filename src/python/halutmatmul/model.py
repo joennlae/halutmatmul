@@ -82,6 +82,7 @@ class HalutHelper:
         device: torch.device = torch.device("cpu"),
         workers_offline_training: int = 1,
         report_error: bool = False,
+        num_workers: int = 16,
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -96,6 +97,7 @@ class HalutHelper:
         self.stats: Dict[str, Any] = dict([])
         self.workers_offline_training = workers_offline_training
         self.report_error = report_error
+        self.num_workers = num_workers
 
     def activate_halut_module(self, name: str, C: int, rows: int, K: int = 16) -> None:
         if name not in self.editable_keys:
@@ -161,7 +163,7 @@ class HalutHelper:
         loaded_data = DataLoader(
             self.dataset,
             batch_size=self.batch_size_store,
-            num_workers=16,
+            num_workers=self.num_workers,
             drop_last=False,
             pin_memory=True,
         )
@@ -307,7 +309,7 @@ class HalutHelper:
         loaded_data = DataLoader(
             self.dataset,
             batch_size=self.batch_size_inference,
-            num_workers=16,
+            num_workers=self.num_workers,
             drop_last=False,
             pin_memory=True,
         )

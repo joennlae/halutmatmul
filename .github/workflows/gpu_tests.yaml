@@ -1,0 +1,38 @@
+name: GPU Tests (Vast.ai)
+on: [push]
+
+jobs:
+  gpu_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
+      - name: Run GPU tests
+        run: |
+          cd .github/vast.ai
+          pip install requests
+          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+          mkdir .ssh
+          python vast_ai_helper.py
+
+  cleanup:
+    name: Cleanup check
+    needs: gpu_tests
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - name: Cleanup Vast.ai instances
+        run: |
+          cd .github/vast.ai
+          pip install requests
+          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+          python vast_ai_helper.py --cleanup

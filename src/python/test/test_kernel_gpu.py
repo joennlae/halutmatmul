@@ -9,7 +9,6 @@ import numpy as np
 from halutmatmul.functions import halut_encode_opt
 
 from halutmatmul.halutmatmul import (
-    ENCODING_FUNCTIONS,
     EncodingAlgorithm,
     HalutMatmul,
     HalutOfflineStorage,
@@ -295,9 +294,9 @@ try:
         "N, D, M, C, a, b, encoding_algorithm",
         [
             (N, D, M, C, a, b, encoding_algorithm)
-            for N in [10000, 20000]
-            for D in [64, 256]
-            for M in [64, 128]
+            for N in [10000]
+            for D in [128, 256]
+            for M in [128]
             for C in [16, 32, 64]
             for a in [1.0]
             for b in [0.0]
@@ -326,9 +325,9 @@ try:
         "N, D, M, C, a, b",
         [
             (N, D, M, C, a, b)
-            for N in [10000, 20000]
-            for D in [64, 256]
-            for M in [64, 128]
+            for N in [10000]
+            for D in [128, 256]
+            for M in [128]
             for C in [16, 32, 64]
             for a in [1.0]
             for b in [0.0]

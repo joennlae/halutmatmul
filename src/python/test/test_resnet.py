@@ -10,7 +10,7 @@ from ResNet.resnet import resnet50
 from halutmatmul.model import HalutHelper
 
 
-def download_weights(path: str) -> None:
+def download_weights(path: str, is_ci: bool = False) -> None:
     url = "https://github.com/joennlae/PyTorch_CIFAR10/raw/ver2022/resnet50.pt"
 
     # Streaming, so we can iterate over the response.
@@ -27,15 +27,16 @@ def download_weights(path: str) -> None:
             f.write(data)
             dl += len(data)
             done = int(50 * dl / total_size)
-            sys.stdout.write("\r[%s%s]" % ("=" * done, " " * (50 - done)))
-            sys.stdout.flush()
+            if not is_ci:
+                sys.stdout.write("\r[%s%s]" % ("=" * done, " " * (50 - done)))
+                sys.stdout.flush()
     print("\n")
 
 
 def test_cifar10_inference() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
         print("created temporary directory", tmpdirname)
-        download_weights(tmpdirname)
+        download_weights(tmpdirname, is_ci=True)
 
         script_dir = tmpdirname
         state_dict = torch.load(
@@ -70,6 +71,7 @@ def test_cifar10_inference() -> None:
             data_path=tmpdirname + "/.data",
             learned_path=tmpdirname + "/.data/learned",
             workers_offline_training=2,
+            num_workers=2,
         )
         halut_model.print_available_module()
         halut_model.activate_halut_module("fc", 16, 10000)

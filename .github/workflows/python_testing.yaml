@@ -5,8 +5,9 @@ on: [push]
 jobs:
   test_python:
     strategy:
+      fail-fast: false
       matrix:
-        split: [1, 2, 3]
+        split: [1, 2, 3, 4, 5]
     runs-on: ubuntu-latest
     container:
       image: joennlae/halutmatmul-conda-gpu:latest
@@ -24,4 +25,6 @@ jobs:
       run: |
         source /venv/bin/activate
         pip install pytest-split
-        pytest -srPA -k "not gpu" --splits 3 --group ${{ matrix.split }}
+        df -h
+        du -a / | sort -n -r | head -n 10
+        pytest -srPA -k "not gpu" --splits 5 --group ${{ matrix.split }}
