@@ -51,7 +51,7 @@ def apply_hash_function_decision_tree(
     group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
 
     B = decision_tree.shape[0] // 3
-    n_decisions = int(np.sqrt(B))
+    n_decisions = int(np.log2(B))
     for depth in range(n_decisions):
         index_offet = 2**depth - 1
         split_thresholds = decision_tree[group_ids + B + index_offet]
@@ -131,15 +131,13 @@ def tree_to_numpy(
     tree_ = decision_tree.tree_
     class_names = decision_tree.classes_
 
-    # depth = decision_tree.get_depth()
-
-    K = 2**depth
-    total_length = K * DecisionTreeOffset.TOTAL
+    B = 2**depth
+    total_length = B * DecisionTreeOffset.TOTAL
     numpy_array = np.ones(total_length, np.float32) * DEFAULT_NEG_VALUE
 
     def _add_leaf(value: int, class_name: int, depth: int, tree_id: int) -> None:
-        if tree_id >= K:
-            numpy_array[tree_id - K + DecisionTreeOffset.CLASSES * K] = class_name
+        if tree_id >= B:
+            numpy_array[tree_id - B + DecisionTreeOffset.CLASSES * B] = class_name
         else:
             _add_leaf(value, class_name, depth + 1, 2 * tree_id)
             _add_leaf(value, class_name, depth + 1, 2 * tree_id + 1)
@@ -160,7 +158,7 @@ def tree_to_numpy(
             dim = tree_.feature[node]
             threshold = tree_.threshold[node]
             numpy_array[tree_id - 1] = dim
-            numpy_array[tree_id - 1 + DecisionTreeOffset.THRESHOLDS * K] = threshold
+            numpy_array[tree_id - 1 + DecisionTreeOffset.THRESHOLDS * B] = threshold
             recurse_tree(tree_.children_left[node], depth + 1, 2 * tree_id)
             recurse_tree(tree_.children_right[node], depth + 1, 2 * tree_id + 1)
         else:
@@ -168,8 +166,8 @@ def tree_to_numpy(
 
     recurse_tree(0, 1, 1)
 
-    for i in range(K):
-        assert numpy_array[DecisionTreeOffset.CLASSES * K + i] != DEFAULT_NEG_VALUE
+    for i in range(B):
+        assert numpy_array[DecisionTreeOffset.CLASSES * B + i] != DEFAULT_NEG_VALUE
         if numpy_array[i] == DEFAULT_NEG_VALUE:
             numpy_array[i] = 0  # adding default dimension TODO: optimize
     return numpy_array
@@ -196,7 +194,7 @@ def learn_decision_tree(
         "ignore", category=UserWarning
     )  # ignores empty cluster warning for kmeans
     for _ in range(iterations):
-        centroids_, assignments_ = kmeans2(X, K, minit="points", iter=1)
+        centroids_, assignments_ = kmeans2(X, K, minit="points", iter=5)
         # kmeans = KMeans(n_clusters=K, n_init=1).fit(X)
         # kmeans = BisectingKMeans(n_clusters=K, n_init=1).fit(X)
         # centroids_, assignments_ = kmeans.cluster_centers_, kmeans.labels_
@@ -236,7 +234,6 @@ def learn_decision_tree(
             prediction_where = prediction == i
             select_rows = X[prediction_where]
             new_centroid = np.mean(select_rows, axis=0)
-            # diff = np.mean(np.sqrt((centroids[i] - new_centroid) ** 2))
             centroids[i] = new_centroid
 
     if PRINT_DEBUG:
@@ -261,10 +258,8 @@ def decision_tree_per_codebook(
     for i in range(K):
         tree[i] = idxs[int(tree[i])]
 
-    # decision_trees[c] = tree
     centroids_extended = np.zeros((K, D), np.float32)
     centroids_extended[:, idxs] = centroids
-    # all_prototypes[c] += centroids_extended
 
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print(
@@ -284,11 +279,14 @@ def init_and_learn_hash_function_decision_tree(
 ) -> tuple[np.ndarray, np.ndarray]:
     D = X.shape[1]
 
+    depth = int(np.ceil(np.log2(K)))
+    B = 2**depth
+
     X = X.astype(np.float32)
     all_prototypes = np.zeros((C, K, D), dtype=np.float32)
     pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo=pq_perm_algo)
 
-    decision_trees = np.zeros((C, K * 3), dtype=np.float32)
+    decision_trees = np.zeros((C, B * 3), dtype=np.float32)
 
     num_cores = multiprocessing.cpu_count()
     results = Parallel(n_jobs=num_cores)(
@@ -304,17 +302,17 @@ def init_and_learn_hash_function_decision_tree(
 def learn_proto_and_hash_function_decision_tree(
     X: np.ndarray,
     C: int,
+    K: int = 16,
     # pylint: disable=unused-argument
-    lut_work_const: int,  # same interface as other learning functions
+    lut_work_const: int = -1,  # same interface as other learning functions
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     D = X.shape[1]
-    K = 16
     used_perm_algo: Literal["start", "end"] = "start"  # or end
     X_orig = X.astype(np.float32)
 
     # X_error = X_orig - centroid shape: [N, D]
     decision_trees, all_prototypes = init_and_learn_hash_function_decision_tree(
-        X, C, pq_perm_algo=used_perm_algo
+        X, C, K=K, pq_perm_algo=used_perm_algo
     )
     A_enc = halut_encode_decision_tree(X, decision_trees)
     offsets = np.arange(C, dtype=np.int32) * K
@@ -325,13 +323,6 @@ def learn_proto_and_hash_function_decision_tree(
     offset = np.sum(offset, axis=1)
     X_error = X_orig - offset
 
-    # Add comparision to PQ just with comparing to closest centroid
-    # A_enc_pq = halut_encode_pq(X, all_prototypes)
-    # A_enc_offset_pq = A_enc_pq + offsets
-    # offset = prototypes_reshape[A_enc_offset_pq]
-    # offset = np.sum(offset, axis=1)
-    # X_error_pq = X_orig - offset
-
     msv_orig = (X_orig * X_orig).mean()
     mse_error = (X_error * X_error).mean()
     # mse_error_pq = (X_error_pq * X_error_pq).mean()
@@ -341,8 +332,6 @@ def learn_proto_and_hash_function_decision_tree(
         mse_error,
         msv_orig,
         np.mean(X_orig),
-        # mse_error_pq / msv_orig,
-        # mse_error_pq,
     )
 
     squared_diff = np.square(X_orig - X_error).mean()
@@ -351,12 +340,12 @@ def learn_proto_and_hash_function_decision_tree(
     # applying g(A) [N, C] with values from 0-K (50000, 16)
 
     # optimizing prototypes
-    W = encoded_lstsq(A_enc=A_enc, Y=X_error)
+    W = encoded_lstsq(A_enc=A_enc, Y=X_error, K=K)
     all_prototypes_delta = W.reshape(C, K, D)
     all_prototypes += all_prototypes_delta
 
     # check how much improvement we got
-    X_error -= _XW_encoded(A_enc, W)  # if we fit to X_error
+    X_error -= _XW_encoded(A_enc, W, K=K)  # if we fit to X_error
     mse_res = (X_error * X_error).mean()
 
     print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
@@ -378,3 +367,111 @@ def learn_proto_and_hash_function_decision_tree(
         ]
     )
     return decision_trees, all_prototypes, report_array
+
+
+def centroids_per_codebook(
+    c: int, pq_idxs: np.ndarray, X: np.ndarray, K: int, C: int, D: int
+) -> np.ndarray:
+    start_idx, end_idx = pq_idxs[c]
+    idxs = np.arange(start_idx, end_idx)
+    X_cut = X[:, idxs]
+    centroids, _ = kmeans2(X_cut, K, minit="points", iter=25)
+
+    centroids_extended = np.zeros((K, D), np.float32)
+    centroids_extended[:, idxs] = centroids
+
+    ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print(
+        f"Learning progress {X.shape}-{C}-{K}: {c + 1}/{C} "
+        f"({(ram_usage / (1024 * 1024)):.3f} GB)"
+    )
+
+    return centroids_extended
+
+
+def init_and_learn_hash_function_full_pq(
+    X: np.ndarray,
+    C: int,
+    pq_perm_algo: Literal["start", "end"] = "start",
+    K: int = 16,
+) -> np.ndarray:
+    D = X.shape[1]
+
+    X = X.astype(np.float32)
+    all_prototypes = np.zeros((C, K, D), dtype=np.float32)
+    pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo=pq_perm_algo)
+
+    num_cores = multiprocessing.cpu_count()
+    results = Parallel(n_jobs=num_cores)(
+        delayed(centroids_per_codebook)(i, pq_idxs, X, K, C, D) for i in range(C)
+    )
+    for c in range(C):
+        all_prototypes[c] = results[c]
+    return all_prototypes
+
+
+def learn_proto_and_hash_function_full_pq(
+    X: np.ndarray,
+    C: int,
+    K: int = 16,
+    # pylint: disable=unused-argument
+    lut_work_const: int = -1,  # same interface as other learning functions
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    D = X.shape[1]
+    used_perm_algo: Literal["start", "end"] = "start"  # or end
+    X_orig = X.astype(np.float32)
+
+    all_prototypes = init_and_learn_hash_function_full_pq(
+        X, C, K=K, pq_perm_algo=used_perm_algo
+    )
+
+    prototypes_reshape = all_prototypes.reshape((-1, all_prototypes.shape[2]))
+
+    A_enc = halut_encode_pq(X, all_prototypes)
+    offsets = np.arange(C, dtype=np.int32) * K
+    A_enc_offset_pq = A_enc + offsets
+    offset = prototypes_reshape[A_enc_offset_pq]
+    offset = np.sum(offset, axis=1)
+    X_error = X_orig - offset
+
+    msv_orig = (X_orig * X_orig).mean()
+    mse_error = (X_error * X_error).mean()
+    print(
+        "X_error mse / X mean squared value: ",
+        mse_error / msv_orig,
+        mse_error,
+        msv_orig,
+        np.mean(X_orig),
+    )
+
+    squared_diff = np.square(X_orig - X_error).mean()
+    print("Error to Original squared diff", squared_diff)
+
+    # optimizing prototypes
+    W = encoded_lstsq(A_enc=A_enc, Y=X_error, K=K)
+    all_prototypes_delta = W.reshape(C, K, D)
+    all_prototypes += all_prototypes_delta
+
+    # check how much improvement we got
+    X_error -= _XW_encoded(A_enc, W, K=K)  # if we fit to X_error
+    mse_res = (X_error * X_error).mean()
+
+    print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
+
+    ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print(
+        f"After Ridge regression {X.shape}-{C}-{K}"
+        f"({(ram_usage / (1024 * 1024)):.3f} GB)"
+    )
+    report_array = np.array(
+        [
+            mse_error,
+            msv_orig,
+            mse_error / msv_orig,
+            np.mean(X_orig),
+            mse_res,
+            mse_res / msv_orig,
+            ram_usage / (1024 * 1024),
+        ]
+    )
+    return np.ndarray([]), all_prototypes, report_array

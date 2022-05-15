@@ -218,15 +218,12 @@ def halut_conv2d_cpu(
         return (input_a[0], input_b[0])
     else:
         for g in range(groups):
-            start = timer()
             ret[:, g] += tensordot(
                 _input_im2col[:, g],
                 tensor_weights[g],
                 ((1, 4, 5), (1, 2, 3)),
                 halut=halut,
             )
-            end = timer()
-            print("total halutmatmul time: ", (end - start) * 1000)
 
     ret = np.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
 
@@ -358,18 +355,6 @@ class HalutConv2d(_ConvNd):
                 state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
                 requires_grad=False,
             )
-            store_array = np.array(
-                [
-                    state_dict[prefix + "hash_buckets_or_prototypes"]
-                    .clone()
-                    .detach()
-                    .cpu()
-                    .numpy(),
-                    state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
-                    state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
-                ],
-                dtype=object,
-            )
 
             if "cuda" in str(self.weight.device):
                 # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
@@ -390,6 +375,27 @@ class HalutConv2d(_ConvNd):
                     ),
                 )
             else:
+                store_array = np.array(
+                    [
+                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                        state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
+                        state_dict[prefix + "halut_config"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                    ],
+                    dtype=object,
+                )
                 self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
             k in state_dict.keys()

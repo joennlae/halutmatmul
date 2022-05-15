@@ -13,7 +13,7 @@ from halutmatmul.halutmatmul import (
     HalutMatmul,
     HalutOfflineStorage,
 )
-from halutmatmul.decision_tree import (
+from halutmatmul.decision_tree_and_pq import (
     halut_encode_decision_tree,
     halut_encode_pq,
     halut_encode_pq_tensor,

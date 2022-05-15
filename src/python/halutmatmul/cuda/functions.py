@@ -6,7 +6,7 @@ import numpy as np
 
 from torch.nn.common_types import _size_any_t
 
-from halutmatmul.decision_tree import halut_encode_pq_tensor
+from halutmatmul.decision_tree_and_pq import halut_encode_pq_tensor
 
 
 MAX_THREADS = 1024

@@ -128,8 +128,6 @@ def create_read_acc_lut_kernel(
 def create_kernels_halutmatmul(
     C: int = 16,
     K: int = 16,
-    depth: int = 4,
-    B: int = 16,
     encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> tuple[cp.RawKernel, cp.RawKernel]:
     encode_kernel = None
@@ -138,6 +136,8 @@ def create_kernels_halutmatmul(
         info_offset = K // 2
         encode_kernel = create_encode_kernel_four_dim(C, num_splits, info_offset)
     elif encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
+        depth = int(np.ceil(np.log2(K)))
+        B = 2**depth
         encode_kernel = create_encode_kernel_decision_tree(C=C, depth=depth, B=B, K=K)
     elif encoding_algorithm == EncodingAlgorithm.FULL_PQ:
         encode_kernel = halut_encode_pq_tensor_interface

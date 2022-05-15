@@ -21,6 +21,7 @@ def conv2d_helper_gpu(
     device: torch.device,
     groups: int = 1,
     C: int = 16,
+    K: int = 16,
     a: float = 1.0,
     b: float = 0.0,
     encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
@@ -61,7 +62,12 @@ def conv2d_helper_gpu(
     input_b = input_b_torch.detach().cpu().numpy()
 
     store_array = hm.learn_halut_offline(
-        input_a, input_b, C=C, lut_work_const=-1, encoding_algorithm=encoding_algorithm
+        input_a,
+        input_b,
+        C=C,
+        K=K,
+        lut_work_const=-1,
+        encoding_algorithm=encoding_algorithm,
     )
 
     torch_module = torch.nn.Conv2d(
@@ -127,21 +133,21 @@ def conv2d_helper_gpu(
         input_test,
         torch_module,
         halutmatmul_module,
-        rel_error=2.0,
-        scaled_error_max=0.02,
+        rel_error=-1.0,
+        scaled_error_max=0.08,
     )
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b, encoding_algorithm",
+    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, encoding_algorithm",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, a, b, e)
-        for in_channels in [32]
-        for out_channels in [32]
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e)
+        for in_channels in [64]
+        for out_channels in [64]
         for image_x_y in [7]  # 14, 28, 56
         for kernel_size in [1, 3]
         for bias in [False]  # True, False
-        for C in [16, 32]  # 32, 64 |  96, 128
+        for C in [16, 32, 64]  # s 96, 128
         for a in [9.0]
         for b in [-0.35]
         for e in [
@@ -149,6 +155,11 @@ def conv2d_helper_gpu(
             hm.EncodingAlgorithm.DECISION_TREE,
             hm.EncodingAlgorithm.FULL_PQ,
         ]
+        for K in (
+            [8, 16, 32]  # 64 uses to much shared memory
+            if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
+            else [4, 8, 12, 16, 24, 32, 64]
+        )
     ],
 )
 def test_conv2d_module_gpu(
@@ -158,6 +169,7 @@ def test_conv2d_module_gpu(
     kernel_size: int,
     bias: bool,
     C: int,
+    K: int,
     a: float,
     b: float,
     encoding_algorithm: int,
@@ -170,7 +182,7 @@ def test_conv2d_module_gpu(
     device = torch.device(
         "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
     )
-    batch_size = 128  # 32, 64
+    batch_size = 32  # 32, 64, 128
 
     stride = 1
     groups = 1  # only 1 supported
@@ -185,6 +197,7 @@ def test_conv2d_module_gpu(
         device=device,
         groups=groups,
         C=C,
+        K=K,
         a=a,
         b=b,
         encoding_algorithm=encoding_algorithm,

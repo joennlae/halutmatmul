@@ -32,6 +32,7 @@ try:
             A,
             B,
             C=C,
+            K=K,
             lut_work_const=-1,
             quantize_lut=False,
             run_optimized=True,
@@ -75,7 +76,7 @@ try:
 
         error_hist_numpy(gpu_result_numpy, result_numpy)
         check_if_error_normal_dist_around_zero(
-            gpu_result_numpy, result_numpy, max_rel_error=0.3
+            gpu_result_numpy, result_numpy, max_rel_error=0.6
         )
 
         cpu_time = (
@@ -117,12 +118,12 @@ try:
         )
 
     @pytest.mark.parametrize(
-        "N, D, M, C, a, b, encoding_algorithm",
+        "N, D, M, C, K, a, b, encoding_algorithm",
         [
-            (N, D, M, C, a, b, e)
+            (N, D, M, C, K, a, b, e)
             for N in [10000]
-            for D in [256, 512]
-            for M in [128, 256]
+            for D in [256]
+            for M in [128]
             for C in [16, 32, 64]
             for a in [1.0]  # 5.0
             for b in [0.0]
@@ -131,10 +132,22 @@ try:
                 hm.EncodingAlgorithm.DECISION_TREE,
                 hm.EncodingAlgorithm.FULL_PQ,
             ]
+            for K in (
+                [8, 16, 32]  # 64 uses to much shared memory
+                if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
+                else [4, 8, 12, 16, 24, 32, 64]
+            )
         ],
     )
     def test_halut_gpu(
-        N: int, D: int, M: int, C: int, a: float, b: float, encoding_algorithm: int
+        N: int,
+        D: int,
+        M: int,
+        C: int,
+        K: int,
+        a: float,
+        b: float,
+        encoding_algorithm: int,
     ) -> None:
         np.random.seed(4419)
         torch.manual_seed(4419)
@@ -146,7 +159,15 @@ try:
             "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
         )
         halut_gpu_helper(
-            N, D, M, C, a=a, b=b, device=device, encoding_algorithm=encoding_algorithm
+            N,
+            D,
+            M,
+            C,
+            a=a,
+            b=b,
+            device=device,
+            K=K,
+            encoding_algorithm=encoding_algorithm,
         )
 
 except ImportError as e:

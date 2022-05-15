@@ -2,34 +2,25 @@
 # heavily inspired from https://github.com/dblalock/bolt
 from __future__ import annotations
 from functools import reduce
-from typing import Any, Dict, List, Optional, Union, Literal
-import sys
-from pathlib import Path
+from typing import Any, Dict
 
 import numpy as np
 
 import numba
 
-from halutmatmul.decision_tree import (
+from halutmatmul.decision_tree_and_pq import (
     halut_encode_decision_tree,
     halut_encode_pq,
     learn_proto_and_hash_function_decision_tree,
+    learn_proto_and_hash_function_full_pq,
 )
 from halutmatmul.functions import (
     get_str_hash_buckets,
     halut_encode_opt,
-    numpy_to_split_list,
     read_luts_opt,
     read_luts_quantized_opt,
-    split_lists_to_numpy,
 )
-
-sys.path.append(
-    str(Path(__file__).parent) + "/../../../maddness/python/"
-)  # for maddness import
-
-from maddness.maddness import (
-    MultiSplit,
+from halutmatmul.maddness_legacy import (
     learn_proto_and_hash_function,
     maddness_lut,
     maddness_quantize_luts,
@@ -74,6 +65,7 @@ def learn_halut_offline_report(
     A: np.ndarray,
     B: np.ndarray,
     C: int = 16,
+    K: int = 16,
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
@@ -81,7 +73,8 @@ def learn_halut_offline_report(
 ) -> tuple[np.ndarray, Dict[str, Any]]:
     mn = HalutMatmul(
         C,
-        lut_work_const,
+        K=K,
+        lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
         encoding_algorithm=encoding_algorithm,
@@ -98,6 +91,7 @@ def learn_halut_offline(
     A: np.ndarray,
     B: np.ndarray,
     C: int = 16,
+    K: int = 16,
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
@@ -105,7 +99,8 @@ def learn_halut_offline(
 ) -> np.ndarray:
     mn = HalutMatmul(
         C,
-        lut_work_const,
+        K=K,
+        lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
         encoding_algorithm=encoding_algorithm,
@@ -123,7 +118,7 @@ ENCODING_FUNCTIONS = [
 LEARNING_FUNCTIONS = [
     learn_proto_and_hash_function,  # FOUR_DIM_HASH
     learn_proto_and_hash_function_decision_tree,  # DECISION_TREE
-    learn_proto_and_hash_function_decision_tree,  # FULL_PQ
+    learn_proto_and_hash_function_full_pq,  # FULL_PQ
 ]
 
 
@@ -131,6 +126,7 @@ class HalutMatmul:
     def __init__(
         self,
         C: int = 16,
+        K: int = 16,
         lut_work_const: int = -1,
         quantize_lut: bool = False,
         run_optimized: bool = True,
@@ -138,7 +134,7 @@ class HalutMatmul:
     ) -> None:
 
         self.C = C
-        self.K = 16
+        self.K = K
         self.encoding_algorithm = encoding_algorithm
         self.prototypes: np.ndarray = np.array([])
         self.luts: np.ndarray = np.array([])
@@ -151,7 +147,7 @@ class HalutMatmul:
         self.A_enc: np.ndarray = np.array([])
 
         # EncodingAlgorithm.FOUR_DIM_HASH
-        self.splits_lists: list[list[MultiSplit]] = []
+        self.splits_lists: np.ndarray = np.array([])
 
         # EncodingAlgorithm.DECISION_TREE
         self.decision_trees: np.ndarray = np.array([])
@@ -232,7 +228,7 @@ class HalutMatmul:
             self.prototypes,
             report_array,
         ) = self.learning_function(
-            A, self.C, lut_work_const=self.lut_work_const
+            A, self.C, self.K, lut_work_const=self.lut_work_const
         )  # type: ignore[operator]
         if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
             self.splits_lists = return_split_list_or_decison_trees
@@ -261,7 +257,7 @@ class HalutMatmul:
     def to_numpy(self) -> np.ndarray:
         self._check_if_learned()
         if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            splits = split_lists_to_numpy(self.splits_lists)
+            splits = self.splits_lists
         elif self.encoding_algorithm in [
             EncodingAlgorithm.DECISION_TREE,
             EncodingAlgorithm.FULL_PQ,
@@ -297,7 +293,7 @@ class HalutMatmul:
 
         if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
             splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
-            self.splits_lists = numpy_to_split_list(splits_numpy)
+            self.splits_lists = splits_numpy
         elif self.encoding_algorithm in [
             EncodingAlgorithm.DECISION_TREE,
             EncodingAlgorithm.FULL_PQ,
@@ -349,7 +345,7 @@ class HalutMatmul:
     def encode(self, A: np.ndarray) -> np.ndarray:
         idxs = np.zeros((A.shape[0], self.C), np.int32)
         if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            idxs = halut_encode_opt(A, split_lists_to_numpy(self.splits_lists))
+            idxs = halut_encode_opt(A, self.splits_lists)
         elif self.encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
             idxs = halut_encode_decision_tree(A, self.decision_trees)
         elif self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
@@ -367,6 +363,7 @@ class HalutMatmul:
     def _create_lut(self, B: np.ndarray) -> tuple[np.ndarray, float, float]:
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
+        print("SHAPES", self.prototypes.shape, luts.shape, B.shape)
         for i, q in enumerate(B):
             luts[i] = maddness_lut(q, self.prototypes)
         if self.quantize_lut:
@@ -456,7 +453,7 @@ class HalutMatmul:
             ret_str += f"elements: {reduce(lambda x, y: x * y, self.luts.shape)} \n"
             ret_str += f"Actual storage LUT: {self.luts.nbytes / 1024} KB ({self.luts.dtype}) \n"
             if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-                numpy_array = split_lists_to_numpy(self.splits_lists)
+                numpy_array = self.splits_lists
                 ret_str += f"Shaple splits_list: {numpy_array.shape}, "
                 ret_str += (
                     f"elements: {reduce(lambda x, y: x * y, numpy_array.shape)} \n"

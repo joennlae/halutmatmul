@@ -8,27 +8,29 @@ import halutmatmul.halutmatmul as hm
 
 def helper_halut(
     N: int = 128,
-    K: int = 64,
+    D: int = 64,
     M: int = 16,
     C: int = 16,
     lut_work_const: int = -1,
     a: float = 1.0,
     b: float = 0.0,
+    K: int = 16,
     quantize_lut: bool = False,
     run_optimized: bool = True,
     encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> None:
     print("=====TEST=====")
     print(
-        f"params: ({N}, {K}, {M}), C: {C}, a: {a}, b: {b}, quantize_lut: {quantize_lut}, "
-        f"run_optimized: {run_optimized}"
+        f"params: ({N}, {D}, {M}), C: {C}, a: {a}, b: {b}, quantize_lut: {quantize_lut}, "
+        f"run_optimized: {run_optimized}, K: {K}, encoding_algorithm: {encoding_algorithm}"
     )
-    A = (np.random.random((N, K)) + b) * a
-    B = (np.random.random((K, M)) + b) * a
+    A = (np.random.random((N, D)) + b) * a
+    B = (np.random.random((D, M)) + b) * a
     store_array = hm.learn_halut_offline(
         A,
         B,
         C=C,
+        K=K,
         lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
@@ -55,7 +57,7 @@ def helper_halut(
     # print(new_halut.get_params())
 
     # accuracy test
-    A_2 = (np.random.random((N // 4, K)) + b) * a
+    A_2 = (np.random.random((N // 4, D)) + b) * a
     res_halut = new_halut.matmul_online(A_2)
     res_numpy = np.matmul(A_2, B)
 
@@ -84,26 +86,31 @@ def helper_halut(
 
 
 @pytest.mark.parametrize(
-    "N, K, M, C, a, b, encoding_algorithm",
+    "N, D, M, K, C, a, b, encoding_algorithm",
     [
-        (N, K, M, C, a, b, e)
-        for N in [2048, 4098]
-        for K in [512]
-        for M in [16, 64]
-        for C in [4, 16, 32]
+        (N, D, M, K, C, a, b, e)
+        for N in [2048]
+        for D in [512]
+        for M in [64, 128]
+        for C in [16, 32, 64]
         for a in [1.0]  # 5.0
-        for b in [0.0, 10.0]
+        for b in [0.0]
         for e in [
-            # hm.EncodingAlgorithm.FOUR_DIM_HASH,
-            # hm.EncodingAlgorithm.DECISION_TREE,
+            hm.EncodingAlgorithm.FOUR_DIM_HASH,
+            hm.EncodingAlgorithm.DECISION_TREE,
             hm.EncodingAlgorithm.FULL_PQ,
         ]
+        for K in (
+            [8, 16, 32, 64]
+            if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
+            else [4, 8, 12, 16, 24, 32, 64]
+        )
         # for q in [True, False]
         # for r in [True, False]
     ],
 )
 def test_learn_offline(
-    N: int, K: int, M: int, C: int, a: float, b: float, encoding_algorithm: int
+    N: int, D: int, M: int, K: int, C: int, a: float, b: float, encoding_algorithm: int
 ) -> None:
     np.random.seed(4419)
 
@@ -111,9 +118,10 @@ def test_learn_offline(
     run_optimized = True
     helper_halut(
         N,
-        K,
+        D,
         M,
         C,
+        K=K,
         a=a,
         b=b,
         quantize_lut=quantize_lut,

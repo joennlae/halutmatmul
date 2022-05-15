@@ -27,11 +27,13 @@ def helper_test_module(
         out.shape,
         ret.shape,
     )
-
-    error_hist_numpy(ret.detach().cpu().numpy(), out.detach().cpu().numpy())
-    check_if_error_normal_dist_around_zero(
-        ret.detach().cpu().numpy(), out.detach().cpu().numpy(), max_rel_error=rel_error
-    )
+    if rel_error > 0:
+        error_hist_numpy(ret.detach().cpu().numpy(), out.detach().cpu().numpy())
+        check_if_error_normal_dist_around_zero(
+            ret.detach().cpu().numpy(),
+            out.detach().cpu().numpy(),
+            max_rel_error=rel_error,
+        )
 
     scaled_error = 0.0
     if "cuda" in str(out.device):
