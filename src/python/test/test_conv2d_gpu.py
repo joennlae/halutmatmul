@@ -48,8 +48,8 @@ def conv2d_helper_gpu(
     input_a_torch, input_b_torch = halut_conv2d_gpu(
         input_learn,
         weights,
-        L=None,
-        H=None,
+        L=None,  # type: ignore[arg-type]
+        H=None,  # type: ignore[arg-type]
         read_acc_lut_kernel=None,
         encode_kernel=None,
         kernel_size=kernel_size,
@@ -147,7 +147,7 @@ def conv2d_helper_gpu(
         for image_x_y in [7]  # 14, 28, 56
         for kernel_size in [1, 3]
         for bias in [False]  # True, False
-        for C in [16, 32, 64]  # s 96, 128
+        for C in [4, 8, 16, 32, 64]  # s 96, 128
         for a in [9.0]
         for b in [-0.35]
         for e in [

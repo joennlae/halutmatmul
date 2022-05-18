@@ -13,7 +13,8 @@ import pandas as pd
 
 from ResNet.resnet import ResNet50_Weights, resnet50
 
-from halutmatmul.model import HalutHelper, check_file_exists_and_return_path
+from halutmatmul.model import HalutHelper
+from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 
 
 def sys_info() -> None:
@@ -76,14 +77,25 @@ def halut_analysis_helper(
     halut_model.print_available_module()
     for k, v in halut_modules.items():
         print("activate", k, v)
-        halut_model.activate_halut_module(k, v[0], v[1])
+        halut_model.activate_halut_module(
+            k,
+            C=v[HalutModuleConfig.C],
+            rows=v[HalutModuleConfig.ROWS],
+            K=v[HalutModuleConfig.K],
+            encoding_algorithm=v[HalutModuleConfig.ENCODING_ALGORITHM],
+        )
     halut_model.run_inference()
     print(halut_model.get_stats())
     return halut_model.get_stats()
 
 
 def run_test(
-    cuda_id: int, halut_data_path: str, dataset_path: str, learned_path: str, C: int
+    cuda_id: int,
+    halut_data_path: str,
+    dataset_path: str,
+    learned_path: str,
+    C: int,
+    layer_start_offset: int = 0,
 ) -> None:
     # pylint: disable=unused-variable
     tests = [
@@ -132,26 +144,6 @@ def run_test(
         "layer3.0.conv1",
     ]
 
-    result_base_path = "./results/data/accuracy/single_layer/updated_learning/"
-    # C_all = [16, 32, 64]
-    rows = [
-        1,
-        2,
-        4,
-        8,
-        16,
-        32,
-        64,
-        128,
-        256,
-        # 512,
-        # 1024,
-        # 2048,
-        # 4096,
-        # 8192,
-        # 40 * 256,
-    ]
-
     downsampled = [
         "layer1.0.downsample.0",
         "layer2.0.downsample.0",
@@ -179,68 +171,104 @@ def run_test(
     ]
 
     layers_interesting = [
+        "layer1.0.conv2",
         "layer1.1.conv3",
         "layer2.0.conv1",
+        "layer2.0.conv2",
+        "layer2.0.downsample.0",
         "layer2.3.conv3",
         "layer3.0.conv1",
+        "layer3.0.conv2",
         "layer3.0.conv3",
         "layer3.3.conv3",
+        "layer3.4.conv2",
+        "layer3.5.conv1",
+        "layer3.5.conv2",
         "layer4.0.conv1",
+        "layer4.0.conv2",
         "layer4.0.conv3",
         "layer4.1.conv1",
+        "layer4.2.conv1",
         "layer4.2.conv3",
     ]
 
-    class ContinueI(Exception):
-        pass
-
-    continue_i = ContinueI()
-
+    rows = [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        # 64,
+        # 128,
+        # 256,
+    ]
     rows.reverse()
-    tests_to_skip = {
-        "layer3.1.conv3": [[128, 1]],
-        # "layer1.0.conv2": [[64, 1]],
-        # "layer1.1.conv2": [[64, 1024]],
-    }
-    # pylint: disable=consider-iterating-dictionary, too-many-nested-blocks
-    for k in layers_interesting:
-        for r in rows:
-            try:
-                if k in tests_to_skip.keys():
-                    to_skip = tests_to_skip[k]
-                    for skipper in to_skip:
-                        print("skipper", skipper)
-                        if C == skipper[0] and r == skipper[1]:
-                            print("skipped test")
-                            raise continue_i
-            except ContinueI:
-                continue
-            files = glob.glob(result_base_path + "/*.json")
-            files_res = []
-            regex = rf"{k}_{C}_{r}\.json"
-            pattern = re.compile(regex)
-            files_res = [x for x in files if pattern.search(x)]
-            if len(files_res) == 1:
-                print("alread done")
-                continue
-            # learned_files = check_file_exists_and_return_path(
-            #     learned_path, k, "learned", C, r
-            # )
-            # if len(learned_files) == 0:
-            #     print(f"not learned {k} C: {C}, r: {r}")
-            #     continue
-            res = halut_analysis_helper(
-                cuda_id,
-                batch_size_store=256,
-                halut_modules=dict({k: [C, r]}),
-                halut_data_path=halut_data_path,
-                dataset_path=dataset_path,
-                learned_path=learned_path,
-            )
-            with open(
-                result_base_path + k + "_" + str(C) + "_" + str(r) + ".json", "w"
-            ) as fp:
-                json.dump(res, fp, sort_keys=True, indent=4)
+
+    result_base_path = "./results/data/accuracy/single_layer/c_k_sweep/"
+
+    layers_test = layers_interesting[layer_start_offset:]
+    for l in layers_test:
+        layer_loc = l.split(".", maxsplit=1)[0]
+        rows_adapted = []
+        if layer_loc in ["layer1"]:
+            rows_adapted = [1, 2, 4, 8]
+        elif layer_loc == "layer2":
+            rows_adapted = [2, 4, 8, 16]
+        elif layer_loc == "layer3":
+            rows_adapted = [8, 16, 32, 64]
+        elif layer_loc == "layer4":
+            rows_adapted = [32, 64, 128, 256]
+
+        for r in rows_adapted:
+            # for C in [8, 16, 32, 64]:
+            for e in [
+                EncodingAlgorithm.FOUR_DIM_HASH,
+                EncodingAlgorithm.DECISION_TREE,
+                EncodingAlgorithm.FULL_PQ,
+            ]:
+                for K in (
+                    [8, 16, 32]
+                    if e == EncodingAlgorithm.FOUR_DIM_HASH
+                    else [4, 8, 12, 16, 24, 32, 64]
+                ):
+                    files = glob.glob(result_base_path + "/*.json")
+                    files_res = []
+                    regex = rf"{l}_{C}_{K}_{e}-{r}\.json"
+                    pattern = re.compile(regex)
+                    files_res = [x for x in files if pattern.search(x)]
+                    if len(files_res) == 1:
+                        print("alread done")
+                        continue
+                    # learned_files = check_file_exists_and_return_path(
+                    #     learned_path, k, "learned", C, r
+                    # )
+                    # if len(learned_files) == 0:
+                    #     print(f"not learned {k} C: {C}, r: {r}")
+                    #     continue
+                    res = halut_analysis_helper(
+                        cuda_id,
+                        batch_size_store=256,
+                        halut_modules=dict({l: [C, r, K, e]}),
+                        halut_data_path=halut_data_path,
+                        dataset_path=dataset_path,
+                        learned_path=learned_path,
+                    )
+                    with open(
+                        result_base_path
+                        + l
+                        + "_"
+                        + str(C)
+                        + "_"
+                        + str(K)
+                        + "_"
+                        + str(e)
+                        + "-"
+                        + str(r)
+                        + ".json",
+                        "w",
+                    ) as fp:
+                        json.dump(res, fp, sort_keys=True, indent=4)
 
 
 all_layers = [
@@ -419,16 +447,19 @@ if __name__ == "__main__":
     parser.add_argument("-halutdata", type=str, help="halut data path")
     parser.add_argument("-learned", type=str, help="halut learned path")
     parser.add_argument("-C", type=int, help="C")
+    parser.add_argument("-offset", type=int, help="start_layer_offset", default=0)
     args = parser.parse_args()
-    # run_test(args.cuda_id, args.halutdata, args.dataset, args.learned, args.C)
+    run_test(
+        args.cuda_id, args.halutdata, args.dataset, args.learned, args.C, args.offset
+    )
 
     # run_test(
-    #     1,
+    #     0,
     #     "/scratch2/janniss/resnet_input_data",
     #     "/scratch2/janniss/imagenet",
     #     "/scratch2/janniss/learned",
-    #     64,
+    #     C
     # )
-    multilayer_analysis(
-        args.cuda_id, args.halutdata, args.dataset, args.learned, args.C
-    )
+    # multilayer_analysis(
+    #     args.cuda_id, args.halutdata, args.dataset, args.learned, args.C
+    # )

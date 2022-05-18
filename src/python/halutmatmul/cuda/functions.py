@@ -137,7 +137,7 @@ def halutmatmul_gpu_cupy(
     K = L.shape[2]
 
     # encode
-    rows_per_block_encode = 64 // (C // 16)
+    rows_per_block_encode = 64 // ((C // 16) if C >= 16 else 1)
     blocks = N // rows_per_block_encode + (1 if N % rows_per_block_encode else 0)
     block_dim_encode = (rows_per_block_encode, C)
     encoded = cp.zeros((N, C), dtype=cp.int32)
@@ -173,8 +173,8 @@ def halut_conv2d_gpu(
     weights: torch.Tensor,
     encode_kernel: cp.RawKernel,
     read_acc_lut_kernel: cp.RawKernel,
-    L: cp.ndarray,
-    H: cp.ndarray,
+    L: torch.Tensor,
+    H: torch.Tensor,
     kernel_size: _size_any_t = (1, 1),
     stride: _size_any_t = (1, 1),
     padding: _size_any_t = 0,

@@ -61,6 +61,14 @@ class EncodingAlgorithm:
     FULL_PQ = 2
 
 
+class HalutModuleConfig:
+    C = 0
+    ROWS = 1
+    K = 2
+    ENCODING_ALGORITHM = 3
+    MAX = 4
+
+
 def learn_halut_offline_report(
     A: np.ndarray,
     B: np.ndarray,

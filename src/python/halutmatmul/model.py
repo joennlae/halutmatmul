@@ -20,12 +20,6 @@ DEFAULT_BATCH_SIZE_INFERENCE = 128
 DATA_PATH = "/scratch2/janniss/resnet_input_data"
 
 
-class HalutModuleConfig:
-    C = 0
-    ROWS = 1
-    K = 2
-
-
 def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
     keys_weights = list(filter(lambda k: "weight" in k, state_dict.keys()))
     keys_conv_fc = list(
@@ -48,7 +42,8 @@ def check_file_exists_and_return_path(
     _type: Union[Literal["input"], Literal["learned"]],
     C: int = 16,
     rows: int = 256,
-    # K: int = 16,
+    K: int = 16,
+    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> list[str]:
     files = glob.glob(base_path + "/*.npy")
     files_res = []
@@ -62,7 +57,8 @@ def check_file_exists_and_return_path(
         files_res = files_a + files_b
         assert len(files_res) == 0 or len(files_res) == 2
     elif _type == "learned":
-        regex = rf"{layers_name}_{C}_{rows}-.+\.npy"
+        regex = rf"{layers_name}_{C}_{K}_{encoding_algorithm}_{rows}-.+\.npy"
+        print("pattern", regex)
         pattern = re.compile(regex)
         files_res = [x for x in files if pattern.search(x)]
         assert len(files_res) == 0 or len(files_res) == 1
@@ -99,14 +95,21 @@ class HalutHelper:
         self.report_error = report_error
         self.num_workers = num_workers
 
-    def activate_halut_module(self, name: str, C: int, rows: int, K: int = 16) -> None:
+    def activate_halut_module(
+        self,
+        name: str,
+        C: int,
+        rows: int,
+        K: int = 16,
+        encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
+    ) -> None:
         if name not in self.editable_keys:
             raise Exception(f"module {name} not in model")
 
         if name in self.halut_modules.keys():
             print(f"overwrite halut layer {name}")
 
-        self.halut_modules |= dict({name: [C, rows, K]})
+        self.halut_modules |= dict({name: [C, rows, K, encoding_algorithm]})
 
     def deactivate_halut_module(self, name: str) -> None:
         if name not in self.halut_modules.keys():
@@ -197,17 +200,26 @@ class HalutHelper:
                 self.learned_path,
                 k,
                 "learned",
-                args[HalutModuleConfig.C],
-                args[HalutModuleConfig.ROWS],
+                args[hm.HalutModuleConfig.C],
+                args[hm.HalutModuleConfig.ROWS],
+                args[hm.HalutModuleConfig.K],
+                args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
             )
             if len(learned_files) == 1:
                 continue
-            dict_to_learn[k] = [args[HalutModuleConfig.C], args[HalutModuleConfig.ROWS]]
-            paths = check_file_exists_and_return_path(self.data_path, k, "input")
+            dict_to_learn[k] = [
+                args[hm.HalutModuleConfig.C],
+                args[hm.HalutModuleConfig.ROWS],
+                args[hm.HalutModuleConfig.K],
+                args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
+            ]
+            paths = check_file_exists_and_return_path(
+                self.data_path, k, "input", rows=args[hm.HalutModuleConfig.ROWS]
+            )
             # TODO: doesn't check if enough data is stored
             if len(paths) != 2:
                 dict_to_store[k] = ceil(
-                    args[HalutModuleConfig.ROWS] / self.batch_size_store
+                    args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
                 )
         self.store_inputs(dict_to_store)
         print(dict_to_learn, dict_to_store)
@@ -226,9 +238,12 @@ class HalutHelper:
                 self.learned_path,
                 k,
                 "learned",
-                args[HalutModuleConfig.C],
-                args[HalutModuleConfig.ROWS],
+                C=args[hm.HalutModuleConfig.C],
+                rows=args[hm.HalutModuleConfig.ROWS],
+                K=args[hm.HalutModuleConfig.K],
+                encoding_algorithm=args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
             )
+            print("learned files", learned_files)
             if len(learned_files) == 1:
                 store_array = np.load(learned_files[0], allow_pickle=True)
                 splitted = learned_files[0].split("/")[-1]
@@ -242,9 +257,12 @@ class HalutHelper:
                 self.stats[k + ".learned_n"] = n
                 self.stats[k + ".learned_m"] = m
                 self.stats[k + ".learned_d"] = d
-                self.stats[k + ".C"] = args[HalutModuleConfig.C]
-                self.stats[k + ".rows"] = args[HalutModuleConfig.ROWS]
-                self.stats[k + ".K"] = args[HalutModuleConfig.K]
+                self.stats[k + ".C"] = args[hm.HalutModuleConfig.C]
+                self.stats[k + ".rows"] = args[hm.HalutModuleConfig.ROWS]
+                self.stats[k + ".K"] = args[hm.HalutModuleConfig.K]
+                self.stats[k + ".encoding_algorithm"] = args[
+                    hm.HalutModuleConfig.ENCODING_ALGORITHM
+                ]
                 self.stats[k + ".stored_array_size"] = store_array.nbytes
                 self.stats[k + ".L_size"] = (
                     store_array[hm.HalutOfflineStorage.LUT].astype(np.float32).nbytes
@@ -262,6 +280,14 @@ class HalutHelper:
                     k
                     + ".hash_buckets_or_prototypes": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(
+                            np.float32
+                        )
+                        if args[hm.HalutModuleConfig.ENCODING_ALGORITHM]
+                        in [
+                            hm.EncodingAlgorithm.FOUR_DIM_HASH,
+                            hm.EncodingAlgorithm.DECISION_TREE,
+                        ]
+                        else store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(
                             np.float32
                         )
                     ),

@@ -182,6 +182,7 @@ def learn_decision_tree(
         "min_samples_split": 2,
         "max_depth": depth,
         "min_samples_leaf": 20,
+        "max_leaf_nodes": 2**depth,
         "splitter": "best",
         # "criterion": "log_loss",
         # "class_weight": "balanced",
@@ -193,13 +194,22 @@ def learn_decision_tree(
     warnings.filterwarnings(
         "ignore", category=UserWarning
     )  # ignores empty cluster warning for kmeans
+    # pylint: disable=import-outside-toplevel
+    from timeit import default_timer as timer
+
     for _ in range(iterations):
+        start = timer()
         centroids_, assignments_ = kmeans2(X, K, minit="points", iter=5)
+        end = timer()
+        print(f"kmeans time {end - start}")
         # kmeans = KMeans(n_clusters=K, n_init=1).fit(X)
         # kmeans = BisectingKMeans(n_clusters=K, n_init=1).fit(X)
         # centroids_, assignments_ = kmeans.cluster_centers_, kmeans.labels_
         clf_ = tree.DecisionTreeClassifier(**decision_tree_args)
-        score_ = cross_val_score(clf_, X, assignments_, cv=5)
+        start = timer()
+        score_ = cross_val_score(clf_, X, assignments_, cv=2, n_jobs=2)
+        end = timer()
+        print(f"cross_val_score time {end - start}", score_)
         centroids_list.append(centroids_)
         assignments_list.append(assignments_)
         scores.append(np.mean(score_))
@@ -288,11 +298,14 @@ def init_and_learn_hash_function_decision_tree(
 
     decision_trees = np.zeros((C, B * 3), dtype=np.float32)
 
-    num_cores = multiprocessing.cpu_count()
-    results = Parallel(n_jobs=num_cores)(
+    num_cores = np.min((4, multiprocessing.cpu_count()))
+    results = Parallel(n_jobs=num_cores, max_nbytes=None)(
         delayed(decision_tree_per_codebook)(i, pq_idxs, X, K, depth, C, D)
         for i in range(C)
     )
+    # results = []
+    # for i in range(C):
+    #     results.append(decision_tree_per_codebook(i, pq_idxs, X, K, depth, C, D))
     for c in range(C):
         decision_trees[c] = results[c][0]
         all_prototypes[c] = results[c][1]
@@ -401,10 +414,14 @@ def init_and_learn_hash_function_full_pq(
     all_prototypes = np.zeros((C, K, D), dtype=np.float32)
     pq_idxs = create_codebook_start_end_idxs(X.shape[1], C, algo=pq_perm_algo)
 
-    num_cores = multiprocessing.cpu_count()
-    results = Parallel(n_jobs=num_cores)(
+    num_cores = np.min((2, multiprocessing.cpu_count()))
+    print("NUM cores", num_cores)
+    results = Parallel(n_jobs=num_cores, max_nbytes=None)(
         delayed(centroids_per_codebook)(i, pq_idxs, X, K, C, D) for i in range(C)
     )
+    # results = []
+    # for i in range(C):
+    #     results.append(centroids_per_codebook(i, pq_idxs, X, K, C, D))
     for c in range(C):
         all_prototypes[c] = results[c]
     return all_prototypes

@@ -86,6 +86,11 @@ class HalutLinear(Linear):
                     .numpy(),
                     state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
                     state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
+                    state_dict[prefix + "hash_buckets_or_prototypes"]
+                    .clone()
+                    .detach()
+                    .cpu()
+                    .numpy(),
                 ],
                 dtype=object,
             )

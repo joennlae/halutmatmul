@@ -34,8 +34,9 @@ def learn_halut(
     batch_size: int,
     store_path: str,
     K: int = 16,
+    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> None:
-    print("start learning", l, C, r)
+    print("start learning", l, C, r, K, encoding_algorithm)
     files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
     print(files)
@@ -51,7 +52,10 @@ def learn_halut(
     rows_per_batch = a_numpy.shape[0]
     total_rows = ceil(rows_per_batch * r / batch_size)
 
-    save_path = store_path + f"/{l}_{C}_{r}-{total_rows}-{a_numpy.shape[1]}.npy"
+    save_path = (
+        store_path
+        + f"/{l}_{C}_{K}_{encoding_algorithm}_{r}-{total_rows}-{a_numpy.shape[1]}.npy"
+    )
     _exists = os.path.exists(save_path)
     if _exists:
         print("already learned")
@@ -79,7 +83,9 @@ def learn_halut(
         b_numpy.shape[0] * b_numpy.shape[1] * 4 / (1024 * 1024),
         " MB",
     )
-    halut_numpy = hm.learn_halut_offline(a_numpy, b_numpy, C)
+    halut_numpy = hm.learn_halut_offline(
+        a_numpy, b_numpy, C, K=K, encoding_algorithm=encoding_algorithm
+    )
     print(f"Store in {save_path}: {halut_numpy.nbytes / (1024 * 1024)} MB")
     _exists = os.path.exists(store_path)
     if not _exists:
@@ -138,11 +144,6 @@ def learn_halut_multi_core(
     print("====")
 
 
-class LearnDictInfo:
-    C = 0
-    ROWS = 1
-
-
 def learn_halut_multi_core_dict(
     dict_to_learn: dict[str, list[int]],
     data_path: str,
@@ -164,11 +165,13 @@ def learn_halut_multi_core_dict(
     for k, v in dict_to_learn.items():
         params = (
             k,
-            v[LearnDictInfo.C],
-            v[LearnDictInfo.ROWS],
+            v[hm.HalutModuleConfig.C],
+            v[hm.HalutModuleConfig.ROWS],
             data_path,
             batch_size,
             store_path,
+            v[hm.HalutModuleConfig.K],
+            v[hm.HalutModuleConfig.ENCODING_ALGORITHM],
         )
         if amount_of_workers == 1:
             learn_halut(*(params))
