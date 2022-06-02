@@ -16,7 +16,7 @@ jobs:
         python-version: 3.9
     - name: Lint with pylint
       run: |
-        $CONDA/bin/conda install pylint
+        $CONDA/bin/conda install -c conda-forge pylint=2.14
         $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/python/*
 
   clang-format:

@@ -20,6 +20,12 @@ jobs:
           ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
           mkdir .ssh
           python vast_ai_helper.py
+      - uses: webiny/action-post-run@2.0.1
+        id: cleanup-gpu
+        name: Cleanup GPU Post
+        with:
+          run: |
+            python vast_ai_helper.py --cleanup
 
   cleanup:
     name: Cleanup check
