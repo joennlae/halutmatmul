@@ -1,5 +1,3 @@
-
-   
 [MASTER]
 
 # Use multiple processes to speed up Pylint.
@@ -19,7 +17,6 @@ max-line-length=100
 
 # Tests
 enable=bad-indentation,       # Used when an unexpected number of indentation’s tabulations or spaces has been found.
-       mixed-indentation,     # Used when there are some mixed tabs and spaces in a module.
        unnecessary-semicolon, # Used when a statement is ended by a semi-colon (”;”), which isn’t necessary.
        unused-variable        # Used when a variable is defined but not used. (Use _var to ignore var).
 
@@ -67,9 +64,6 @@ overgeneral-exceptions=Exception
 
 # Minimum lines number of a similarity.
 min-similarity-lines=5
-
-[pre-commit-hook]
-params=*.py **/*.py
 
 [TYPECHECK]
 

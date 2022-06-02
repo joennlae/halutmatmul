@@ -106,6 +106,7 @@ def learn_binary_tree_splits(
             new_buckets += list(buck.split(X, dim=best_dim, val=val, X_orig=X_orig))
         buckets = new_buckets
 
+    # pylint: disable=consider-using-generator
     loss = sum([bucket.loss for bucket in buckets])
     # print("learn_binary_tree_splits(): returning loss: ", loss)
 

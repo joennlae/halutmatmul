@@ -11,7 +11,7 @@ import torch
 from torchvision import transforms as T
 import pandas as pd
 
-from ResNet.resnet import ResNet50_Weights, resnet50
+from models.resnet import ResNet50_Weights, resnet50
 
 from halutmatmul.model import HalutHelper
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig

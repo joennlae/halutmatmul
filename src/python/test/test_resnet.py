@@ -5,7 +5,7 @@ import torchvision
 import torch
 from torchvision import transforms as T
 
-from ResNet.resnet import resnet50
+from models.resnet import resnet50
 
 from halutmatmul.model import HalutHelper
 

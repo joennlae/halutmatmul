@@ -143,7 +143,6 @@ class HalutLinear(Linear):
         )
 
 
-# pylint: disable=R0201
 def halut_conv2d_cpu(
     _input: np.ndarray,
     weights: np.ndarray,

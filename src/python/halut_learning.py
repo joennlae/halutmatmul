@@ -6,7 +6,7 @@ import re
 from typing import Any
 import numpy as np
 
-from ResNet.resnet import END_STORE_A, END_STORE_B
+from models.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
 
 

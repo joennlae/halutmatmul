@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-from ResNet.resnet import END_STORE_A, END_STORE_B
+from models.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
 from halutmatmul.modules import ErrorTuple

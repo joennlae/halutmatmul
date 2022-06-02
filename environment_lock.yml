@@ -1,18 +1,17 @@
 name: /scratch2/janniss/conda/halutmatmul_gpu
 channels:
-  - conda-forge/label/scikit-learn_rc
   - pytorch-nightly
   - intel
   - conda-forge
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
+  - _openmp_mutex=4.5=2_kmp_llvm
   - astroid=2.11.5=py39hf3d152e_0
-  - attrs=21.2.0=pyhd3eb1b0_0
+  - attrs=21.4.0=pyhd3eb1b0_0
   - black=22.3.0=pyhd8ed1ab_0
   - blas=1.0=mkl
-  - bottleneck=1.3.4=py39hd257fcd_1
+  - bottleneck=1.3.4=py39hce1f21e_0
   - brotli=1.0.9=hf484d3e_2
   - brotlipy=0.7.0=py39h27cfd23_1003
   - bzip2=1.0.8=hb9a14ef_9
@@ -21,25 +20,27 @@ dependencies:
   - cffi=1.15.0=py39hd667e15_1
   - cfgv=3.3.1=pyhd8ed1ab_0
   - chardet=4.0.0=py39h06a4308_1003
-  - click=8.0.3=pyhd3eb1b0_0
-  - colorama=0.4.4=pyh9f0ad1d_0
+  - click=8.0.4=py39h06a4308_0
+  - colorama=0.4.4=pyhd3eb1b0_0
   - cryptography=36.0.0=py39h9ce1e76_0
-  - cudatoolkit=11.3.1=ha36c431_10
+  - cudatoolkit=11.3.1=h9edb442_10
   - cycler=0.11.0=pyhd3eb1b0_0
   - dataclasses=0.8=pyh6d0b6a4_7
-  - dill=0.3.4=pyhd8ed1ab_0
+  - dill=0.3.5.1=pyhd8ed1ab_0
   - distlib=0.3.4=pyhd8ed1ab_0
   - dpcpp-cpp-rt=2022.1.0=intel_3768
   - dpcpp_cpp_rt=2022.1.0=intel_3768
   - execnet=1.9.0=pyhd8ed1ab_0
   - ffmpeg=4.4=h3fd9d12_2
-  - filelock=3.6.0=pyhd8ed1ab_0
+  - filelock=3.6.0=pyhd3eb1b0_0
   - fonttools=4.25.0=pyhd3eb1b0_0
   - fortran_rt=2022.1.0=intel_3768
   - freetype=2.10.4=h8e2d9d6_0
+  - gettext=0.19.8.1=h0b5b191_1005
+  - giflib=5.2.1=h7b6447c_1
   - gmp=6.2.1=h58526e2_0
   - icc_rt=2022.1.0=intel_3768
-  - identify=2.5.0=pyhd8ed1ab_0
+  - identify=2.5.1=pyhd8ed1ab_0
   - idna=2.10=pyhd3eb1b0_0
   - impi_rt=2021.6.0=intel_602
   - iniconfig=1.1.1=pyh9f0ad1d_0
@@ -51,23 +52,28 @@ dependencies:
   - intelpython=2022.1.0=0
   - isort=5.10.1=pyhd8ed1ab_0
   - joblib=1.0.1=pyhd3eb1b0_0
-  - jpeg=9d=h36c2ea0_1
+  - jpeg=9d=h36c2ea0_3
   - kiwisolver=1.3.2=py39h295c915_0
   - lame=3.100=h7f98852_1001
   - lazy-object-proxy=1.7.1=py39hb9d737c_1
-  - lcms2=2.12=h3be6417_0
+  - lcms2=2.12=h3be6417_1
   - libblas=3.9.0=14_linux64_mkl
   - libcblas=3.9.0=14_linux64_mkl
   - libffi=3.3=14
-  - libgcc-ng=11.2.0=h1d223b6_16
-  - libgomp=11.2.0=h1d223b6_16
+  - libflac=1.3.4=h27087fc_0
+  - libgcc-ng=12.1.0=h8d9b700_16
   - libiconv=1.15=h63c8f33_5
   - libllvm11=11.0.0=h3826bc1_1
+  - libogg=1.3.4=h7f98852_1
+  - libopus=1.3.1=h7f98852_1
   - libpng=1.6.37=8
-  - libstdcxx-ng=11.2.0=he4da1e4_16
-  - libtiff=4.2.0=h3942068_0
-  - libuv=1.40.0=h7b6447c_2
-  - libwebp-base=1.2.0=h7f98852_2
+  - libsndfile=1.0.31=h9c3ff4c_1
+  - libstdcxx-ng=12.1.0=ha89aaad_16
+  - libtiff=4.3.0=h3942068_1
+  - libvorbis=1.3.7=h9c3ff4c_0
+  - libwebp=1.2.0=h89dd481_1
+  - libwebp-base=1.2.0=h7f98852_3
+  - llvm-openmp=12.0.1=h4bd325d_1
   - llvmlite=0.38.0=py39hb51dc5a_0
   - lz4-c=1.9.3=h688b341_1
   - matplotlib=3.1.2=py39h254464c_11
@@ -87,38 +93,39 @@ dependencies:
   - numexpr=2.8.1=py39hb94f6f9_1
   - numpy=1.21.2=py39hec4e512_7
   - numpy-base=1.21.2=py39h40791c5_7
-  - olefile=0.46=pyhd3eb1b0_0
+  - olefile=0.46=pyhd3eb1b0_1
   - openh264=2.1.0=hd408876_0
   - openssl=1.1.1n=h7f8727e_0
   - packaging=21.3=pyhd3eb1b0_0
   - pandas=1.4.1=py39h295c915_1
   - pathspec=0.9.0=pyhd8ed1ab_0
   - patsy=0.5.2=pyhd8ed1ab_0
-  - pillow=8.4.0=py39h5aabda8_0
+  - pillow=9.0.0=py39h5aabda8_1
   - pip=21.2.4=py39h06a4308_0
   - platformdirs=2.5.1=pyhd8ed1ab_0
   - pluggy=1.0.0=py39hf3d152e_3
   - pre-commit=2.19.0=py39hf3d152e_0
-  - psutil=5.8.0=py39h27cfd23_1
+  - psutil=5.8.0=py39h27cfd23_2
   - py=1.11.0=pyh6c4a22f_0
   - pycparser=2.21=pyhd3eb1b0_0
-  - pylint=2.13.8=pyhd8ed1ab_0
+  - pylint=2.14.0=pyhd8ed1ab_0
   - pyopenssl=22.0.0=pyhd3eb1b0_0
   - pyparsing=3.0.4=pyhd3eb1b0_0
   - pysocks=1.7.1=py39h06a4308_0
+  - pysoundfile=0.10.3.post1=pyhd3deb0d_0
   - pytest=7.1.2=py39hf3d152e_0
   - pytest-forked=1.4.0=pyhd8ed1ab_0
   - pytest-xdist=2.5.0=pyhd8ed1ab_0
   - python=3.9.10=h3b4beac_2
   - python-dateutil=2.8.2=py39_2
   - python_abi=3.9=2_cp39
-  - pytorch=1.12
+  - pytorch=1.13
   - pytorch-mutex=1.0=cuda
   - pytz=2021.3=pyhd3eb1b0_0
   - pyyaml=6.0=py39h7f8727e_1
   - readline=8.1.2=h7f8727e_1
   - requests=2.25.1=pyhd3eb1b0_0
-  - scikit-learn=1.1.0rc1=py39h0e38964_0
+  - scikit-learn=1.1.1=py39h4037b75_0
   - scipy=1.7.3=py39h5c0f66f_1
   - seaborn=0.11.2=hd8ed1ab_0
   - seaborn-base=0.11.2=pyhd8ed1ab_0
@@ -133,23 +140,29 @@ dependencies:
   - tk=8.6.10=h8e2d9d6_3
   - toml=0.10.2=pyhd8ed1ab_0
   - tomli=2.0.1=pyhd8ed1ab_0
-  - torchvision=0.13
+  - tomlkit=0.11.0=pyha770c72_0
+  - torchaudio=0.12
+  - torchinfo=1.7.0=pyhd8ed1ab_0
+  - torchvision=0.14
   - tornado=6.1=py39h27cfd23_0
-  - typed-ast=1.5.3=py39hb9d737c_0
-  - typing-extensions=4.2.0=hd8ed1ab_1
-  - typing_extensions=4.2.0=pyha770c72_1
+  - typed-ast=1.5.4=py39hb9d737c_0
+  - typing=3.10.0.0=pyhd8ed1ab_0
+  - typing-extensions=4.1.1=hd3eb1b0_0
+  - typing_extensions=4.1.1=pyh06a4308_0
   - ukkonen=1.0.1=py39hf939315_2
   - urllib3=1.26.8=pyhd3eb1b0_0
   - virtualenv=20.14.1=py39hf3d152e_0
   - wheel=0.37.1=pyhd3eb1b0_0
-  - wrapt=1.12.1=py39he8ac12f_1
+  - wrapt=1.13.3=py39h7f8727e_2
   - xz=5.2.5=h74280d8_2
   - yaml=0.2.5=h7b6447c_0
   - zlib=1.2.11.1=h1e99aa7_5
   - zstd=1.4.5=h3f200d0_0
   - pip:
-    - cupy-cuda112==10.4.0
+    - cupy-cuda112==10.5.0
     - fastrlock==0.8
-    - types-requests==2.27.25
-    - types-urllib3==1.26.14
+    - pytorch-nemo==0.0.8
+    - tqdm==4.64.0
+    - types-requests==2.27.30
+    - types-urllib3==1.26.15
 prefix: /scratch2/janniss/conda/halutmatmul_gpu

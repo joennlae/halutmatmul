@@ -263,7 +263,6 @@ def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:
     return splits
 
 
-# pylint: disable=R0201
 def tensordot(
     a: np.ndarray,
     b: np.ndarray,

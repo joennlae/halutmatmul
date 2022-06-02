@@ -4,7 +4,6 @@ channels:
   - pytorch-nightly
   - conda-forge
   - defaults
-  - conda-forge/label/scikit-learn_rc
 dependencies:
   - python=3.9
   - black
@@ -18,8 +17,12 @@ dependencies:
   - pre-commit
   - mypy=0.942
   - pytest-xdist
-  - torchvision=0.13
-  - pytorch=1.12
+  - torchvision=0.14
+  - pytorch=1.13
+  - torchinfo
+  # kws
+  - torchaudio=0.12
+  - pysoundfile
   # gpu stuff
   - cudatoolkit=11.3
   - pip
@@ -29,4 +32,5 @@ dependencies:
   - matplotlib
   - pip:
     - cupy-cuda112
+    - pytorch-nemo
 prefix: /home/msc22f5/.conda/envs/halutmatmul

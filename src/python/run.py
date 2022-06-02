@@ -5,7 +5,7 @@ import torchvision
 import torch
 from torchvision import transforms as T
 
-from ResNet.resnet import END_STORE_A, END_STORE_B, ResNet50_Weights, resnet50
+from models.resnet import END_STORE_A, END_STORE_B, ResNet50_Weights, resnet50
 
 from halutmatmul.model import HalutHelper
 import halutmatmul.halutmatmul as hm

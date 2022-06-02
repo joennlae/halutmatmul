@@ -1,14 +1,24 @@
 import torch, torchvision
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import (
+    resnet50,
+    ResNet50_Weights,
+    efficientnet_b0,
+    EfficientNet_B0_Weights,
+    vit_b_16,
+    ViT_B_16_Weights,
+)
 from torch.utils.data import DataLoader
 
-model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2, progress=True)
+model_fun = vit_b_16
+weights_import = ViT_B_16_Weights.DEFAULT
+
+model = model_fun(weights=weights_import, progress=True)
 
 device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 imagenet_val = torchvision.datasets.ImageNet(
     root="/scratch2/janniss/imagenet/",
     split="val",
-    transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
+    transform=weights_import.transforms(),
 )
 loaded_data = DataLoader(
     imagenet_val,
@@ -18,6 +28,8 @@ loaded_data = DataLoader(
     pin_memory=True,
 )
 model.to(device)
+
+print(model)
 model.eval()
 correct_5 = correct_1 = 0
 with torch.no_grad():

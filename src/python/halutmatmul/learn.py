@@ -7,7 +7,7 @@ from timeit import default_timer as timer
 from multiprocessing import Process, JoinableQueue
 import numpy as np
 
-from ResNet.resnet import END_STORE_A, END_STORE_B
+from models.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
 
 # https://docs.python.org/3/library/asyncio-queue.html#asyncio-queues
