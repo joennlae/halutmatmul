@@ -162,6 +162,7 @@ dependencies:
     - cupy-cuda112==10.5.0
     - fastrlock==0.8
     - pytorch-nemo==0.0.8
+    - timm==0.5.4
     - tqdm==4.64.0
     - types-requests==2.27.30
     - types-urllib3==1.26.15

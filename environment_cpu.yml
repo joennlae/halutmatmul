@@ -33,4 +33,5 @@ dependencies:
   - pip:
     - cupy-cuda112
     - pytorch-nemo
+    - timm
 prefix: /home/msc22f5/.conda/envs/halutmatmul
