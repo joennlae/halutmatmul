@@ -32,6 +32,9 @@ import numpy as np
 
 # import tensorflow as tf
 
+DATASET_PATH = "/scratch2/janniss/speech_commands_v0.02"
+MODEL_PATH = "./model.pth"
+
 
 MAX_NUM_WAVS_PER_CLASS = 2**27 - 1  # ~134M
 BACKGROUND_NOISE_LABEL = "_background_noise_"

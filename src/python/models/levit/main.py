@@ -19,6 +19,7 @@ from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 from timm.scheduler import create_scheduler
 from timm.optim import create_optimizer
 from timm.utils import NativeScaler, get_state_dict, ModelEma
+from torchinfo import summary
 
 from models.levit.datasets import build_dataset
 from models.levit.engine import train_one_epoch, evaluate
@@ -37,7 +38,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser(
         "LeViT training and evaluation script", add_help=False
     )
-    parser.add_argument("--batch-size", default=256, type=int)
+    parser.add_argument("--batch-size", default=192, type=int)
     parser.add_argument("--epochs", default=1000, type=int)
 
     # Model parameters
@@ -566,6 +567,21 @@ def main(args):
         args.distillation_tau,
     )
 
+    # print model summary
+    summary(
+        model,
+        input_size=(1, 3, args.input_size, args.input_size),
+        verbose=2,
+        col_width=16,
+        col_names=["kernel_size", "output_size", "num_params", "mult_adds"],
+        device=device,
+        row_settings=["var_names"],
+    )
+
+    print(model)
+
+    print("FLOPS", model.FLOPS)
+
     output_dir = Path(args.output_dir)
     if args.resume:
         if args.resume.startswith("https"):
@@ -642,7 +658,7 @@ def main(args):
             test_stats = evaluate(data_loader_val, model, device)
             print(
                 f"Accuracy of the network on the {len(dataset_val)} "
-                "test images: {test_stats['acc1']:.1f}%"
+                f"test images: {test_stats['acc1']:.1f}%"
             )
             max_accuracy = max(max_accuracy, test_stats["acc1"])
             print(f"Max accuracy: {max_accuracy:.2f}%")

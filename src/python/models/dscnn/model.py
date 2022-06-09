@@ -21,14 +21,15 @@ import torch
 from torch import nn
 
 from models.dscnn.utils import npy_to_txt
+from halutmatmul.modules import HalutConv2d, HalutLinear
 
 
 class DSCNN(torch.nn.Module):
-    def __init__(self, use_bias: bool=False) -> None:
+    def __init__(self, use_bias: bool = False) -> None:
         super().__init__()
 
         self.pad1 = nn.ConstantPad2d((1, 1, 5, 5), value=0.0)
-        self.conv1 = torch.nn.Conv2d(
+        self.conv1 = HalutConv2d(
             in_channels=1,
             out_channels=64,
             kernel_size=(10, 4),
@@ -39,7 +40,7 @@ class DSCNN(torch.nn.Module):
         self.relu1 = torch.nn.ReLU()
 
         self.pad2 = nn.ConstantPad2d((1, 1, 1, 1), value=0.0)
-        self.conv2 = torch.nn.Conv2d(
+        self.conv2 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(3, 3),
@@ -49,7 +50,7 @@ class DSCNN(torch.nn.Module):
         )
         self.bn2 = torch.nn.BatchNorm2d(64)
         self.relu2 = torch.nn.ReLU()
-        self.conv3 = torch.nn.Conv2d(
+        self.conv3 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(1, 1),
@@ -60,7 +61,7 @@ class DSCNN(torch.nn.Module):
         self.relu3 = torch.nn.ReLU()
 
         self.pad4 = nn.ConstantPad2d((1, 1, 1, 1), value=0.0)
-        self.conv4 = torch.nn.Conv2d(
+        self.conv4 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(3, 3),
@@ -70,7 +71,7 @@ class DSCNN(torch.nn.Module):
         )
         self.bn4 = torch.nn.BatchNorm2d(64)
         self.relu4 = torch.nn.ReLU()
-        self.conv5 = torch.nn.Conv2d(
+        self.conv5 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(1, 1),
@@ -81,7 +82,7 @@ class DSCNN(torch.nn.Module):
         self.relu5 = torch.nn.ReLU()
 
         self.pad6 = nn.ConstantPad2d((1, 1, 1, 1), value=0.0)
-        self.conv6 = torch.nn.Conv2d(
+        self.conv6 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(3, 3),
@@ -91,7 +92,7 @@ class DSCNN(torch.nn.Module):
         )
         self.bn6 = torch.nn.BatchNorm2d(64)
         self.relu6 = torch.nn.ReLU()
-        self.conv7 = torch.nn.Conv2d(
+        self.conv7 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(1, 1),
@@ -102,7 +103,7 @@ class DSCNN(torch.nn.Module):
         self.relu7 = torch.nn.ReLU()
 
         self.pad8 = nn.ConstantPad2d((1, 1, 1, 1), value=0.0)
-        self.conv8 = torch.nn.Conv2d(
+        self.conv8 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(3, 3),
@@ -112,7 +113,7 @@ class DSCNN(torch.nn.Module):
         )
         self.bn8 = torch.nn.BatchNorm2d(64)
         self.relu8 = torch.nn.ReLU()
-        self.conv9 = torch.nn.Conv2d(
+        self.conv9 = HalutConv2d(
             in_channels=64,
             out_channels=64,
             kernel_size=(1, 1),
@@ -129,12 +130,12 @@ class DSCNN(torch.nn.Module):
 
         # CONV2D replacing Block1 for evaluation purposes
         # self.pad2  = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        # self.conv2 = torch.nn.Conv2d(in_channels = 64,
+        # self.conv2 = HalutConv2d(in_channels = 64,
         # out_channels = 64, kernel_size = (3, 3), stride = (1, 1), groups = 1, bias = use_bias)
         # self.bn2   = torch.nn.BatchNorm2d(64)
         # self.relu2 = torch.nn.ReLU()
 
-    def forward(self, x: torch.Tensor, save: bool=False) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, save: bool = False) -> torch.Tensor:
         if save:
 
             x = self.pad1(x)

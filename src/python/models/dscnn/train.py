@@ -23,6 +23,7 @@ import torch.nn.functional as F
 
 from models.dscnn.dataset import AudioProcessor, AudioGenerator
 from models.dscnn.utils import conf_matrix, npy_to_txt
+from models.dscnn.main import MODEL_PATH
 
 
 class Train:
@@ -109,7 +110,7 @@ class Train:
 
     def train(self, model: torch.nn.Module) -> None:
         # Train model
-
+        model = model.to(self.device)
         best_acc = 0.0
         for epoch in range(0, self.training_parameters["epochs"]):
 
@@ -123,7 +124,6 @@ class Train:
                 "training", self.audio_processor, self.training_parameters
             )
             model.train()
-            self.scheduler.step()
 
             running_loss = 0.0
             total = 0
@@ -138,7 +138,7 @@ class Train:
                 self.optimizer.zero_grad()
 
                 # Train, compute loss, update optimizer
-                model = model.to(self.device)
+
                 outputs = F.softmax(model(inputs), dim=1)
                 loss = self.criterion(outputs, labels)
                 loss.backward()
@@ -162,14 +162,16 @@ class Train:
                         )
                     )
                     running_loss = 0.0
-
+            self.scheduler.step()
             tmp_acc = self.validate(model, "validation", 128)
 
             # Save best performing network
             if tmp_acc > best_acc:
                 best_acc = tmp_acc
-                PATH = "./model_acc_" + str(best_acc) + ".pth"
+                # PATH = "./model_acc_" + str(best_acc) + ".pth"
+                PATH = MODEL_PATH
                 torch.save(model.state_dict(), PATH)
 
-        PATH = "./model.pth"
-        torch.save(model.state_dict(), PATH)
+        # just store the best in the end
+        # PATH = MODEL_PATH
+        # torch.save(model.state_dict(), PATH)

@@ -348,6 +348,8 @@ class HalutConv2d(_ConvNd):
                 prefix + "halut_config",
             )
         ):
+            if not state_dict[prefix + "halut_active"]:
+                return
             # hack to support variable parameter size --> with the cost of double copying :-)
             self.hash_buckets_or_prototypes = Parameter(
                 state_dict[prefix + "hash_buckets_or_prototypes"]

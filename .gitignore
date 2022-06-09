@@ -8,3 +8,5 @@ maddness/assets
 
 .data
 .mypy_cache
+
+*.pth

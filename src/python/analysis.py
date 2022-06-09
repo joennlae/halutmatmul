@@ -1,393 +1,54 @@
 # pylint: disable=C0209
 import glob
-import os, sys
+from pathlib import Path
 import re
 import argparse
 import json
-from subprocess import call
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Literal, OrderedDict, TypeVar
+import pandas as pd
 import torchvision
 import torch
-from torchvision import transforms as T
-import pandas as pd
 
+from utils.analysis_helper import (
+    get_input_data_amount,
+    get_layers,
+    json_to_dataframe,
+    sys_info,
+    available_models,
+    all_layers,
+)
+
+from models.helper import eval_halut_kws, evaluate_halut_imagenet
+from models.dscnn.main import setup_ds_cnn_eval
 from models.resnet import ResNet50_Weights, resnet50
 
-from halutmatmul.model import HalutHelper
+from halutmatmul.model import HalutHelper, eval_func_type
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 
 
-def sys_info() -> None:
-    print("__Python VERSION:", sys.version)
-    print("__pyTorch VERSION:", torch.__version__)
-    print(
-        "__CUDA VERSION",
-    )
-
-    # ! nvcc --version
-    print("__CUDNN VERSION:", torch.backends.cudnn.version())
-    print("__Number CUDA Devices:", torch.cuda.device_count())
-    print("__Devices")
-    call(
-        [
-            "nvidia-smi",
-            "--format=csv",
-            "--query-gpu=index,name,driver_version,memory.total,memory.used,memory.free",
-        ]
-    )
-    print("Active CUDA Device: GPU", torch.cuda.current_device())
-    print("Available devices ", torch.cuda.device_count())
-    print("Current cuda device ", torch.cuda.current_device())
-
-
-def halut_analysis_helper(
-    cuda_id: int,
-    batch_size_store: int,
-    halut_modules: dict[str, list[int]],
-    halut_data_path: str,
+def model_loader(  # type: ignore[return]
+    name: available_models,
     dataset_path: str,
-    learned_path: str,
-) -> dict[str, Any]:
-    torch.cuda.set_device(cuda_id)
-    sys_info()
-    device = torch.device(
-        "cuda:" + str(cuda_id) if torch.cuda.is_available() else "cpu"
-    )
-    state_dict = ResNet50_Weights.IMAGENET1K_V2.get_state_dict(progress=True)
-    imagenet_val = torchvision.datasets.ImageNet(
-        root=dataset_path,  # "/scratch/janniss/imagenet/",
-        split="val",
-        transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
-    )
-    model = resnet50(weights=state_dict, progress=True)
-    model.cuda()
-    model.to(device)
-
-    halut_model = HalutHelper(
-        model,
-        state_dict,
-        imagenet_val,
-        batch_size_inference=128,
-        batch_size_store=batch_size_store,
-        data_path=halut_data_path,
-        device=device,
-        learned_path=learned_path,
-        report_error=True,
-    )
-    halut_model.print_available_module()
-    for k, v in halut_modules.items():
-        print("activate", k, v)
-        halut_model.activate_halut_module(
-            k,
-            C=v[HalutModuleConfig.C],
-            rows=v[HalutModuleConfig.ROWS],
-            K=v[HalutModuleConfig.K],
-            encoding_algorithm=v[HalutModuleConfig.ENCODING_ALGORITHM],
+) -> tuple[
+    torch.nn.Module, Any, OrderedDict[str, torch.Tensor], eval_func_type, int, int
+]:
+    if name == "resnet-50":
+        state_dict = ResNet50_Weights.IMAGENET1K_V2.get_state_dict(progress=True)
+        data = torchvision.datasets.ImageNet(
+            root=dataset_path,  # "/scratch/janniss/imagenet/",
+            split="val",
+            transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
         )
-    halut_model.run_inference()
-    print(halut_model.get_stats())
-    return halut_model.get_stats()
-
-
-def run_test(
-    cuda_id: int,
-    halut_data_path: str,
-    dataset_path: str,
-    learned_path: str,
-    C: int,
-    layer_start_offset: int = 0,
-) -> None:
-    # pylint: disable=unused-variable
-    tests = [
-        "layer4.2.conv3",
-        "layer1.0.conv1",
-        "layer1.0.conv3",
-        "layer1.1.conv1",
-        "layer1.1.conv3",
-        "layer1.2.conv1",
-        "layer1.2.conv3",
-        "layer2.0.conv1",
-        "layer2.0.conv3",
-        "layer2.1.conv1",
-        "layer2.1.conv3",
-        "layer2.2.conv1",
-        "layer2.2.conv3",
-        "layer2.3.conv1",
-        "layer2.3.conv3",
-        "layer3.0.conv1",
-        "layer3.0.conv3",
-        "layer3.1.conv1",
-        "layer3.1.conv3",
-        "layer3.2.conv1",
-        "layer3.2.conv3",
-        "layer3.3.conv1",
-        "layer3.3.conv3",
-        "layer3.4.conv1",
-        "layer3.4.conv3",
-        "layer3.5.conv1",
-        "layer3.5.conv3",
-        "layer4.0.conv1",
-        "layer4.0.conv3",
-        "layer4.1.conv1",
-        "layer4.1.conv3",
-        "layer4.2.conv1",
-    ]
-
-    tests_bad = [
-        "layer4.0.conv1",
-        "layer4.0.conv3",
-        "layer4.1.conv1",
-        "layer3.0.conv3",
-        "layer3.1.conv1",
-        "layer3.1.conv3",
-        "layer2.0.conv1",
-        "layer3.0.conv1",
-    ]
-
-    downsampled = [
-        "layer1.0.downsample.0",
-        "layer2.0.downsample.0",
-        "layer3.0.downsample.0",
-        "layer4.0.downsample.0",
-    ]
-
-    conv3x3 = [
-        "layer1.0.conv2",
-        "layer1.1.conv2",
-        "layer1.2.conv2",
-        "layer2.0.conv2",
-        "layer2.1.conv2",
-        "layer2.2.conv2",
-        "layer2.3.conv2",
-        "layer3.0.conv2",
-        "layer3.1.conv2",
-        "layer3.2.conv2",
-        "layer3.3.conv2",
-        "layer3.4.conv2",
-        "layer3.5.conv2",
-        "layer4.0.conv2",
-        "layer4.1.conv2",
-        "layer4.2.conv2",
-    ]
-
-    layers_interesting = [
-        "layer1.0.conv2",
-        "layer1.1.conv3",
-        "layer2.0.conv1",
-        "layer2.0.conv2",
-        "layer2.0.downsample.0",
-        "layer2.3.conv3",
-        "layer3.0.conv1",
-        "layer3.0.conv2",
-        "layer3.0.conv3",
-        "layer3.3.conv3",
-        "layer3.4.conv2",
-        "layer3.5.conv1",
-        "layer3.5.conv2",
-        "layer4.0.conv1",
-        "layer4.0.conv2",
-        "layer4.0.conv3",
-        "layer4.1.conv1",
-        "layer4.2.conv1",
-        "layer4.2.conv3",
-    ]
-
-    rows = [
-        1,
-        2,
-        4,
-        8,
-        16,
-        32,
-        # 64,
-        # 128,
-        # 256,
-    ]
-    rows.reverse()
-
-    result_base_path = "./results/data/accuracy/single_layer/c_k_sweep/"
-
-    layers_test = layers_interesting[layer_start_offset:]
-    for l in layers_test:
-        layer_loc = l.split(".", maxsplit=1)[0]
-        rows_adapted = []
-        if layer_loc in ["layer1"]:
-            rows_adapted = [1, 2, 4, 8]
-        elif layer_loc == "layer2":
-            rows_adapted = [2, 4, 8, 16]
-        elif layer_loc == "layer3":
-            rows_adapted = [8, 16, 32, 64]
-        elif layer_loc == "layer4":
-            rows_adapted = [32, 64, 128, 256]
-
-        for r in rows_adapted:
-            # for C in [8, 16, 32, 64]:
-            for e in [
-                EncodingAlgorithm.FOUR_DIM_HASH,
-                EncodingAlgorithm.DECISION_TREE,
-                EncodingAlgorithm.FULL_PQ,
-            ]:
-                for K in (
-                    [8, 16, 32]
-                    if e == EncodingAlgorithm.FOUR_DIM_HASH
-                    else [4, 8, 12, 16, 24, 32, 64]
-                ):
-                    files = glob.glob(result_base_path + "/*.json")
-                    files_res = []
-                    regex = rf"{l}_{C}_{K}_{e}-{r}\.json"
-                    pattern = re.compile(regex)
-                    files_res = [x for x in files if pattern.search(x)]
-                    if len(files_res) == 1:
-                        print("alread done")
-                        continue
-                    # learned_files = check_file_exists_and_return_path(
-                    #     learned_path, k, "learned", C, r
-                    # )
-                    # if len(learned_files) == 0:
-                    #     print(f"not learned {k} C: {C}, r: {r}")
-                    #     continue
-                    res = halut_analysis_helper(
-                        cuda_id,
-                        batch_size_store=256,
-                        halut_modules=dict({l: [C, r, K, e]}),
-                        halut_data_path=halut_data_path,
-                        dataset_path=dataset_path,
-                        learned_path=learned_path,
-                    )
-                    with open(
-                        result_base_path
-                        + l
-                        + "_"
-                        + str(C)
-                        + "_"
-                        + str(K)
-                        + "_"
-                        + str(e)
-                        + "-"
-                        + str(r)
-                        + ".json",
-                        "w",
-                    ) as fp:
-                        json.dump(res, fp, sort_keys=True, indent=4)
-
-
-all_layers = [
-    "layer1.0.conv1",
-    "layer1.0.conv2",
-    "layer1.0.conv3",
-    "layer1.0.downsample.0",
-    "layer1.1.conv1",
-    "layer1.1.conv2",
-    "layer1.1.conv3",
-    "layer1.2.conv1",
-    "layer1.2.conv2",
-    "layer1.2.conv3",
-    "layer2.0.conv1",
-    "layer2.0.conv2",
-    "layer2.0.conv3",
-    "layer2.0.downsample.0",
-    "layer2.1.conv1",
-    "layer2.1.conv2",
-    "layer2.1.conv3",
-    "layer2.2.conv1",
-    "layer2.2.conv2",
-    "layer2.2.conv3",
-    "layer2.3.conv1",
-    "layer2.3.conv2",
-    "layer2.3.conv3",
-    "layer3.0.conv1",
-    "layer3.0.conv2",
-    "layer3.0.conv3",
-    "layer3.0.downsample.0",
-    "layer3.1.conv1",
-    "layer3.1.conv2",
-    "layer3.1.conv3",
-    "layer3.2.conv1",
-    "layer3.2.conv2",
-    "layer3.2.conv3",
-    "layer3.3.conv1",
-    "layer3.3.conv2",
-    "layer3.3.conv3",
-    "layer3.4.conv1",
-    "layer3.4.conv2",
-    "layer3.4.conv3",
-    "layer3.5.conv1",
-    "layer3.5.conv2",
-    "layer3.5.conv3",
-    "layer4.0.conv1",
-    "layer4.0.conv2",
-    "layer4.0.conv3",
-    "layer4.0.downsample.0",
-    "layer4.1.conv1",
-    "layer4.1.conv2",
-    "layer4.1.conv3",
-    "layer4.2.conv1",
-    "layer4.2.conv2",
-    "layer4.2.conv3",
-]
-
-
-def json_to_dataframe(
-    path: str, layer_name: str, max_C: int = 128, prefix: str = ""
-) -> pd.DataFrame:
-    files = glob.glob(path + "/*.json")
-    regex = rf"{layer_name}_.+\.json"
-    pattern = re.compile(regex)
-    files_res = [x for x in files if pattern.search(x)]
-
-    dfs = []  # an empty list to store the data frames
-    for file in files_res:
-        data = pd.read_json(file)  # read data frame from json file
-        if layer_name + ".learned_n" not in data.columns:
-            data[layer_name + ".learned_n"] = data.iloc[0][
-                layer_name + ".learned_a_shape"
-            ]
-            data[layer_name + ".learned_d"] = data.iloc[1][
-                layer_name + ".learned_a_shape"
-            ]
-            K = data.iloc[0][layer_name + ".K"]
-            C = data.iloc[0][layer_name + ".C"]
-            data[layer_name + ".learned_m"] = int(
-                data.iloc[0][layer_name + ".L_size"] / (4 * K * C)
-            )
-        C = data.iloc[0][layer_name + ".C"]
-        if C > max_C:
-            continue
-        if layer_name + ".learned_a_shape" in data.columns:
-            data = data.drop([1])
-            data = data.drop(
-                columns=[
-                    layer_name + ".learned_a_shape",
-                    layer_name + ".learned_b_shape",
-                ]
-            )
-
-        data["hue_string"] = prefix + str(C)
-
-        data["test_name"] = layer_name + "-" + str(data.iloc[0][layer_name + ".C"])
-        data["layer_name"] = layer_name + (
-            " (3x3)" if "conv2" in layer_name else " (1x1)"
-        )
-        data["row_name"] = layer_name.split(".")[0]
-        data["col_name"] = layer_name[len(layer_name.split(".")[0]) + 1 :]
-        dfs.append(data)  # append the data frame to the list
-
-    df = pd.concat(
-        dfs, ignore_index=True
-    )  # concatenate all the data frames in the list.
-
-    df = df.drop(columns="halut_layers")
-    df["top_1_accuracy_100"] = df["top_1_accuracy"] * 100
-    final_dfs = []
-    for C in [16, 32, 64]:
-        df_C = df[df[layer_name + ".C"] == C]
-        df_C.sort_values(
-            by=["top_1_accuracy"], inplace=True, ignore_index=True, ascending=False
-        )
-        final_dfs.append(df_C.iloc[[0]])
-    df = pd.concat(final_dfs, ignore_index=True)
-    df.columns = df.columns.str.replace(layer_name + ".", "")
-    return df
+        model = resnet50(weights=state_dict, progress=True)
+        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
+    elif name == "levit":
+        pass
+    elif name == "ds-cnn":
+        model, data, state_dict = setup_ds_cnn_eval()  # type: ignore[assignment]
+        print("data", data)
+        return model, data, state_dict, eval_halut_kws, 0, 0
+    else:
+        return Exception("Model name not supported: ", name)
 
 
 def multilayer_analysis(
@@ -427,7 +88,6 @@ def multilayer_analysis(
         print(layer_dict)
         res = halut_analysis_helper(
             cuda_id,
-            batch_size_store=256,
             halut_modules=layer_dict,
             halut_data_path=halut_data_path,
             dataset_path=dataset_path,
@@ -440,17 +100,189 @@ def multilayer_analysis(
             json.dump(res, fp, sort_keys=True, indent=4)
 
 
+def halut_analysis_helper(
+    cuda_id: int,
+    halut_modules: dict[str, list[int]],
+    halut_data_path: str,
+    dataset_path: str,
+    learned_path: str,
+    model_name: Literal["resnet-50", "levit", "ds-cnn"] = "resnet-50",
+) -> dict[str, Any]:
+    torch.cuda.set_device(cuda_id)
+    sys_info()
+    device = torch.device(
+        "cuda:" + str(cuda_id) if torch.cuda.is_available() else "cpu"
+    )
+
+    print("model name", model_name)
+    model, data, state_dict, eval_func, batch_size_store, batch_size = model_loader(
+        model_name, dataset_path=dataset_path
+    )
+
+    if model_name not in learned_path.lower():
+        learned_path += "/" + model_name
+    Path(learned_path).mkdir(parents=True, exist_ok=True)
+
+    if model_name not in halut_data_path.lower():
+        halut_data_path += "/" + model_name
+    Path(halut_data_path).mkdir(parents=True, exist_ok=True)
+
+    model.cuda()
+    model.to(device)
+
+    halut_model = HalutHelper(
+        model,
+        state_dict,
+        data,
+        batch_size_inference=batch_size,
+        batch_size_store=batch_size_store,
+        data_path=halut_data_path,
+        device=device,
+        learned_path=learned_path,
+        report_error=True,
+        eval_function=eval_func,
+    )
+    halut_model.print_available_module()
+    for k, v in halut_modules.items():
+        print("activate", k, v)
+        halut_model.activate_halut_module(
+            k,
+            C=v[HalutModuleConfig.C],
+            rows=v[HalutModuleConfig.ROWS],
+            K=v[HalutModuleConfig.K],
+            encoding_algorithm=v[HalutModuleConfig.ENCODING_ALGORITHM],
+        )
+    halut_model.run_inference()
+    print(halut_model.get_stats())
+    return halut_model.get_stats()
+
+
+def run_test(
+    cuda_id: int,
+    halut_data_path: str,
+    dataset_path: str,
+    learned_path: str,
+    C: int,
+    layers: list[str],
+    model_name: available_models,
+    result_base_path: str,
+    layer_start_offset: int = 0,
+) -> None:
+
+    rows = [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        # 64,
+        # 128,
+        # 256,
+    ]
+    rows.reverse()
+
+    if model_name not in result_base_path.lower():
+        result_base_path += "/" + model_name + "/"
+
+    Path(result_base_path).mkdir(parents=True, exist_ok=True)
+
+    layers_test = layers[layer_start_offset:]
+    for l in layers_test:
+        input_data_amount = get_input_data_amount(model_name, l)
+        for r in input_data_amount:
+            # for C in [8, 16, 32, 64]:
+            for e in [
+                EncodingAlgorithm.FOUR_DIM_HASH,
+                EncodingAlgorithm.DECISION_TREE,
+                EncodingAlgorithm.FULL_PQ,
+            ]:
+                for K in (
+                    [16]  # [8, 16, 32]
+                    if e == EncodingAlgorithm.FOUR_DIM_HASH
+                    else [8, 16, 32]  # [4, 8, 12, 16, 24, 32, 64]
+                ):
+                    files = glob.glob(result_base_path + "/*.json")
+                    files_res = []
+                    regex = rf"{l}_{C}_{K}_{e}-{r}\.json"
+                    pattern = re.compile(regex)
+                    files_res = [x for x in files if pattern.search(x)]
+                    if len(files_res) == 1:
+                        print("already done")
+                        continue
+                    # learned_files = check_file_exists_and_return_path(
+                    #     learned_path, k, "learned", C, r
+                    # )
+                    # if len(learned_files) == 0:
+                    #     print(f"not learned {k} C: {C}, r: {r}")
+                    #     continue
+                    res = halut_analysis_helper(
+                        cuda_id,
+                        halut_modules=dict({l: [C, r, K, e]}),
+                        halut_data_path=halut_data_path,
+                        dataset_path=dataset_path,
+                        learned_path=learned_path,
+                        model_name=model_name,
+                    )
+                    with open(
+                        result_base_path
+                        + l
+                        + "_"
+                        + str(C)
+                        + "_"
+                        + str(K)
+                        + "_"
+                        + str(e)
+                        + "-"
+                        + str(r)
+                        + ".json",
+                        "w",
+                    ) as fp:
+                        json.dump(res, fp, sort_keys=True, indent=4)
+
+
 if __name__ == "__main__":
+    DEFAULT_FOLDER = "/scratch2/janniss/"
     parser = argparse.ArgumentParser(description="Start analysis")
     parser.add_argument("cuda_id", metavar="N", type=int, help="id of cuda_card")
-    parser.add_argument("-dataset", type=str, help="dataset path")
-    parser.add_argument("-halutdata", type=str, help="halut data path")
-    parser.add_argument("-learned", type=str, help="halut learned path")
+    parser.add_argument(
+        "-dataset", type=str, help="dataset path", default=DEFAULT_FOLDER + "imagenet"
+    )
+    parser.add_argument(
+        "-halutdata",
+        type=str,
+        help="halut data path",
+        default=DEFAULT_FOLDER + "/halut",
+    )
+    parser.add_argument(
+        "-learned",
+        type=str,
+        help="halut learned path",
+        default=DEFAULT_FOLDER + "/halut/learned",
+    )
     parser.add_argument("-C", type=int, help="C")
+    parser.add_argument("-modelname", type=str, help="model name", default="resnet-50")
     parser.add_argument("-offset", type=int, help="start_layer_offset", default=0)
+    parser.add_argument(
+        "-resultpath",
+        type=str,
+        help="result_path",
+        default="./results/data/accuracy/single_layer",
+    )
     args = parser.parse_args()
+
+    layers = get_layers(args.modelname)
+    print(layers)
     run_test(
-        args.cuda_id, args.halutdata, args.dataset, args.learned, args.C, args.offset
+        args.cuda_id,
+        args.halutdata,
+        args.dataset,
+        args.learned,
+        args.C,
+        layers,
+        args.modelname,
+        args.resultpath,
+        args.offset,
     )
 
     # run_test(

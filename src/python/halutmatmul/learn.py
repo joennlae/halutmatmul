@@ -40,6 +40,7 @@ def learn_halut(
     files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
     print(files)
+    print(data_path)
     if len(files) > 1:
         # will take the one with more
         # ['layer1.0.conv2_256_0_10_A.npy', 'layer1.0.conv2_256_0_4_A.npy']
@@ -48,9 +49,13 @@ def learn_halut(
     configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
     iterations = int(configs_reg[2])
     a_numpy = np.load(data_path + f"/{l}_{batch_size}_{0}_{iterations}" + END_STORE_A)
-    files_to_load = ceil(r / batch_size)
+    files_to_load = 1
+    if batch_size != 0:
+        files_to_load = ceil(r / batch_size)
     rows_per_batch = a_numpy.shape[0]
-    total_rows = ceil(rows_per_batch * r / batch_size)
+    total_rows = rows_per_batch
+    if batch_size != 0:
+        total_rows = ceil(rows_per_batch * r / batch_size)
 
     save_path = (
         store_path

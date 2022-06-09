@@ -28,6 +28,8 @@ import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from models.dscnn.dataset import DATASET_PATH
+
 
 def npy_to_txt(layer_number: int, activations: np.ndarray) -> None:
     # Saving the input
@@ -121,7 +123,7 @@ def parameter_generation() -> tuple[dict[str, Any], dict[str, int]]:
 
     # Training parameters
     training_parameters = {
-        "data_dir": "/scratch2/janniss/speech_commands_v0.02",
+        "data_dir": DATASET_PATH,
         "data_url": "https://storage.googleapis.com/download.tensorflow.org"
         "/data/speech_commands_v0.02.tar.gz",
         "epochs": 40,

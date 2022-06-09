@@ -3,17 +3,33 @@ import glob, re, json
 from math import ceil
 from pathlib import Path
 from collections import OrderedDict
-from typing import Any, Dict, Literal, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Literal, Optional, TypeVar, Union
 from timeit import default_timer as timer
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from models.resnet import END_STORE_A, END_STORE_B
+from models.helper import evaluate_halut_imagenet
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
 from halutmatmul.modules import ErrorTuple
 
 T_co = TypeVar("T_co", covariant=True)
+
+eval_func_type = Callable[
+    [
+        Any,
+        torch.nn.Module,
+        torch.device,
+        bool,
+        int,
+        str,
+        Optional[dict[str, int]],
+        int,
+        int,
+    ],
+    tuple[float, float],
+]
 
 DEFAULT_BATCH_SIZE_OFFLINE = 512
 DEFAULT_BATCH_SIZE_INFERENCE = 128
@@ -78,7 +94,8 @@ class HalutHelper:
         device: torch.device = torch.device("cpu"),
         workers_offline_training: int = 1,
         report_error: bool = False,
-        num_workers: int = 16,
+        num_workers: int = 8,
+        eval_function: eval_func_type = evaluate_halut_imagenet,
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -94,6 +111,7 @@ class HalutHelper:
         self.workers_offline_training = workers_offline_training
         self.report_error = report_error
         self.num_workers = num_workers
+        self.eval_function = eval_function
 
     def activate_halut_module(
         self,
@@ -163,34 +181,20 @@ class HalutHelper:
         iterations: int = 1,
         additional_dict: Optional[dict[str, int]] = None,
     ) -> None:
-        loaded_data = DataLoader(
-            self.dataset,
-            batch_size=self.batch_size_store,
-            num_workers=self.num_workers,
-            drop_last=False,
-            pin_memory=True,
-        )
         self.model.load_state_dict(state_dict, strict=False)
         self.model.eval()
 
-        with torch.no_grad():
-            for n_iter, (image, _) in enumerate(loaded_data):
-                image = image.to(self.device)
-                if n_iter > iterations:
-                    break
-                print(
-                    "iteration for storage: ",
-                    image.shape,
-                    f" {n_iter + 1}/{iterations}",
-                )
-                self.model(image)
-                self.model.write_inputs_to_disk(
-                    batch_size=self.batch_size_store,
-                    iteration=n_iter,
-                    total_iterations=iterations,
-                    path=self.data_path,  # type: ignore [operator]
-                    additional_dict=additional_dict,
-                )
+        self.eval_function(
+            self.dataset,
+            self.model,
+            self.device,
+            True,
+            iterations,
+            self.data_path,
+            additional_dict,
+            self.batch_size_store,
+            self.num_workers,
+        )
 
     def run_halut_offline_training(self) -> None:
         dict_to_store: dict[str, int] = dict([])
@@ -218,9 +222,11 @@ class HalutHelper:
             )
             # TODO: doesn't check if enough data is stored
             if len(paths) != 2:
-                dict_to_store[k] = ceil(
-                    args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
-                )
+                dict_to_store[k] = 1
+                if self.batch_size_store != 0:
+                    dict_to_store[k] = ceil(
+                        args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
+                    )
         self.store_inputs(dict_to_store)
         print(dict_to_learn, dict_to_store)
         learn_halut_multi_core_dict(
@@ -330,53 +336,17 @@ class HalutHelper:
         self.model.load_state_dict(state_dict_with_halut, strict=False)
         end = timer()
         print("State dict time: %.2f s" % (end - start))
-        print("Init dataloader")
-        start = timer()
-        loaded_data = DataLoader(
+        top_1_acc, top_5_acc = self.eval_function(
             self.dataset,
-            batch_size=self.batch_size_inference,
-            num_workers=self.num_workers,
-            drop_last=False,
-            pin_memory=True,
+            self.model,
+            self.device,
+            False,
+            -1,
+            "",
+            None,
+            self.batch_size_inference,
+            self.num_workers,
         )
-        end = timer()
-        print("Init dataloader time: %.2f s" % (end - start))
-        self.model.eval()
-        correct_5 = correct_1 = 0
-        start = timer()
-        with torch.no_grad():
-            for n_iter, (image, label) in enumerate(loaded_data):
-                image, label = image.to(self.device), label.to(self.device)
-                # if n_iter > 10:
-                #     continue
-                print(
-                    "iteration: {}\ttotal {} iterations".format(
-                        n_iter + 1, len(loaded_data)
-                    )
-                )
-                # https://github.com/weiaicunzai/pytorch-cifar100/blob/2149cb57f517c6e5fa7262f958652227225d125b/test.py#L54
-                output = self.model(image)
-                _, pred = output.topk(5, 1, largest=True, sorted=True)
-                label = label.view(label.size(0), -1).expand_as(pred)
-                correct = pred.eq(label).float()
-                correct_5 += correct[:, :5].sum()
-                correct_1 += correct[:, :1].sum()
-        end = timer()
-        self.stats["total_time"] = end - start
-        print(correct_1, correct_5)
-        print("Top 1 error: ", 1 - correct_1 / len(loaded_data.dataset))  # type: ignore[arg-type]
-        print("Top 5 error: ", 1 - correct_5 / len(loaded_data.dataset))  # type: ignore[arg-type]
-        print("Top 1 accuracy: ", correct_1 / len(loaded_data.dataset))  # type: ignore[arg-type]
-        print("Top 5 accuracy: ", correct_5 / len(loaded_data.dataset))  # type: ignore[arg-type]
-        print(
-            "Parameter numbers: {}".format(
-                sum(p.numel() for p in self.model.parameters())
-            )
-        )
-        self.stats["top_1_accuracy"] = (
-            correct_1 / len(loaded_data.dataset)  # type: ignore[arg-type]
-        ).item()  # type: ignore[attr-defined]
-        self.stats["top_5_accuracy"] = (
-            correct_5 / len(loaded_data.dataset)  # type: ignore[arg-type]
-        ).item()  # type: ignore[attr-defined]
-        return correct_1 / len(loaded_data.dataset)  # type: ignore[arg-type]
+        self.stats["top_1_accuracy"] = top_1_acc
+        self.stats["top_5_accuracy"] = top_5_acc
+        return top_1_acc
