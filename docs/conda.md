@@ -42,3 +42,14 @@ conda env create -f environment_cpu.yml --prefix /scratch/janniss/conda/halutmat
 ```
 
 Don't forget to change path in `~/.condarc`
+
+### Look for failures with Mamba
+
+Way better error messages!
+
+[Install Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+[Install](https://github.com/mamba-org/mamba)
+
+```
+mamba env create -f environment_lock.yml --prefix /scratch2/janniss/conda/halutmatmul_gpu2
+```

@@ -11,7 +11,7 @@ FROM continuumio/miniconda3:latest AS build
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Create the environment:
-COPY ../../environment_lock.yml .
+COPY environment_lock.yml .
 RUN conda env create --file environment_lock.yml --name halutmatmul_gpu
 
 # Install conda-pack:

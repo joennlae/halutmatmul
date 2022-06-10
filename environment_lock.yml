@@ -141,7 +141,7 @@ dependencies:
   - toml=0.10.2=pyhd8ed1ab_0
   - tomli=2.0.1=pyhd8ed1ab_0
   - tomlkit=0.11.0=pyha770c72_0
-  - torchaudio=0.12
+  - torchaudio=0.13
   - torchinfo=1.7.0=pyhd8ed1ab_0
   - torchvision=0.14
   - tornado=6.1=py39h27cfd23_0

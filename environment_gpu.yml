@@ -21,7 +21,7 @@ dependencies:
   - pytorch=1.13
   - torchinfo
   # kws
-  - torchaudio=0.12
+  - torchaudio=0.13
   - pysoundfile
   # gpu stuff
   - cudatoolkit=11.3
