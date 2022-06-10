@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Union
 import torch
 import numpy as np
 
@@ -78,7 +78,7 @@ def write_inputs_to_disk(
 
 @torch.no_grad()
 def evaluate_halut_imagenet(
-    dataset: Dataset[T_co],
+    dataset: Union[Dataset[T_co], DataLoader],
     model: torch.nn.Module,
     device: torch.device,
     is_store: bool = False,
@@ -88,13 +88,15 @@ def evaluate_halut_imagenet(
     batch_size: int = 128,
     num_workers: int = 8,
 ) -> tuple[float, float]:
-    data_loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        drop_last=False,
-        pin_memory=True,
-    )
+    data_loader = dataset
+    if isinstance(data_loader, Dataset):
+        data_loader = DataLoader(
+            dataset,  # type: ignore [arg-type]
+            batch_size=batch_size,
+            num_workers=num_workers,
+            drop_last=False,
+            pin_memory=True,
+        )
     criterion = torch.nn.CrossEntropyLoss()
 
     metric_logger = models.levit.utils.MetricLogger(delimiter="  ")  # type: ignore[attr-defined]

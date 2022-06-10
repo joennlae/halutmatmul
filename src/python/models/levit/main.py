@@ -382,6 +382,7 @@ def get_args_parser():
     parser.add_argument(
         "--dist_url", default="env://", help="url used to set up distributed training"
     )
+    parser.add_argument("--analysis", default=False, type=bool)
     return parser
 
 
@@ -582,6 +583,11 @@ def main(args):
 
     print("FLOPS", model.FLOPS)
 
+    print(model.state_dict().keys())
+
+    if args.analysis:
+        return (model, data_loader_val, model.state_dict())
+
     output_dir = Path(args.output_dir)
     if args.resume:
         if args.resume.startswith("https"):
@@ -682,6 +688,25 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print("Training time {}".format(total_time_str))
+
+
+# pylint: disable=dangerous-default-value
+def run_levit_analysis(
+    args_additional: list[str] = [
+        "--analysis",
+        "True",
+        "--eval",
+        "--model",
+        "LeViT_128S",
+        "--data-path",
+        "/scratch/ml_datasets/ILSVRC2012/",
+    ]
+):
+    parser = argparse.ArgumentParser(
+        "LeViT training and evaluation script", parents=[get_args_parser()]
+    )
+    args = parser.parse_args(args_additional)
+    return main(args)
 
 
 def run_levit():

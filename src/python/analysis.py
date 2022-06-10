@@ -21,12 +21,13 @@ from utils.analysis_helper import (
 from models.helper import eval_halut_kws, evaluate_halut_imagenet
 from models.dscnn.main import setup_ds_cnn_eval
 from models.resnet import ResNet50_Weights, resnet50
+from models.levit.main import run_levit_analysis  # type: ignore[attr-defined]
 
 from halutmatmul.model import HalutHelper, eval_func_type
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 
 
-def model_loader(  # type: ignore[return]
+def model_loader(
     name: available_models,
     dataset_path: str,
 ) -> tuple[
@@ -42,7 +43,18 @@ def model_loader(  # type: ignore[return]
         model = resnet50(weights=state_dict, progress=True)
         return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
     elif name == "levit":
-        pass
+        model, data_loader, state_dict = run_levit_analysis(
+            [
+                "--analysis",
+                "True",
+                "--eval",
+                "--model",
+                "LeViT_128S",
+                "--data-path",
+                "/scratch/ml_datasets/ILSVRC2012/",
+            ]
+        )
+        return model, data_loader, state_dict, evaluate_halut_imagenet, 256, 128
     elif name == "ds-cnn":
         model, data, state_dict = setup_ds_cnn_eval()  # type: ignore[assignment]
         print("data", data)

@@ -16,6 +16,8 @@ from models.levit.utils import replace_batchnorm
 from timm.models.vision_transformer import trunc_normal_
 from timm.models.registry import register_model
 
+from halutmatmul.modules import HalutLinear
+
 specification = {
     "LeViT_128S": {
         "C": "128_256_384",
@@ -172,7 +174,7 @@ class Conv2d_BN(torch.nn.Sequential):
 class Linear_BN(torch.nn.Sequential):
     def __init__(self, a, b, bn_weight_init=1, resolution=-100000):
         super().__init__()
-        self.add_module("c", torch.nn.Linear(a, b, bias=False))
+        self.add_module("c", HalutLinear(a, b, bias=False))
         bn = torch.nn.BatchNorm1d(b)
         torch.nn.init.constant_(bn.weight, bn_weight_init)
         torch.nn.init.constant_(bn.bias, 0)
@@ -188,7 +190,7 @@ class Linear_BN(torch.nn.Sequential):
         w = bn.weight / (bn.running_var + bn.eps) ** 0.5
         w = l.weight * w[:, None]
         b = bn.bias - bn.running_mean * bn.weight / (bn.running_var + bn.eps) ** 0.5
-        m = torch.nn.Linear(w.size(1), w.size(0))
+        m = HalutLinear(w.size(1), w.size(0))
         m.weight.data.copy_(w)
         m.bias.data.copy_(b)
         return m
@@ -203,7 +205,7 @@ class BN_Linear(torch.nn.Sequential):
     def __init__(self, a, b, bias=True, std=0.02):
         super().__init__()
         self.add_module("bn", torch.nn.BatchNorm1d(a))
-        l = torch.nn.Linear(a, b, bias=bias)
+        l = HalutLinear(a, b, bias=bias)
         trunc_normal_(l.weight, std=std)
         if bias:
             torch.nn.init.constant_(l.bias, 0)
@@ -224,7 +226,7 @@ class BN_Linear(torch.nn.Sequential):
             b = b @ self.l.weight.T
         else:
             b = (l.weight @ b[:, None]).view(-1) + self.l.bias
-        m = torch.nn.Linear(w.size(1), w.size(0))
+        m = HalutLinear(w.size(1), w.size(0))
         m.weight.data.copy_(w)
         m.bias.data.copy_(b)
         return m
@@ -611,7 +613,7 @@ def model_factory(
     )
     if pretrained:
         checkpoint = torch.hub.load_state_dict_from_url(weights, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
+        model.load_state_dict(checkpoint["model"], strict=False)
     if fuse:
         replace_batchnorm(model)
 
