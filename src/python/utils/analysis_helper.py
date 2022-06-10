@@ -290,6 +290,7 @@ def get_input_data_amount(name: available_models, l: str) -> list[int]:  # type:
     elif name == "levit":
         pass
     elif name == "ds-cnn":
-        return [128, 256, 512, 1024]
+        # TODO: think about learning on training set
+        return [1]  # all
     else:
         return Exception("Model name not supported: ", name)

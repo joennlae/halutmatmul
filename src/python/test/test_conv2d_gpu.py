@@ -45,6 +45,7 @@ def conv2d_helper_gpu(
     input_test = torch.relu(input_test)
 
     padding = 1
+
     input_a_torch, input_b_torch = halut_conv2d_gpu(
         input_learn,
         weights,
@@ -56,6 +57,7 @@ def conv2d_helper_gpu(
         stride=stride,
         padding=padding,
         bias=bias_weights,
+        groups=groups,
         return_reshaped_inputs=True,
     )
     input_a = input_a_torch.detach().cpu().numpy()
@@ -71,7 +73,12 @@ def conv2d_helper_gpu(
     )
 
     torch_module = torch.nn.Conv2d(
-        in_channels, out_channels, kernel_size=kernel_size, stride=stride, bias=bias
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        bias=bias,
+        groups=groups,
     )
 
     halutmatmul_module = HalutConv2d(
@@ -139,9 +146,10 @@ def conv2d_helper_gpu(
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, encoding_algorithm",
+    "in_channels, out_channels, image_x_y, kernel_size, "
+    "bias, C, K, a, b, encoding_algorithm, groups",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e)
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e, g)
         for in_channels in [64]
         for out_channels in [64]
         for image_x_y in [7]  # 14, 28, 56
@@ -158,8 +166,9 @@ def conv2d_helper_gpu(
         for K in (
             [16]  # 64 uses to much shared memory [8, 16, 32]
             if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
-            else [8, 16, 24] # [4, 8, 12, 16, 24, 32, 64]
+            else [8, 16, 24]  # [4, 8, 12, 16, 24, 32, 64]
         )
+        for g in [1, 2, 8]
     ],
 )
 def test_conv2d_module_gpu(
@@ -173,6 +182,7 @@ def test_conv2d_module_gpu(
     a: float,
     b: float,
     encoding_algorithm: int,
+    groups: int,
 ) -> None:
 
     device_id = TEST_CUDA_DEVICE_ID
@@ -184,8 +194,10 @@ def test_conv2d_module_gpu(
     )
     batch_size = 32  # 32, 64, 128
 
+    if C > out_channels // groups:
+        pytest.skip("Not possible due to D < C")
+
     stride = 1
-    groups = 1  # only 1 supported
     conv2d_helper_gpu(
         in_channels=in_channels,
         out_channels=out_channels,

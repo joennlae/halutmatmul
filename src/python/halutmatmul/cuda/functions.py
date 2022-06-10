@@ -179,14 +179,35 @@ def halut_conv2d_gpu(
     stride: _size_any_t = (1, 1),
     padding: _size_any_t = 0,
     dilation: _size_any_t = 1,
+    groups: int = 1,
     bias: Optional[torch.Tensor] = None,
     return_reshaped_inputs: bool = False,  # needed for storage
 ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     unfold_ops = torch.nn.Unfold(
         kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
     )
-    unfolded = unfold_ops(_input).transpose(1, 2)
-    unfolded = torch.reshape(unfolded, (-1, unfolded.size(2)))
+
+    n_size_per_channel = 0
+    if groups == 1:
+        unfolded = unfold_ops(_input).transpose(1, 2)
+        unfolded = torch.reshape(unfolded, (-1, unfolded.size(2)))
+    else:
+        channels_per_group = weights.shape[1]
+        unfolded = unfold_ops(_input[:, :channels_per_group]).transpose(1, 2)
+        unfolded = torch.reshape(unfolded, (-1, unfolded.size(2)))
+        n_size_per_channel = unfolded.shape[0]
+        d_size = unfolded.shape[1]
+        result = torch.zeros(
+            (groups * n_size_per_channel, d_size), device=weights.device
+        )
+        result[0:n_size_per_channel] = unfolded
+        for g in range(1, groups):
+            unfolded = unfold_ops(
+                _input[:, g * channels_per_group : (g + 1) * channels_per_group]
+            ).transpose(1, 2)
+            unfolded = torch.reshape(unfolded, (-1, unfolded.size(2)))
+            result[g * n_size_per_channel : (g + 1) * n_size_per_channel] = unfolded
+        unfolded = result
 
     if return_reshaped_inputs:
         weights_prepared = weights.view(weights.size(0), -1).t()
@@ -195,13 +216,44 @@ def halut_conv2d_gpu(
     unfolded_cupy = cp.asarray(cp.from_dlpack(unfolded.detach()))
     H_cupy = cp.asarray(cp.from_dlpack(H.detach()))
     L_cupy = cp.asarray(cp.from_dlpack(L.detach()))
-    ret = halutmatmul_gpu_cupy(
-        encode_kernel=encode_kernel,
-        read_acc_lut_kernel=read_acc_lut_kernel,
-        A=unfolded_cupy,
-        L=L_cupy,
-        H=H_cupy,
-    )
+
+    if groups == 1:
+        ret = halutmatmul_gpu_cupy(
+            encode_kernel=encode_kernel,
+            read_acc_lut_kernel=read_acc_lut_kernel,
+            A=unfolded_cupy,
+            L=L_cupy,
+            H=H_cupy,
+        )
+    elif groups > 1:
+        # TODO: could be heavily parallelized :-)
+        channels_per_group = weights.shape[1]
+        M = L_cupy.shape[0]
+        assert M % groups == 0
+        L_per_channel = M // groups
+        ret = halutmatmul_gpu_cupy(
+            encode_kernel=encode_kernel,
+            read_acc_lut_kernel=read_acc_lut_kernel,
+            A=unfolded_cupy[:n_size_per_channel],
+            L=L_cupy[:L_per_channel],
+            H=H_cupy,
+        )
+
+        output_n = ret.shape[0]
+        ret_all = torch.zeros((groups * output_n, ret.shape[1]), device=weights.device)
+        ret_all = cp.asarray(cp.from_dlpack(ret_all.detach()))
+        ret_all[:output_n] = ret
+
+        for g in range(g, groups):
+            ret = halutmatmul_gpu_cupy(
+                encode_kernel=encode_kernel,
+                read_acc_lut_kernel=read_acc_lut_kernel,
+                A=unfolded_cupy[g * n_size_per_channel : (g + 1) * n_size_per_channel],
+                L=L_cupy[g * L_per_channel : (g + 1) * L_per_channel],
+                H=H_cupy,
+            )
+            ret_all[g * output_n : (g + 1) * output_n] = ret
+            ret = ret_all
 
     batch_size = _input.size(0)
     result_tensor = torch.from_dlpack(ret)

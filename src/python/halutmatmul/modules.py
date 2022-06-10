@@ -217,7 +217,7 @@ def halut_conv2d_cpu(
                 ((1, 4, 5), (1, 2, 3)),
                 return_reshaped_inputs=return_reshaped_inputs,
                 group=g,
-                groups=groups
+                groups=groups,
             )  # halut does not need to be passed
             input_a[g] += input_a_temp
             input_b[g] += input_b_temp
@@ -240,7 +240,7 @@ def halut_conv2d_cpu(
                 ((1, 4, 5), (1, 2, 3)),
                 halut=halut,
                 group=g,
-                groups=groups
+                groups=groups,
             )
 
     ret = np.moveaxis(ret, 4, 2).reshape(batch_size, cout, out_y, out_x)
@@ -442,7 +442,6 @@ class HalutConv2d(_ConvNd):
         groups: _int = 1,
         return_reshaped_inputs: bool = False,  # needed for storage
     ) -> Union[Tensor, tuple[Tensor, Tensor]]:
-        # assert groups == 1
         if "cuda" in str(_input.device):
             if self.halut_active[0] and any(
                 not hasattr(self, x) for x in ("encode_kernel", "read_acc_lut_kernel")
@@ -464,6 +463,7 @@ class HalutConv2d(_ConvNd):
                 stride=stride,
                 padding=padding,
                 dilation=dilation,
+                groups=groups,
                 bias=self.bias,
                 return_reshaped_inputs=return_reshaped_inputs,
             )
