@@ -100,11 +100,7 @@ def helper_halut(
             hm.EncodingAlgorithm.DECISION_TREE,
             hm.EncodingAlgorithm.FULL_PQ,
         ]
-        for K in (
-            [8, 16, 32, 64]
-            if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
-            else [4, 8, 12, 16, 24, 32, 64]
-        )
+        for K in ([16] if e == hm.EncodingAlgorithm.FOUR_DIM_HASH else [12, 16, 24])
         # for q in [True, False]
         # for r in [True, False]
     ],

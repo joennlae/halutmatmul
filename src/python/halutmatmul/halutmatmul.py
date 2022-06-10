@@ -369,6 +369,7 @@ class HalutMatmul:
         self.luts, self.offset, self.scale = self._create_lut(B.T)
 
     def _create_lut(self, B: np.ndarray) -> tuple[np.ndarray, float, float]:
+        # called with B.T
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
         print("SHAPES", self.prototypes.shape, luts.shape, B.shape)
@@ -447,13 +448,18 @@ class HalutMatmul:
 
         return total_result.T
 
-    def matmul_online(self, A: np.ndarray) -> np.ndarray:
+    def matmul_online(
+        self, A: np.ndarray, group: int = 0, groups: int = 1
+    ) -> np.ndarray:
         self._check_if_learned()
         numba.set_num_threads(min(32, numba.get_num_threads()))
         self._set_A(A)
-        return self._calc_matmul(
-            self.A_enc, self.luts, offset=self.offset, scale=self.scale
-        )
+        luts = self.luts
+        if groups > 1:
+            assert self.luts.shape[0] % groups == 0
+            m_dim_per_group = self.luts.shape[0] // groups
+            luts = self.luts[group * m_dim_per_group : (group + 1) * m_dim_per_group]
+        return self._calc_matmul(self.A_enc, luts, offset=self.offset, scale=self.scale)
 
     def stats(self) -> str:
         if self.is_learned():

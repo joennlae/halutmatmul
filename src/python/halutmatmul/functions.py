@@ -269,6 +269,8 @@ def tensordot(
     axes: Union[int, list[int], Any] = 2,
     return_reshaped_inputs: bool = False,
     halut: Optional["HalutMatmul"] = None,
+    group: int = 0,
+    groups: int = 1,
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     # https://github.com/numpy/numpy/blob/145ed90f638c1a12ce5b06e9100421f99783f431/numpy/core/numeric.py#L950
 
@@ -318,7 +320,7 @@ def tensordot(
         # import cProfile
         # from pstats import SortKey
         # with cProfile.Profile() as pr:
-        res = halut.matmul_online(at)
+        res = halut.matmul_online(at, group, groups)
         # pr.disable()
         # pr.print_stats(sort=SortKey.CUMULATIVE)
     else:

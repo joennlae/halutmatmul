@@ -156,9 +156,9 @@ def conv2d_helper_gpu(
             hm.EncodingAlgorithm.FULL_PQ,
         ]
         for K in (
-            [8, 16, 32]  # 64 uses to much shared memory
+            [16]  # 64 uses to much shared memory [8, 16, 32]
             if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
-            else [4, 8, 12, 16, 24, 32, 64]
+            else [8, 16, 24] # [4, 8, 12, 16, 24, 32, 64]
         )
     ],
 )

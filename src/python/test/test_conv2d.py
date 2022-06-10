@@ -60,7 +60,12 @@ def conv2d_helper(
     )
 
     torch_module = torch.nn.Conv2d(
-        in_channels, out_channels, kernel_size=kernel_size, stride=stride, bias=bias
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        bias=bias,
+        groups=groups,
     )
 
     halutmatmul_module = HalutConv2d(
@@ -116,9 +121,10 @@ def conv2d_helper(
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, encoding_algorithm",
+    "in_channels, out_channels, image_x_y, "
+    "kernel_size, bias, C, K, a, b, encoding_algorithm, groups",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e)
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e, g)
         for in_channels in [64]
         for out_channels in [64]
         for image_x_y in [7]
@@ -133,10 +139,11 @@ def conv2d_helper(
             hm.EncodingAlgorithm.FULL_PQ,
         ]
         for K in (
-            [8, 16, 32]
+            [16]  # [8, 16, 32]
             if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
-            else [4, 8, 12, 16, 24, 32, 64]
+            else [8, 16, 24]  # [4, 8, 12, 16, 24, 32, 64]
         )
+        for g in [1, 2]
     ],
 )
 def test_conv2d_module(
@@ -150,11 +157,14 @@ def test_conv2d_module(
     a: float,
     b: float,
     encoding_algorithm: int,
+    groups: int,
 ) -> None:
     batch_size = 32
 
+    if C > out_channels // groups:
+        pytest.skip("Not possible due to D < C")
+
     stride = 1
-    groups = 1
     conv2d_helper(
         in_channels,
         out_channels,
