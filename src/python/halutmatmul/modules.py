@@ -1,3 +1,4 @@
+# pylint: disable=import-outside-toplevel
 from typing import Any, Optional, OrderedDict, Union
 from timeit import default_timer as timer
 import numpy as np
@@ -50,6 +51,14 @@ class HalutLinear(Linear):
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
+        self.report_error = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
+        # only for FULL PQ
+        self.prototypes = Parameter(
+            torch.zeros(1, dtype=torch.bool), requires_grad=False
+        )
+        self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.halut: Optional[HalutMatmul] = None
 
@@ -69,32 +78,61 @@ class HalutLinear(Linear):
                 prefix + "halut_config",
             )
         ):
+            if not state_dict[prefix + "halut_active"]:
+                return
             # hack to support variable parameter size --> with the cost of double copying :-)
             self.hash_buckets_or_prototypes = Parameter(
-                state_dict[prefix + "hash_buckets_or_prototypes"].clone(),
+                state_dict[prefix + "hash_buckets_or_prototypes"]
+                .clone()
+                .to(str(self.weight.device)),
                 requires_grad=False,
             )
             self.lut = Parameter(
-                state_dict[prefix + "lut"].clone(), requires_grad=False
+                state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
+                requires_grad=False,
             )
-            store_array = np.array(
-                [
-                    state_dict[prefix + "hash_buckets_or_prototypes"]
-                    .clone()
-                    .detach()
-                    .cpu()
-                    .numpy(),
-                    state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
-                    state_dict[prefix + "halut_config"].clone().detach().cpu().numpy(),
-                    state_dict[prefix + "hash_buckets_or_prototypes"]
-                    .clone()
-                    .detach()
-                    .cpu()
-                    .numpy(),
-                ],
-                dtype=object,
-            )
-            self.halut = HalutMatmul().from_numpy(store_array)
+            print("STATE_DICT", self.weight.device)
+            if "cuda" in str(self.weight.device):
+                # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
+                from halutmatmul.cuda.kernels import create_kernels_halutmatmul
+
+                C = self.lut.shape[1]
+                K = self.lut.shape[2]
+                (
+                    self.encode_kernel,
+                    self.read_acc_lut_kernel,
+                ) = create_kernels_halutmatmul(
+                    C=C,
+                    K=K,
+                    encoding_algorithm=int(
+                        state_dict[prefix + "halut_config"][
+                            HalutConfig.ENCODING_ALGORITHM
+                        ]
+                    ),
+                )
+            else:
+                store_array = np.array(
+                    [
+                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                        state_dict[prefix + "lut"].clone().detach().cpu().numpy(),
+                        state_dict[prefix + "halut_config"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        .clone()
+                        .detach()
+                        .cpu()
+                        .numpy(),
+                    ],
+                    dtype=object,
+                )
+                self.halut = HalutMatmul().from_numpy(store_array)
         elif any(
             k in state_dict.keys()
             for k in (
@@ -120,20 +158,46 @@ class HalutLinear(Linear):
                     (self.input_storage_a, _input.clone().cpu()), 0  # type: ignore[arg-type]
                 )
 
+    def linear_halut(self, _input: Tensor) -> Tensor:
+        if "cuda" in str(self.weight.device):
+            if self.encode_kernel is None:
+                raise Exception("Kernels not compiled")
+            from halutmatmul.cuda.functions import halut_linear_gpu
+
+            ret_tensor = halut_linear_gpu(
+                _input,
+                self.encode_kernel,
+                self.read_acc_lut_kernel,
+                self.lut,
+                self.hash_buckets_or_prototypes,
+            )
+        else:
+            if self.halut is None:
+                raise Exception("self.halut is None")
+            input_numpy = _input.detach().cpu().numpy()
+            ret_tensor = torch.from_numpy(self.halut.matmul_online(input_numpy)).to(
+                str(_input.device)
+            )
+            if self.bias is not None:
+                bias_to_add = self.bias.clone().repeat(_input.shape[0], 1)
+                ret_tensor += bias_to_add
+        if self.report_error[0]:
+            torch_ret = F.linear(_input, self.weight, self.bias)
+            if "cuda" in str(_input.device):
+                from halutmatmul.cuda.functions import error_cupy
+
+                res_error = error_cupy(ret_tensor, torch_ret)
+                self.errors.append((_input.shape[0], res_error))
+            else:
+                res_error = error_numpy(ret_tensor, torch_ret)
+                self.errors.append((_input.shape[0], res_error))
+        return ret_tensor
+
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
         self.check_store_offline(input)
         if self.halut_active[0]:
-            input_numpy = input.detach().cpu().numpy()
-            if self.halut is None:
-                raise Exception("self.halut is None")
-            result = torch.from_numpy(self.halut.matmul_online(input_numpy)).to(
-                str(input.device)
-            )
-            if self.bias is not None:
-                bias_to_add = self.bias.clone().repeat(input.shape[0], 1)
-                result += bias_to_add
-            return result
+            return self.linear_halut(input)
         else:
             return F.linear(input, self.weight, self.bias)
 

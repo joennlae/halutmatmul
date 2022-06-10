@@ -331,3 +331,24 @@ def error_cupy(
     scaled_shift = cp.asnumpy(cp.mean(actual_cupy_scaled - desired_cupy_scaled))
 
     return np.array((mae, mse, mape, scaled_absolut_error, scaled_shift))
+
+
+def halut_linear_gpu(
+    _input: torch.Tensor,
+    encode_kernel: cp.RawKernel,
+    read_acc_lut_kernel: cp.RawKernel,
+    L: torch.Tensor,
+    H: torch.Tensor,
+) -> torch.Tensor:
+    input_cupy = cp.asarray(cp.from_dlpack(_input.detach()))
+    H_cupy = cp.asarray(cp.from_dlpack(H.detach()))
+    L_cupy = cp.asarray(cp.from_dlpack(L.detach()))
+    ret = halutmatmul_gpu_cupy(
+        encode_kernel=encode_kernel,
+        read_acc_lut_kernel=read_acc_lut_kernel,
+        A=input_cupy,
+        L=L_cupy,
+        H=H_cupy,
+    )
+    result_tensor = torch.from_dlpack(ret)
+    return result_tensor
