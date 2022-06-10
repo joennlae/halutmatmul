@@ -230,7 +230,9 @@ class HalutMatmul:
     def learn_hash_buckets_and_prototypes(self, A: np.ndarray) -> None:
         D = A.shape[1]
         if D < self.C:
-            raise Exception("D < C: {} < {}".format(D, self.C))
+            print("D < C: {} < {}".format(D, self.C))
+            print("Autocorrecting C == D == ", D)
+            self.C = D
         (
             return_split_list_or_decison_trees,
             self.prototypes,

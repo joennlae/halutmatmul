@@ -27,7 +27,6 @@ def write_inputs_to_disk(
             and iteration > additional_dict[prefix[:-1]]
         ):
             return  # do not store to much
-        print("path", path)
         if hasattr(module, "store_input"):
             if module.store_input:
                 assert hasattr(module, "input_storage_a") or hasattr(

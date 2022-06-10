@@ -21,7 +21,7 @@ def check_is_more_than_enough(C: int, K: int, N: int, D: int) -> bool:
     print(f"rows_per_prototype: {rows_per_prototype}, rows_per_dim: {rows_per_dim}")
     ram_usage = N * D * 4 * 2  # cumsse reallocates
     print(f"RAM usage {ram_usage / (1024 * 1024 * 1024)} GB")
-    # MAX_RAM = 25 * 1024 * 1024 * 1024  # 30 GB
+    # MAX_RAM = 25 * 1024 * 1024 * 1024
     return N > 10000000
     # return ram_usage > MAX_RAM
 
@@ -67,13 +67,15 @@ def learn_halut(
         return
 
     if check_is_more_than_enough(C, K, total_rows, a_numpy.shape[1]):
-        print("would use too much ram")
-        return
+        print("would use too much ram!!")
+        # return
     for i in range(1, files_to_load):
         a_part = np.load(
             data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
         )
         a_numpy = np.vstack((a_numpy, a_part))
+    if total_rows > 100000:
+        total_rows = 100000
     a_numpy = a_numpy[:total_rows]
     print(
         "A input: ",

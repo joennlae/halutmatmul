@@ -153,22 +153,22 @@ def conv2d_helper_gpu(
         for in_channels in [64]
         for out_channels in [64]
         for image_x_y in [7]  # 14, 28, 56
-        for kernel_size in [1, 3]
+        for kernel_size in [3]
         for bias in [False]  # True, False
-        for C in [4, 8, 16, 32, 64]  # s 96, 128
+        for C in [16]  # s 96, 128
         for a in [9.0]
         for b in [-0.35]
         for e in [
             hm.EncodingAlgorithm.FOUR_DIM_HASH,
-            hm.EncodingAlgorithm.DECISION_TREE,
-            hm.EncodingAlgorithm.FULL_PQ,
+            # hm.EncodingAlgorithm.DECISION_TREE,
+            # hm.EncodingAlgorithm.FULL_PQ,
         ]
         for K in (
             [16]  # 64 uses to much shared memory [8, 16, 32]
             if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
             else [8, 16, 24]  # [4, 8, 12, 16, 24, 32, 64]
         )
-        for g in [1, 2, 8]
+        for g in [1, 8, 64]
     ],
 )
 def test_conv2d_module_gpu(
@@ -194,8 +194,8 @@ def test_conv2d_module_gpu(
     )
     batch_size = 32  # 32, 64, 128
 
-    if C > out_channels // groups:
-        pytest.skip("Not possible due to D < C")
+    # if C > out_channels // groups:
+    #     pytest.skip("Not possible due to D < C")
 
     stride = 1
     conv2d_helper_gpu(
