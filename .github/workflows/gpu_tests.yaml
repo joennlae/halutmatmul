@@ -3,6 +3,7 @@ on: [push]
 
 jobs:
   gpu_tests:
+    concurrency: gpu_tests
     runs-on: ubuntu-latest
     timeout-minutes: 120 # keep costs in check
     steps:

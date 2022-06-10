@@ -108,7 +108,8 @@ def run_ssh_commands(ssh_host: str, ssh_port: int, debug: bool = False) -> int:
     error_code = re.findall(r"(?<=ERROR CODE: )\d+", out)
     print("ERROR CODE: ", error_code)
 
-    return int(error_code[0])
+    failures = re.findall(r"\d+ failed", out)
+    return int(error_code[0]) + len(failures)
 
 
 if __name__ == "__main__":
