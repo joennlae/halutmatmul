@@ -100,7 +100,7 @@ def linear_helper_gpu(
 @pytest.mark.parametrize(
     "in_features, out_features, C, a, b, bias, batch_size",
     [
-        (in_features, out_features, C, a, b, bias)
+        (in_features, out_features, C, a, b, bias, batch_size)
         for in_features in [128, 256]
         for out_features in [64, 128]
         for C in [4, 16, 64]
