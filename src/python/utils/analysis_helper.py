@@ -262,19 +262,70 @@ ds_cnn_layers = [
     "conv9",
 ]
 
+layers_levit = [
+    "blocks.0.m.qkv",
+    "blocks.0.m.proj.1",
+    "blocks.1.m.0",
+    "blocks.1.m.2",
+    "blocks.2.m.qkv",
+    "blocks.2.m.proj.1",
+    "blocks.3.m.0",
+    "blocks.3.m.2",
+    "blocks.4.kv",
+    "blocks.4.q.1",
+    "blocks.4.proj.1",
+    "blocks.5.m.0",
+    "blocks.5.m.2",
+    "blocks.6.m.qkv",
+    "blocks.6.m.proj.1",
+    "blocks.7.m.0",
+    "blocks.7.m.2",
+    "blocks.8.m.qkv",
+    "blocks.8.m.proj.1",
+    "blocks.9.m.0",
+    "blocks.9.m.2",
+    "blocks.10.m.qkv",
+    "blocks.10.m.proj.1",
+    "blocks.11.m.0",
+    "blocks.11.m.2",
+    "blocks.12.kv",
+    "blocks.12.q.1",
+    "blocks.12.proj.1",
+    "blocks.13.m.0",
+    "blocks.13.m.2",
+    "blocks.14.m.qkv",
+    "blocks.14.m.proj.1",
+    "blocks.15.m.0",
+    "blocks.15.m.2",
+    "blocks.16.m.qkv",
+    "blocks.16.m.proj.1",
+    "blocks.17.m.0",
+    "blocks.17.m.2",
+    "blocks.18.m.qkv",
+    "blocks.18.m.proj.1",
+    "blocks.19.m.0",
+    "blocks.19.m.2",
+    "blocks.20.m.qkv",
+    "blocks.20.m.proj.1",
+    "blocks.21.m.0",
+    "blocks.21.m.2",
+    "head",
+    "head_dist",
+]
 
-def get_layers(name: available_models) -> list[str]:  # type: ignore[return]
+
+def get_layers(name: available_models) -> list[str]:
     if name == "resnet-50":
         return layers_interesting
     elif name == "levit":
-        pass
+        return layers_levit
     elif name == "ds-cnn":
         return ds_cnn_layers
     else:
         return Exception("Model name not supported: ", name)
 
 
-def get_input_data_amount(name: available_models, l: str) -> list[int]:  # type: ignore[return]
+def get_input_data_amount(name: available_models, l: str) -> list[int]:
     if name == "resnet-50":
         layer_loc = l.split(".", maxsplit=1)[0]
         rows_adapted = []
@@ -288,7 +339,7 @@ def get_input_data_amount(name: available_models, l: str) -> list[int]:  # type:
             rows_adapted = [32, 64, 128, 256]
         return rows_adapted
     elif name == "levit":
-        pass
+        return [128, 256, 512, 1024]
     elif name == "ds-cnn":
         # TODO: think about learning on training set
         return [1]  # all

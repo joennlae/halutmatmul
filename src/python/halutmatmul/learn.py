@@ -74,8 +74,8 @@ def learn_halut(
             data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
         )
         a_numpy = np.vstack((a_numpy, a_part))
-    if total_rows > 100000:
-        total_rows = 100000
+    if total_rows > 1000000:
+        total_rows = 1000000
     a_numpy = a_numpy[:total_rows]
     print(
         "A input: ",

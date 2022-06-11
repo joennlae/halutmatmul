@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from models.resnet import END_STORE_A, END_STORE_B
-from models.helper import evaluate_halut_imagenet
+from models.helper import evaluate_halut_imagenet, get_and_print_layers_to_use_halut
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
 from halutmatmul.modules import ErrorTuple
@@ -36,14 +36,8 @@ DEFAULT_BATCH_SIZE_INFERENCE = 128
 DATA_PATH = "/scratch2/janniss/resnet_input_data"
 
 
-def editable_prefixes(state_dict: "OrderedDict[str, torch.Tensor]") -> list[str]:
-    keys_weights = list(filter(lambda k: "weight" in k, state_dict.keys()))
-    keys_conv_fc = list(
-        filter(
-            lambda k: any(v in k for v in ("fc", "conv", "downsample.0")), keys_weights
-        )
-    )
-    keys = [v[: -(len(".weight"))] for v in keys_conv_fc]
+def editable_prefixes(model: torch.nn.Module) -> list[str]:
+    keys = get_and_print_layers_to_use_halut(model)
     return keys
 
 
@@ -102,7 +96,7 @@ class HalutHelper:
         self.batch_size_store = batch_size_store
         self.batch_size_inference = batch_size_inference
         self.state_dict_base = state_dict
-        self.editable_keys = editable_prefixes(state_dict)
+        self.editable_keys = editable_prefixes(self.model)
         self.learned_path = learned_path
         self.halut_modules: Dict[str, list[int]] = dict([])
         self.data_path = data_path

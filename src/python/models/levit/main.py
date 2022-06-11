@@ -30,6 +30,7 @@ import models.levit.utils
 # register models to timm
 import models.levit.levit
 import models.levit.levit_c
+from models.helper import get_and_print_layers_to_use_halut
 
 # pylint: disable=protected-access
 
@@ -584,6 +585,8 @@ def main(args):
     print("FLOPS", model.FLOPS)
 
     print(model.state_dict().keys())
+
+    get_and_print_layers_to_use_halut(model)
 
     if args.analysis:
         return (model, data_loader_val, model.state_dict())

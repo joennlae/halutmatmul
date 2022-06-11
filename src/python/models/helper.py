@@ -8,6 +8,7 @@ from models.resnet import END_STORE_A, END_STORE_B
 from timm.utils import accuracy
 import models.levit.utils
 from models.dscnn.dataset import AudioGenerator
+from halutmatmul.modules import HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -74,6 +75,24 @@ def write_inputs_to_disk(
 
     store(model)
     del store
+
+
+def get_and_print_layers_to_use_halut(
+    model: torch.nn.Module,
+) -> list[str]:
+    all_layers = []
+
+    def layers(module: torch.nn.Module, prefix: str = "") -> None:
+        if isinstance(module, HalutLinear):
+            all_layers.append(prefix[:-1])
+        for name, child in module._modules.items():
+            if child is not None:
+                layers(child, prefix + name + ".")
+
+    layers(model)
+    del layers
+    print(all_layers)
+    return all_layers
 
 
 @torch.no_grad()
