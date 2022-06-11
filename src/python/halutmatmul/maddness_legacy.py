@@ -201,6 +201,7 @@ def learn_proto_and_hash_function(
 
     used_perm_algo = "start"  # or end
     X_orig = X.astype(np.float32)
+    X = X.astype(np.float32)
 
     # X_error = X_orig - centroid shape: [N, D]
     X_error, all_splits, all_prototypes, _ = init_and_learn_hash_function(
@@ -222,6 +223,7 @@ def learn_proto_and_hash_function(
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
     all_splits_np = split_lists_to_numpy(all_splits)
+    print(all_splits_np.shape, all_splits_np.dtype, X.shape, X.dtype)
     A_enc = halut_encode_opt(X, all_splits_np)
 
     # optimizing prototypes

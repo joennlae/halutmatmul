@@ -49,7 +49,6 @@ def apply_hash_function_decision_tree(
 ) -> np.ndarray:
     N, _ = X.shape
     group_ids = np.zeros(N, dtype=np.int64)  # needs to be int64 because of index :-)
-
     B = decision_tree.shape[0] // 3
     n_decisions = int(np.log2(B))
     for depth in range(n_decisions):
@@ -322,6 +321,7 @@ def learn_proto_and_hash_function_decision_tree(
     D = X.shape[1]
     used_perm_algo: Literal["start", "end"] = "start"  # or end
     X_orig = X.astype(np.float32)
+    X = X.astype(np.float32)
 
     # X_error = X_orig - centroid shape: [N, D]
     decision_trees, all_prototypes = init_and_learn_hash_function_decision_tree(
@@ -437,6 +437,7 @@ def learn_proto_and_hash_function_full_pq(
     D = X.shape[1]
     used_perm_algo: Literal["start", "end"] = "start"  # or end
     X_orig = X.astype(np.float32)
+    X = X.astype(np.float32)
 
     all_prototypes = init_and_learn_hash_function_full_pq(
         X, C, K=K, pq_perm_algo=used_perm_algo
