@@ -17,19 +17,29 @@ def linear_helper_gpu(
     device: torch.device,
     a: float = 1.0,
     b: float = 0.0,
+    batch_size: int = 1,
 ) -> None:
     batch_size = 8
     torch.manual_seed(4419)
-    weights = torch.rand((out_features, in_features), device=device)
-    bias_weights = torch.rand((out_features), device=device)
-
     n_row = 256
-    input_learn = (
-        torch.rand((batch_size * 10, n_row, in_features), device=device) + b
-    ) * a
-    input_test = (torch.rand((batch_size, n_row, in_features), device=device) + b) * a
+    if batch_size == 1:
+        weights = torch.rand((out_features, in_features), device=device)
+        bias_weights = torch.rand((out_features), device=device)
 
-    learn_numpy = input_learn.detach().cpu().numpy().reshape(-1, input_learn.shape[2])
+        input_learn = (torch.rand((20 * n_row, in_features), device=device) + b) * a
+        input_test = (torch.rand((4 * n_row, in_features), device=device) + b) * a
+    else:
+        weights = torch.rand((out_features, in_features), device=device)
+        bias_weights = torch.rand((out_features), device=device)
+
+        input_learn = (
+            torch.rand((batch_size * 10, n_row, in_features), device=device) + b
+        ) * a
+        input_test = (
+            torch.rand((batch_size, n_row, in_features), device=device) + b
+        ) * a
+
+    learn_numpy = input_learn.detach().cpu().numpy().reshape(-1, input_learn.shape[-1])
     weights_numpy = weights.detach().cpu().numpy().transpose(1, 0)
     store_array = hm.learn_halut_offline(
         learn_numpy, weights_numpy, C=C, lut_work_const=-1
@@ -88,7 +98,7 @@ def linear_helper_gpu(
 
 
 @pytest.mark.parametrize(
-    "in_features, out_features, C, a, b, bias",
+    "in_features, out_features, C, a, b, bias, batch_size",
     [
         (in_features, out_features, C, a, b, bias)
         for in_features in [128, 256]
@@ -97,10 +107,17 @@ def linear_helper_gpu(
         for a in [1.0]
         for b in [0.0]
         for bias in [False, True]
+        for batch_size in [1, 8]
     ],
 )
 def test_linear_module_gpu(
-    in_features: int, out_features: int, C: int, a: float, b: float, bias: bool
+    in_features: int,
+    out_features: int,
+    C: int,
+    a: float,
+    b: float,
+    bias: bool,
+    batch_size: int,
 ) -> None:
 
     device_id = TEST_CUDA_DEVICE_ID
@@ -120,4 +137,5 @@ def test_linear_module_gpu(
         device=device,
         a=a,
         b=b,
+        batch_size=batch_size,
     )
