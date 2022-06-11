@@ -181,19 +181,6 @@ def run_test(
     layer_start_offset: int = 0,
 ) -> None:
 
-    rows = [
-        1,
-        2,
-        4,
-        8,
-        16,
-        32,
-        # 64,
-        # 128,
-        # 256,
-    ]
-    rows.reverse()
-
     if model_name not in result_base_path.lower():
         result_base_path += "/" + model_name + "/"
 
@@ -212,7 +199,7 @@ def run_test(
                 for K in (
                     [16]  # [8, 16, 32]
                     if e == EncodingAlgorithm.FOUR_DIM_HASH
-                    else [8, 16, 32]  # [4, 8, 12, 16, 24, 32, 64]
+                    else [16, 32]  # [4, 8, 12, 16, 24, 32, 64]
                 ):
                     files = glob.glob(result_base_path + "/*.json")
                     files_res = []

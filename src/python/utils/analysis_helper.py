@@ -339,7 +339,7 @@ def get_input_data_amount(name: available_models, l: str) -> list[int]:
             rows_adapted = [32, 64, 128, 256]
         return rows_adapted
     elif name == "levit":
-        return [128, 256, 512, 1024]
+        return [1024]  # [128, 256, 512, 1024]
     elif name == "ds-cnn":
         # TODO: think about learning on training set
         return [1]  # all
