@@ -155,6 +155,18 @@ class HalutLinear(Linear):
                 "'{prefix}halut_config' paramters in state_dict"
             )
 
+    def get_error(self) -> np.ndarray:
+        if not self.report_error[0]:
+            raise Exception("get_error() called without error reporting active")
+        errors = np.zeros(ErrorTuple.MAX, dtype=np.float64)
+        total_input_images = 0
+        for elem in self.errors:
+            if elem[0] > 0:
+                total_input_images += elem[0]
+                errors += elem[1] * elem[0]
+        errors /= total_input_images
+        return errors
+
     def check_store_offline(self, _input: Tensor) -> None:
         if self.store_input[0]:
             if self.input_storage_a is None and self.input_storage_b is None:
