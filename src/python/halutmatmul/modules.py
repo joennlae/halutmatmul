@@ -149,13 +149,22 @@ class HalutLinear(Linear):
     def check_store_offline(self, _input: Tensor) -> None:
         if self.store_input[0]:
             if self.input_storage_a is None and self.input_storage_b is None:
-                self.input_storage_a = _input.clone().cpu().detach()
+                self.input_storage_a = (
+                    _input.clone().cpu().detach().reshape((-1, _input.shape[2]))
+                )
                 self.input_storage_b = (
                     self.weight.clone().cpu().transpose(1, 0).detach()
                 )
             else:
                 self.input_storage_a = torch.cat(
-                    (self.input_storage_a, _input.clone().cpu()), 0  # type: ignore[arg-type]
+                    (
+                        self.input_storage_a,
+                        _input.clone()
+                        .cpu()
+                        .detach()
+                        .reshape((-1, _input.shape[2])),  # type: ignore[arg-type]
+                    ),
+                    0,
                 )
 
     def linear_halut(self, _input: Tensor) -> Tensor:
@@ -165,7 +174,7 @@ class HalutLinear(Linear):
             from halutmatmul.cuda.functions import halut_linear_gpu
 
             ret_tensor = halut_linear_gpu(
-                _input,
+                _input.reshape((-1, _input.shape[2])),
                 self.encode_kernel,
                 self.read_acc_lut_kernel,
                 self.lut,
@@ -174,13 +183,20 @@ class HalutLinear(Linear):
         else:
             if self.halut is None:
                 raise Exception("self.halut is None")
-            input_numpy = _input.detach().cpu().numpy()
+            input_numpy = _input.detach().cpu().numpy().reshape(-1, _input.shape[2])
             ret_tensor = torch.from_numpy(self.halut.matmul_online(input_numpy)).to(
                 str(_input.device)
             )
-            if self.bias is not None:
-                bias_to_add = self.bias.clone().repeat(_input.shape[0], 1)
-                ret_tensor += bias_to_add
+
+        ret_tensor = ret_tensor.reshape((_input.shape[0], -1, self.weight.shape[0]))
+        if self.bias is not None:
+            print(self.bias.shape)
+            bias_to_add = (
+                self.bias.clone()
+                .t()
+                .repeat(ret_tensor.shape[0], ret_tensor.shape[1], 1)
+            )
+            ret_tensor += bias_to_add
         if self.report_error[0]:
             torch_ret = F.linear(_input, self.weight, self.bias)
             if "cuda" in str(_input.device):
@@ -191,6 +207,7 @@ class HalutLinear(Linear):
             else:
                 res_error = error_numpy(ret_tensor, torch_ret)
                 self.errors.append((_input.shape[0], res_error))
+
         return ret_tensor
 
     # pylint: disable=W0622

@@ -13,21 +13,23 @@ def linear_helper_gpu(
     in_features: int,
     out_features: int,
     bias: bool,
-    n_row_learn: int,
-    n_row_test: int,
     C: int,
     device: torch.device,
     a: float = 1.0,
     b: float = 0.0,
 ) -> None:
+    batch_size = 8
     torch.manual_seed(4419)
     weights = torch.rand((out_features, in_features), device=device)
     bias_weights = torch.rand((out_features), device=device)
 
-    input_learn = (torch.rand((n_row_learn, in_features), device=device) + b) * a
-    input_test = (torch.rand((n_row_test, in_features), device=device) + b) * a
+    n_row = 256
+    input_learn = (
+        torch.rand((batch_size * 10, n_row, in_features), device=device) + b
+    ) * a
+    input_test = (torch.rand((batch_size, n_row, in_features), device=device) + b) * a
 
-    learn_numpy = input_learn.detach().cpu().numpy()
+    learn_numpy = input_learn.detach().cpu().numpy().reshape(-1, input_learn.shape[2])
     weights_numpy = weights.detach().cpu().numpy().transpose(1, 0)
     store_array = hm.learn_halut_offline(
         learn_numpy, weights_numpy, C=C, lut_work_const=-1
@@ -71,24 +73,30 @@ def linear_helper_gpu(
     print("======== TEST =========")
     print(
         f"params: C: {C}, in: {in_features}, out: {out_features}, bias: {bias}, "
-        f"n_row_learn: {n_row_learn}, n_row_test: {n_row_test}, a: {a}, b: {b}"
+        f"a: {a}, b: {b}"
     )
     torch_module.to(device)
     halutmatmul_module.to(device)
     input_test.to(device)
-    helper_test_module(input_test, torch_module, halutmatmul_module)
+    helper_test_module(
+        input_test,
+        torch_module,
+        halutmatmul_module,
+        rel_error=0.0,
+        scaled_error_max=0.2,
+    )
 
 
 @pytest.mark.parametrize(
     "in_features, out_features, C, a, b, bias",
     [
         (in_features, out_features, C, a, b, bias)
-        for in_features in [512, 2048]
-        for out_features in [10, 1000]
+        for in_features in [128, 256]
+        for out_features in [64, 128]
         for C in [4, 16, 64]
-        for a in [1.0, 10.0]
-        for b in [0.0, 10.0]
-        for bias in [True, False]
+        for a in [1.0]
+        for b in [0.0]
+        for bias in [False, True]
     ],
 )
 def test_linear_module_gpu(
@@ -104,14 +112,10 @@ def test_linear_module_gpu(
         "cuda:" + str(device_id) if torch.cuda.is_available() else "cpu"
     )
 
-    n_row_learn = 10000
-    n_row_test = 2000
     linear_helper_gpu(
         in_features,
         out_features,
         bias,
-        n_row_learn,
-        n_row_test,
         C,
         device=device,
         a=a,
