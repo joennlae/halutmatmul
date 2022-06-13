@@ -27,6 +27,27 @@ halut --help
 ./halut --help
 ```
 
+## Results
+
+### Single Layer replacement with `C=32` and `K=16`
+
+### LeViT ([Source](https://github.com/facebookresearch/LeViT))
+
+SOTA Vision Transformer on ImageNet 1K
+![LeViT Results](https://github.com/joennlae/halutdata/raw/master/figures/levit.png)
+
+### ResNet-50 (only interesting layers in analysis)
+Legacy Classifier on ImageNet 1K
+![ResNet-50 Results](https://github.com/joennlae/halutdata/raw/master/figures/resnet-50.png)
+
+### Depthwise seperable CNN
+on Google Speech v2
+![DS-CNN Results](https://github.com/joennlae/halutdata/raw/master/figures/dscnn.png)
+
+
+### Offline learning convergence on ResNet-50
+![ResNet-50 Convergence Results](https://github.com/joennlae/halutdata/raw/master/figures/all_layers.png)
+
 ## Formalism
 
 Some definitions about the forward path.
