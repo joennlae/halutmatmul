@@ -41,8 +41,8 @@ def cleanup() -> None:
 def startup() -> tuple[str, int]:
     out = run_command(
         "./vast.py search offers 'reliability > 0.98  num_gpus==1 rentable==True"
-        " inet_down > 100 disk_space > 30 dph_total < 0.25 inet_down_cost < 0.021"
-        " inet_up_cost < 0.021 cuda_vers >= 11.2' -o 'dph_total' --storage=32 --raw"
+        " inet_down > 100 disk_space > 50 dph_total < 0.35 inet_down_cost < 0.021"
+        " inet_up_cost < 0.021 cuda_vers >= 11.2' -o 'cpu_cores_effective-' --storage=32 --raw"
     )
     dict_out = json.loads(out)
 
@@ -68,15 +68,18 @@ def startup() -> tuple[str, int]:
         print(f"Starting {counter}")
         sleep(5)
         out = run_command(f"./vast.py show instances --raw")
-        out_dict = json.loads(out)
-        if len(out_dict):
-            print(out_dict[0]["status_msg"])
-            if ssh_port == 0:
-                ssh_host = out_dict[0]["ssh_host"]
-                ssh_port = out_dict[0]["ssh_port"]
-            if out_dict[0]["actual_status"] == "running":
-                starting = False
-        counter += 1
+        try:
+            out_dict = json.loads(out)
+            if len(out_dict):
+                print(out_dict[0]["status_msg"])
+                if ssh_port == 0:
+                    ssh_host = out_dict[0]["ssh_host"]
+                    ssh_port = out_dict[0]["ssh_port"]
+                if out_dict[0]["actual_status"] == "running":
+                    starting = False
+            counter += 1
+        except json.JSONDecodeError:
+            print("raw output", out)
 
     return ssh_host, ssh_port
 
@@ -128,7 +131,7 @@ if __name__ == "__main__":
         ssh_host, ssh_port = startup()
         # ssh_host = "ssh4.vast.ai"
         # ssh_port = 11182
-        sleep(20)
+        sleep(5)
         error_code = run_ssh_commands(ssh_host, ssh_port, args.debug)
         cleanup()
         sys.exit(error_code)
