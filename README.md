@@ -10,6 +10,10 @@
 * More information about the base project is [here](maddness/README.md)
 * [arXiv](https://arxiv.org/abs/2106.10860) paper link
 
+## General Information
+
+This repo is used for the algorithmic exploration. I will try to update this repo with as much hardware information as I am allowed to publish.
+
 ## Install
 
 ```bash
@@ -27,8 +31,19 @@ halut --help
 ./halut --help
 ```
 
+## Hackernews mention (comments only) and discussion
+
+* [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
+
+## Progress Slides
+
+* [Week 11 slides](https://github.com/joennlae/halutdata/raw/master/slides/week_11.pdf)
+* [Weekly updated slides](http://jsdev.vsos.ethz.ch/maddness/progress-slides.pdf)
+
+![Slides preview](https://github.com/joennlae/halutdata/raw/master/slides/week_11.gif)
 ## Results
 
+Caveats: No retraining and fine-tuning done yet!
 ### Single Layer replacement with `C=32` and `K=16`
 
 ### LeViT ([Source](https://github.com/facebookresearch/LeViT))
@@ -45,7 +60,16 @@ on Google Speech v2
 ![DS-CNN Results](https://github.com/joennlae/halutdata/raw/master/figures/dscnn.png)
 
 
+### `C`, `K` and `encoding_algorithm` parameter sweep for ResNet-50
+
+* [Data visualizer](http://jsdev.vsos.ethz.ch/halut/)
+_be sure to select ResNet-50 layers `layerX.X.convX`_
+
+![Data visualizer](https://github.com/joennlae/halutdata/raw/master/figures/halut_viewer.png)
 ### Offline learning convergence on ResNet-50
+
+The goal was to find out how much offline training data is needed to get the maximum accuracy.
+
 ![ResNet-50 Convergence Results](https://github.com/joennlae/halutdata/raw/master/figures/all_layers.png)
 
 ## Formalism
