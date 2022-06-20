@@ -41,6 +41,14 @@ halut --help
 * [Weekly updated slides](http://jsdev.vsos.ethz.ch/maddness/progress-slides.pdf)
 
 ![Slides preview](https://github.com/joennlae/halutdata/raw/master/slides/week_11.gif)
+
+## `CUDA` kernels
+
+* [Encode Kernel](src/python/halutmatmul/cuda/kernels/encode.cu)
+* [Decode Kernel](src/python/halutmatmul/cuda/kernels/read_acc_lut.cu)
+
+_I am aware that there is still a lot that could be optimized here (warp etc.), but it was only developed for fast analysis_
+
 ## Results
 
 Caveats: No retraining and fine-tuning done yet!
