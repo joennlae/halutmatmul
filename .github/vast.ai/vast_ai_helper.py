@@ -71,11 +71,13 @@ def startup() -> tuple[str, int]:
         try:
             out_dict = json.loads(out)
             if len(out_dict):
+                print(out_dict)
                 print(out_dict[0]["status_msg"])
-                if ssh_port == 0:
+                if ssh_port in (0, None):
                     ssh_host = out_dict[0]["ssh_host"]
-                    ssh_port = out_dict[0]["ssh_port"]
-                if out_dict[0]["actual_status"] == "running":
+                    if isinstance(out_dict[0]["ssh_port"], int):
+                        ssh_port = out_dict[0]["ssh_port"]
+                if out_dict[0]["actual_status"] == "running" and ssh_port != 0:
                     starting = False
             counter += 1
         except json.JSONDecodeError:
