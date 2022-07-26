@@ -3,8 +3,12 @@ name: Linting
 on: push
 
 jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
 
   lint_python:
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     name: Python Lint
     runs-on: ubuntu-latest
 
@@ -20,6 +24,8 @@ jobs:
         $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/python/*
 
   clang-format:
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     name: c++ Lint clang-format
     runs-on: ubuntu-latest
 

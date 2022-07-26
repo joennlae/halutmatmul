@@ -1,0 +1,34 @@
+name: Reusable Filter Workflow
+# https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-workflow
+
+on:
+  workflow_call:
+    # Map the workflow outputs to job outputs
+    outputs:
+      algorithmic:
+        description: "Algorithmic change set affected"
+        value: ${{ jobs.changes.outputs.algorithmic }}
+      hardware:
+        description: "Hardware change set affected"
+        value: ${{ jobs.changes.outputs.hardware }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      algorithmic: ${{ steps.filter.outputs.algorithmic }}
+      hardware: ${{ steps.filter.outputs.hardware }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          algorithmic:
+            - '.github/**'
+            - 'docs/**'
+            - 'maddness/**'
+            - 'scripts/**'
+            - 'src/**'
+          hardware:
+            - 'hardware/**'

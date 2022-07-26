@@ -3,7 +3,11 @@ name: PyTest
 on: [push]
 
 jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
   test_python:
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     strategy:
       fail-fast: false
       matrix:

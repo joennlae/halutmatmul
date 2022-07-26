@@ -3,7 +3,11 @@ name: MyPy
 on: [push]
 
 jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
   python_typechecking:
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
     container:
       image: joennlae/halutmatmul-conda-gpu:latest
