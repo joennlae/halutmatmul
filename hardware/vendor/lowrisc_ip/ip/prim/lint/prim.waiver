@@ -1,0 +1,17 @@
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+#
+# waiver file for prim
+
+# prim_packer
+waive -rules INTEGER           -location {prim_packer.sv} -msg {'i' of type int used as a non-constant value} \
+      -comment "This assigns int i (signed) to a multibit logic variable (unsigned), which is fine"
+
+# prim_packer_fifo
+waive -rules {ZERO_REP} -location {prim_packer_fifo.sv} -regexp {Replication count is zero in .*DepthW.*} \
+      -comment "If InW equals OutW, DepthW is zero"
+
+# prim_sram_arbiter
+waive -rules CONST_OUTPUT -location {prim_sram_arbiter.sv} -regexp {rsp_error.* is driven by constant} \
+      -comment "SRAM protection is not yet implemented"

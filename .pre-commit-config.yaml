@@ -13,7 +13,7 @@ repos:
             # "maddness/python/*",
             # "src/python/*"
           ]
-      exclude: .vscode/|joblib|vast.ai
+      exclude: .vscode/|joblib|vast.ai|vendor
 
 - repo: https://github.com/jorisroovers/gitlint
   rev:  v0.17.0

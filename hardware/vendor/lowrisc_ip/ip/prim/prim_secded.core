@@ -1,0 +1,78 @@
+CAPI=2:
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+name: "lowrisc:prim:secded:0.1"
+description: "SECDED ECC primitives"
+filesets:
+  files_rtl:
+    files:
+      - rtl/prim_secded_pkg.sv
+      - rtl/prim_secded_22_16_dec.sv
+      - rtl/prim_secded_22_16_enc.sv
+      - rtl/prim_secded_28_22_dec.sv
+      - rtl/prim_secded_28_22_enc.sv
+      - rtl/prim_secded_39_32_dec.sv
+      - rtl/prim_secded_39_32_enc.sv
+      - rtl/prim_secded_64_57_dec.sv
+      - rtl/prim_secded_64_57_enc.sv
+      - rtl/prim_secded_72_64_dec.sv
+      - rtl/prim_secded_72_64_enc.sv
+      - rtl/prim_secded_hamming_22_16_dec.sv
+      - rtl/prim_secded_hamming_22_16_enc.sv
+      - rtl/prim_secded_hamming_39_32_dec.sv
+      - rtl/prim_secded_hamming_39_32_enc.sv
+      - rtl/prim_secded_hamming_72_64_dec.sv
+      - rtl/prim_secded_hamming_72_64_enc.sv
+      - rtl/prim_secded_hamming_76_68_dec.sv
+      - rtl/prim_secded_hamming_76_68_enc.sv
+      - rtl/prim_secded_inv_22_16_dec.sv
+      - rtl/prim_secded_inv_22_16_enc.sv
+      - rtl/prim_secded_inv_28_22_dec.sv
+      - rtl/prim_secded_inv_28_22_enc.sv
+      - rtl/prim_secded_inv_39_32_dec.sv
+      - rtl/prim_secded_inv_39_32_enc.sv
+      - rtl/prim_secded_inv_64_57_dec.sv
+      - rtl/prim_secded_inv_64_57_enc.sv
+      - rtl/prim_secded_inv_72_64_dec.sv
+      - rtl/prim_secded_inv_72_64_enc.sv
+      - rtl/prim_secded_inv_hamming_22_16_dec.sv
+      - rtl/prim_secded_inv_hamming_22_16_enc.sv
+      - rtl/prim_secded_inv_hamming_39_32_dec.sv
+      - rtl/prim_secded_inv_hamming_39_32_enc.sv
+      - rtl/prim_secded_inv_hamming_72_64_dec.sv
+      - rtl/prim_secded_inv_hamming_72_64_enc.sv
+      - rtl/prim_secded_inv_hamming_76_68_dec.sv
+      - rtl/prim_secded_inv_hamming_76_68_enc.sv
+    file_type: systemVerilogSource
+
+  files_verilator_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+    files:
+      # - lint/prim_secded.vlt
+    file_type: vlt
+
+  files_ascentlint_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+    files:
+      - lint/prim_secded.waiver
+    file_type: waiver
+
+  files_veriblelint_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+
+targets:
+  default:
+    filesets:
+      - tool_verilator   ? (files_verilator_waiver)
+      - tool_ascentlint  ? (files_ascentlint_waiver)
+      - tool_veriblelint ? (files_veriblelint_waiver)
+      - files_rtl
+

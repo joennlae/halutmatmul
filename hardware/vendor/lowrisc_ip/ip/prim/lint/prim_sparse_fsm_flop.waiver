@@ -1,0 +1,17 @@
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+#
+# waiver file for prim_sparse_fsm_flop
+
+waive -rules {IFDEF_CODE} -location {prim_sparse_fsm_flop.sv} -regexp {.*(unused_valid_st|unused_err_o).*} \
+      -comment "The unused_valid_st / unused_err_o signals are used purely for DV only and is switched to a constant during lint / synth."
+
+waive -rules {PARAM_NOT_USED} -location {prim_sparse_fsm_flop.sv} -regexp {.*StateEnumT.*} \
+      -comment "The state enum is used only during DV / FPV."
+
+waive -rules {PARAM_NOT_USED} -location {prim_sparse_fsm_flop.sv} -regexp {.*EnableAlertTriggerSVA.*} \
+      -comment "The disable parameter is used only during DV / FPV."
+
+waive -rules {SAME_NAME_TYPE} -location {prim_sparse_fsm_flop.sv} -regexp {.*ResetValue.*} \
+      -comment "The ResetValue parameter is a common name used by many prim types"
