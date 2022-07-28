@@ -1,0 +1,66 @@
+CAPI=2:
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+name: "halut:ip:halut_top:0.1"
+description: "Halut a hash LUT based AMM"
+
+filesets:
+  files_rtl:
+    files:
+      # - rtl/register_file_ff.sv # generic FF-base
+      - rtl/register_file_latch.sv # ASIC
+      - rtl/prim_clock_gating.sv
+    file_type: systemVerilogSource
+
+  files_verilator_waiver:
+    depend:
+      # common waivers
+      - halut:lint:common
+    files:
+      - lint/verilator/verilator_waiver.vlt
+    file_type: vlt
+
+  files_veriblelint_waiver:
+    depend:
+      # common waivers
+      - halut:lint:common
+    files:
+      - lint/veriblelint/verible.waiver # : {file_type: veribleLintWaiver}
+    file_type: veribleLintWaiver
+
+parameters:
+  SYNTHESIS:
+    datatype: bool
+    paramtype: vlogdefine
+
+
+targets:
+  default: &default_target
+    filesets:
+      - tool_verilator   ? (files_verilator_waiver)
+      - tool_veriblelint ? (files_veriblelint_waiver)
+      - files_rtl
+    toplevel: register_file_latch
+  lint:
+    <<: *default_target
+    parameters:
+      - SYNTHESIS=true
+    default_tool: verilator
+    tools:
+      verilator:
+        mode: lint-only
+        verilator_options:
+          - "-Wall"
+      veriblelint:
+  format:
+    filesets:
+      - files_rtl
+    parameters:
+      - SYNTHESIS=true
+    default_tool: veribleformat
+    toplevel: ibex_top
+    tools:
+      veribleformat:
+        verible_format_args:
+          - "--inplace"
