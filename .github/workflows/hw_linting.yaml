@@ -1,0 +1,58 @@
+name: RTL Linting
+
+on: push
+
+jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
+
+  lint_python:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    name: Python Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Lint with pylint
+      run: |
+        $CONDA/bin/conda install -c conda-forge pylint=2.14
+        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/*
+
+  verilator_lint_hw:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Lint RTL with verilator
+      run: |
+        source /venv/bin/activate
+        cd hardware
+        fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
+
+  verible_lint_hw:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Lint RTL with verilator
+      run: |
+        source /venv/bin/activate
+        cd hardware
+        fusesoc --cores-root=. run --target=lint --tool=veriblelint halut:ip:halut_top
