@@ -1,0 +1,21 @@
+CAPI=2:
+# Copyright lowRISC contributors.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+name: "halut:lint:common:0.1"
+description: "Common waivers"
+filesets:
+  files_verilator:
+    files:
+      - verilator/common.vlt
+    file_type: vlt
+
+  files_veriblelint:
+    files:
+      - veriblelint/lowrisc-styleguide.rules.verible_lint: {file_type: veribleLintRules}
+
+targets:
+  default: &default_target
+    filesets:
+      - tool_verilator   ? (files_verilator)
+      - tool_veriblelint ? (files_veriblelint)
