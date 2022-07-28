@@ -21,6 +21,9 @@ This repo is used for the algorithmic exploration. I will try to update this rep
 conda env create -f environment_gpu.yml
 conda activate halutmatmul
 
+# IIS prefixed env
+conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
+
 # install CLI
 ./scripts/install-cli.sh
 
