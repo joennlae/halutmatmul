@@ -10,3 +10,5 @@ maddness/assets
 .mypy_cache
 
 *.pth
+
+build/

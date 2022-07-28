@@ -6,17 +6,19 @@ channels:
   - defaults
 dependencies:
   - python=3.9
+  # IDE deps
   - black
   - pylint
+  - pytest
+  - pre-commit
+  - mypy=0.942
+  - pytest-xdist
+  # algo dependencies
   - numpy=1.21.2
   - numba
   - joblib
   - scipy
   - scikit-learn=1.1
-  - pytest
-  - pre-commit
-  - mypy=0.942
-  - pytest-xdist
   - torchvision=0.14
   - pytorch=1.13
   - torchinfo
