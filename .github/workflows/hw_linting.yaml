@@ -21,7 +21,7 @@ jobs:
     - name: Lint with pylint
       run: |
         $CONDA/bin/conda install -c conda-forge pylint=2.14
-        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/*
+        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/*
 
   verilator_lint_hw:
     needs: changes

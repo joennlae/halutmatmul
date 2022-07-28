@@ -37,4 +37,4 @@ jobs:
           clang-format-version: '12'
           check-path: '.'
           fallback-style: 'LLVM'
-          exclude-regex: '(lib|CMakeFiles)'
+          exclude-regex: '(lib|CMakeFiles|vendor)'
