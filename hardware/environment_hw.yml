@@ -1,0 +1,28 @@
+name: /scratch/janniss/conda/halutmatmul_hw
+channels:
+  - litex-hub
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.7
+  # IDE deps
+  - black
+  - pylint
+  - pytest
+  - pre-commit
+  - mypy=0.942
+  - pytest-xdist
+  - numpy # mypy
+  # HW deps
+  - zachjs-sv2v
+  - openroad
+  - yosys
+  - verilator
+  - verible
+  - patchelf
+  - elfutils
+  - pip
+  - pip:
+    - edalize
+    - fusesoc
+prefix: /scratch/janniss/conda/halutmatmul_hw
