@@ -56,7 +56,7 @@ patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter 
 patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter ~/.local/custom_glibc/lib/ld-linux-x86-64.so.2 /scratch/janniss/conda/halutmatmul_hw/bin/verible-verilog-syntax
 ```
 
-### vscode setup
+### VSCode setup
 
 Two extensions are recommended:
 
@@ -64,5 +64,8 @@ Two extensions are recommended:
 * [SystemVerilog and Verilog Formatter](https://marketplace.visualstudio.com/items?itemName=bmpenuelas.systemverilog-formatter-vscode)
 
 
+## Vendored IP
 
+Use the script `util/vendor.py` to update or added vendored IP.
 
+* [vendor.py Docs](https://docs.opentitan.org/doc/rm/vendor_in_tool/index.html)
