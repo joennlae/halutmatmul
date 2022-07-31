@@ -92,3 +92,22 @@ ln -s /scratch2/janniss/halut_flow flow
 # symlink option is only needed when not enough space is available
 python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -S /scratch2/janniss/halut_flow/OpenROAD
 ```
+
+## License
+
+### lowRISC IP
+
+* [Apache-2.0 license](https://github.com/lowRISC/opentitan)
+
+### OpenROAD
+
+* [BSD 3-Clause License](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts#license)
+
+But tools sometimes have different licenses.
+
+The OpenROAD-flow-scripts repository (build and run scripts) has a BSD 3-Clause License.
+The flow relies on several tools, platforms and designs that each have their own licenses:
+
+- Find the tool license at: `OpenROAD-flow-scripts/tools/{tool}/` or `OpenROAD-flow-scripts/tools/OpenROAD/src/{tool}/`.
+- Find the platform license at: `OpenROAD-flow-scripts/flow/platforms/{platform}/`.
+- Find the design license at: `OpenROAD-flow-scripts/flow/designs/src/{design}/`.
