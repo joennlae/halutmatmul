@@ -1,0 +1,9 @@
+{
+    name: "OpenROAD",
+    target_dir: "OpenROAD",
+
+    upstream: {
+        url: "https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git"
+        rev: "master"
+    }
+}

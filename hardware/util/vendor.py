@@ -728,6 +728,15 @@ def main(argv):
         "Can be used multiple times.",
     )
     parser.add_argument(
+        "--symlink",
+        "-S",
+        dest="symlink",
+        action="append",
+        type=Path,
+        help="Store repo to symlinked dir (IIS use)",
+    )
+
+    parser.add_argument(
         "desc_file",
         metavar="file",
         type=argparse.FileType("r", encoding="UTF-8"),
@@ -758,6 +767,14 @@ def main(argv):
     except (JsonError, ValueError) as err:
         log.fatal(str(err))
         raise SystemExit(1)
+
+    if args.symlink:  #
+        print("create Symlink: ", desc.target_dir, args.symlink[0])
+        if os.path.exists(desc.target_dir):
+            os.remove(desc.target_dir)
+        args.symlink[0].mkdir(exist_ok=True, parents=True)
+        os.symlink(args.symlink[0], desc.target_dir)
+        desc.target_dir = args.symlink[0]
 
     # Check for a clean working directory when commit is requested
     if args.commit:
