@@ -72,22 +72,8 @@ Use the script `util/vendor.py` to update or added vendored IP.
 
 #### IIS tricks
 
-Install `GitBSLR` an `LD_Preload` based lib that will make git follow symlinks.
-
-* [StackOverflow](https://superuser.com/a/1318025/1685000)
 ```bash
-git clone https://github.com/Alcaro/GitBSLR.git
-cd GitBSLR
-./install.sh
-# add to .bashrc or .zshrc
-alias git="LD_PRELOAD=/path/to/gitbslr.so git"
-```
-Symlinks for `OpenROAD` flow:
-```bash
-# set
-export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
-# and symlink
-ln -s /scratch2/janniss/halut_flow flow
+mkdir -p /scratch2/janniss/halut_flow/OpenROAD
 # use vendor.py to OpenROAD (normally would use submodule but IIS storage limits)
 # symlink option is only needed when not enough space is available
 python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -S /scratch2/janniss/halut_flow/OpenROAD

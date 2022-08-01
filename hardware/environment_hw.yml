@@ -1,5 +1,6 @@
 name: /scratch/janniss/conda/halutmatmul_hw
 channels:
+  - joennlae
   - litex-hub
   - conda-forge
   - defaults
@@ -15,14 +16,17 @@ dependencies:
   - numpy # mypy
   # HW deps
   - zachjs-sv2v
-  - openroad
+  - openroad-gui
   - yosys
   - verilator
   - verible
   - patchelf
   - elfutils
   - pip
+  # lowRISC IP deps
+  - mako
   - pip:
-    - edalize
-    - fusesoc
+    - git+https://github.com/joennlae/edalize.git@openroad-flow-script # git+https://github.com/lowRISC/edalize.git@ot-0.1 # edalize
+    - git+https://github.com/lowRISC/fusesoc.git@ot-0.1 # fusesoc
+    - anytree
 prefix: /scratch/janniss/conda/halutmatmul_hw
