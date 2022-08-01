@@ -191,7 +191,7 @@ module register_file_latch #(
 `ifdef VERILATOR
   initial begin
     $display("Latch-based register file not supported for Verilator simulation");
-    $fatal;
+    $fatal();
   end
 `endif
 

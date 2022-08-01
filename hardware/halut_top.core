@@ -59,7 +59,7 @@ targets:
     parameters:
       - SYNTHESIS=true
     default_tool: veribleformat
-    toplevel: ibex_top
+    toplevel: register_file_latch
     tools:
       veribleformat:
         verible_format_args:
