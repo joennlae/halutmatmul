@@ -37,6 +37,7 @@ filesets:
       - flow/OpenROAD/flow/Makefile : {file_type: Makefile}
     depend:
       - halut:util:sv2v
+      - halut:util:report
 
   openroad_asap7_files:
     files:
