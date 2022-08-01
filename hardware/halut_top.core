@@ -7,6 +7,9 @@ description: "Halut a hash LUT based AMM"
 
 filesets:
   files_rtl:
+    depend:
+      - lowrisc:prim:buf
+      - lowrisc:prim:onehot_check
     files:
       # - rtl/register_file_ff.sv # generic FF-base
       - rtl/register_file_latch.sv # ASIC
@@ -28,6 +31,17 @@ filesets:
     files:
       - lint/veriblelint/verible.waiver # : {file_type: veribleLintWaiver}
     file_type: veribleLintWaiver
+  
+  openroad_base_files:
+    files:
+      - flow/OpenROAD/flow/Makefile : {file_type: Makefile}
+    depend:
+      - halut:util:sv2v
+
+  openroad_asap7_files:
+    files:
+      - flow/asap7/config.mk : {file_type: configFile}
+      - flow/asap7/constraint.sdc : {file_type: SDC}
 
 parameters:
   SYNTHESIS:
@@ -54,13 +68,23 @@ targets:
           - "-Wall"
       veriblelint:
   format:
-    filesets:
-      - files_rtl
+    <<: *default_target
     parameters:
       - SYNTHESIS=true
     default_tool: veribleformat
-    toplevel: register_file_latch
     tools:
       veribleformat:
         verible_format_args:
           - "--inplace"
+  openroad_asap7:
+    <<: *default_target
+    filesets:
+      - files_rtl
+      - openroad_base_files
+      - openroad_asap7_files
+    parameters:
+      - SYNTHESIS=true
+    default_tool: openroad
+    tools:
+      openroad:
+        flow_path: flow/OpenROAD/flow
