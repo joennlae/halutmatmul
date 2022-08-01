@@ -11,8 +11,9 @@ FROM continuumio/miniconda3:latest AS build
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Create the environment:
-COPY environment_lock.yml .
-RUN conda env create --file environment_lock.yml --name halutmatmul_hw
+COPY environment_hw.yml .
+# RUN conda env create --file environment_lock.yml --name halutmatmul_hw
+RUN conda env create --file environment_hw.yml --name halutmatmul_hw
 
 # Install conda-pack:
 RUN conda install -c conda-forge conda-pack
