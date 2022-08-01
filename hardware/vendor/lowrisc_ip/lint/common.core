@@ -28,7 +28,7 @@ targets:
     filesets:
       - tool_verilator   ? (files_verilator)
       - tool_ascentlint  ? (files_ascentlint)
-      - tool_veriblelint ? (files_veriblelint)
+      # - tool_veriblelint ? (files_veriblelint)
       # - files_check_tool_requirements
     tools:
       ascentlint:
