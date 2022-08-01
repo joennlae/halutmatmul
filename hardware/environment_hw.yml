@@ -29,4 +29,5 @@ dependencies:
     - git+https://github.com/joennlae/edalize.git@openroad-flow-script # git+https://github.com/lowRISC/edalize.git@ot-0.1 # edalize
     - git+https://github.com/lowRISC/fusesoc.git@ot-0.1 # fusesoc
     - anytree
+    - hjson # vendor.py
 prefix: /scratch/janniss/conda/halutmatmul_hw
