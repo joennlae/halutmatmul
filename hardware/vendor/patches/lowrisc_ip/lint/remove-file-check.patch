@@ -1,0 +1,13 @@
+diff --git a/common.core b/ommon.core
+index 4bcd8f3..f7c579f 100644
+--- a/common.core
++++ b/common.core
+@@ -29,7 +29,7 @@ targets:
+       - tool_verilator   ? (files_verilator)
+       - tool_ascentlint  ? (files_ascentlint)
+       - tool_veriblelint ? (files_veriblelint)
+-      - files_check_tool_requirements
++      # - files_check_tool_requirements
+     tools:
+       ascentlint:
+         ascentlint_options:

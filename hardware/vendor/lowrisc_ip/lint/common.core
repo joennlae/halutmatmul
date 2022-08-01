@@ -29,7 +29,7 @@ targets:
       - tool_verilator   ? (files_verilator)
       - tool_ascentlint  ? (files_ascentlint)
       - tool_veriblelint ? (files_veriblelint)
-      - files_check_tool_requirements
+      # - files_check_tool_requirements
     tools:
       ascentlint:
         ascentlint_options:

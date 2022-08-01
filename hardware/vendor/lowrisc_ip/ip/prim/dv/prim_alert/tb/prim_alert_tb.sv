@@ -23,19 +23,19 @@ module prim_alert_tb;
   //////////////////////////////////////////////////////
 
   // this can be overriden on the command line
-`ifdef IS_SYNC
-  localparam bit IsAsync = 0;
-`else
-  localparam bit IsAsync = 1;
-`endif
-`ifdef IS_FATAL
-  localparam bit IsFatal = 1;
-`else
-  localparam bit IsFatal = 0;
-`endif
+  `ifdef IS_SYNC
+    localparam bit IsAsync = 0;
+  `else
+    localparam bit IsAsync = 1;
+  `endif
+  `ifdef IS_FATAL
+    localparam bit IsFatal = 1;
+  `else
+    localparam bit IsFatal = 0;
+  `endif
 
-  localparam time ClkPeriod = 10_000;
-  localparam int WaitCycle = IsAsync ? 3 : 1;
+  localparam time ClkPeriod  = 10_000;
+  localparam int  WaitCycle = IsAsync ? 3 : 1;
 
   // Minimal cycles to wait between each sequence.
   // The main concern here is the minimal wait cycles between each handshake.
@@ -50,14 +50,14 @@ module prim_alert_tb;
 
   uint default_spinwait_timeout_ns = 100_000;
 
-  typedef enum bit [3:0] {
+  typedef enum bit [3:0]{
     AlertSet,
     AlertAckSet,
     AlertReset,
     AlertAckReset
   } alert_handshake_e;
 
-  typedef enum bit [1:0] {
+  typedef enum bit[1:0] {
     PingPair,
     AlertPair,
     AckPair
@@ -120,7 +120,7 @@ module prim_alert_tb;
   // Stimuli Application / Response Checking
   //////////////////////////////////////////////////////
 
-  initial begin : p_stimuli
+  initial begin: p_stimuli
     alert_test = 0;
     alert_req  = 0;
     ping_req   = 0;
@@ -148,7 +148,7 @@ module prim_alert_tb;
         begin
           main_clk.wait_clks($urandom_range(MinHandshakeWait, 10));
           alert_req = 1;
-          `DV_SPINWAIT(wait (alert_ack == 1);,,, "Wait for alert_ack timeout");
+          `DV_SPINWAIT(wait (alert_ack == 1);, , , "Wait for alert_ack timeout");
           alert_req = 0;
           main_clk.wait_clks(WaitAlertHandshakeDone);
         end
@@ -168,8 +168,8 @@ module prim_alert_tb;
         // If only alert_init is triggered, alert_sender side still expect fatal alert to fire.
         // This check is valid if the alert is fatal, and alert is requested before init request.
         main_clk.wait_clks($urandom_range(10, 100));
-        `DV_SPINWAIT(wait (alert_tx.alert_p == 0);,,, "Wait for alert_p goes low");
-        `DV_SPINWAIT(wait (alert_tx.alert_p == 1);,,, "Wait for alert_p goes high");
+        `DV_SPINWAIT(wait (alert_tx.alert_p == 0);, , , "Wait for alert_p goes low");
+        `DV_SPINWAIT(wait (alert_tx.alert_p == 1);, , , "Wait for alert_p goes high");
         main_clk.wait_clks(WaitAlertHandshakeDone);
         main_clk.apply_reset();
         main_clk.wait_clks(WaitAlertInitDone);
@@ -182,9 +182,7 @@ module prim_alert_tb;
     alert_test = 1;
     main_clk.wait_clks(1);
     alert_test = 0;
-    repeat ($urandom_range(
-        10, 20
-    )) begin
+    repeat ($urandom_range(10, 20)) begin
       if (alert_ack == 1) begin
         $error("Alert ack should not set high during alert_test sequence!");
         error = 1;
@@ -199,7 +197,7 @@ module prim_alert_tb;
         begin
           main_clk.wait_clks($urandom_range(MinHandshakeWait, 10));
           ping_req = 1;
-          `DV_SPINWAIT(wait (ping_ok == 1);,,, "Wait for ping_ok timeout");
+          `DV_SPINWAIT(wait (ping_ok == 1);, , , "Wait for ping_ok timeout");
           ping_req = 0;
           main_clk.wait_clks(WaitCycle + WaitAlertHandshakeDone);
         end
@@ -223,7 +221,7 @@ module prim_alert_tb;
 
     $assertoff(0, prim_alert_tb.i_alert_receiver.AckDiffOk_A);
     force i_alert_receiver.alert_rx_o.ack_p = 0;
-    `DV_SPINWAIT(wait (integ_fail == 1);,,, "Wait for integrity error timeout");
+    `DV_SPINWAIT(wait (integ_fail == 1);, , , "Wait for integrity error timeout");
     alert_req = 0;
     release i_alert_receiver.alert_rx_o.ack_p;
 

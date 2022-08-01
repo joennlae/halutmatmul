@@ -15,6 +15,7 @@
         {from: "hw/ip/prim_generic",   to: "ip/prim_generic"},
         {from: "hw/ip/prim_xilinx",    to: "ip/prim_xilinx"},
 
-        {from: "hw/lint",              to: "lint"},
+        {from: "hw/lint",              to: "lint", patch_dir: "lint"},
     ]
+    patch_dir: "patches/lowrisc_ip"
 }
