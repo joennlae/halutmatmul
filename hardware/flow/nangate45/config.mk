@@ -8,5 +8,7 @@ export ABC_AREA      = 1
 # Adders degrade GCD
 export ADDER_MAP_FILE :=
 
+export HAS_IO_CONSTRAINTS = 1 # fix error [ERROR GPL-0305] RePlAce diverged at newStepLength.
+
 export DIE_AREA    = 0 0 200 200
 export CORE_AREA   = 10 10 195 195
