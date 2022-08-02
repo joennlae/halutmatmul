@@ -44,6 +44,11 @@ filesets:
       - flow/asap7/config.mk : {file_type: configFile}
       - flow/asap7/constraint.sdc : {file_type: SDC}
 
+  openroad_nangate45_files:
+    files:
+      - flow/nangate45/config.mk : {file_type: configFile}
+      - flow/nangate45/constraint.sdc : {file_type: SDC}
+
 parameters:
   SYNTHESIS:
     datatype: bool
@@ -83,6 +88,18 @@ targets:
       - files_rtl
       - openroad_base_files
       - openroad_asap7_files
+    parameters:
+      - SYNTHESIS=true
+    default_tool: openroad
+    tools:
+      openroad:
+        flow_path: flow/OpenROAD/flow
+  openroad_nangate45:
+    <<: *default_target
+    filesets:
+      - files_rtl
+      - openroad_base_files
+      - openroad_nangate45_files
     parameters:
       - SYNTHESIS=true
     default_tool: openroad

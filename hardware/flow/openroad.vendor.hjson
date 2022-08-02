@@ -6,4 +6,6 @@
         url: "https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git"
         rev: "master"
     }
+
+    patch_dir: "patches/OpenROAD"
 }
