@@ -13,6 +13,12 @@ internal/
   # internal git repo
 ```
 
+## OpenROAD flow
+
+* [The-OpenROAD-Project/OpenROAD-flow-scripts](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts)
+* [Web Documentation](https://openroad.readthedocs.io/en/latest/)
+* [PDF Documentation](https://openroad.readthedocs.io/_/downloads/en/latest/pdf/)
+
 ## Setup Environment
 
 ```bash
