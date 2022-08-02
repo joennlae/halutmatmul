@@ -25,7 +25,7 @@ jobs:
         fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top
     - name: Copy & save reports
       run: |
-        cd build
+        cd hardware/build
         mkdir flow_reports
         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports 
         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
@@ -34,4 +34,4 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: asap-7-openroad-report
-        path: flow_reports
+        path: hardware/build/flow_reports

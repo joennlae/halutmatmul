@@ -25,10 +25,16 @@ jobs:
       with:
         filters: |
           algorithmic:
-            - '.github/**'
+            - '.github/workflows/cpp_testing.yaml'
+            - '.github/workflows/gpu_tests.yaml'
+            - '.github/workflows/linting.yaml'
+            - '.github/workflows/python_mypy.yaml'
+            - '.github/workflows/python_testing.yaml'
             - 'docs/**'
             - 'maddness/**'
             - 'scripts/**'
             - 'src/**'
           hardware:
+            - '.github/workflows/hw_linting.yaml'
+            - '.github/workflows/hw_openroad.yaml'
             - 'hardware/**'
