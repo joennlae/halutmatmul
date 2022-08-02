@@ -31,7 +31,38 @@ jobs:
         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports
         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports
+        tar -cvf report.tar.gz flow_reports
+        mkdir backup
+        cp report.tar.gz backup/report.tar.gz
     - uses: actions/upload-artifact@v3
       with:
         name: asap-7-openroad-report
         path: hardware/build/flow_reports
+    - name: Pushes current reports to repo
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+      with:
+        source-directory: 'hardware/build/flow_reports'
+        destination-github-username: 'joennlae'
+        destination-repository-name: 'halutmatmul-openroad-reports'
+        user-email: openroad@reports.ch
+        target-branch: main
+        target-directory: 'latest/asap7/'
+    - name: Get Time
+      id: time
+      uses: nanzm/get-time-action@v1.1
+      with:
+        timeZone: 0
+        format: 'YYYY-MM-DD-HH-mm-ss'
+    - name: Pushes current reports to repo
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+      with:
+        source-directory: 'hardware/build/backup'
+        destination-github-username: 'joennlae'
+        destination-repository-name: 'halutmatmul-openroad-reports'
+        user-email: openroad@reports.ch
+        target-branch: main
+        target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
