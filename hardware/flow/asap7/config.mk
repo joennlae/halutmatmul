@@ -1,6 +1,6 @@
 export PLATFORM               = asap7
 
-export DESIGN_NAME            = register_file_latch
+# export DESIGN_NAME            = register_file_latch # defined via edalize
 
 export VERILOG_FILES = $(shell cat "files.txt")
 export SDC_FILE      = ./constraint.sdc

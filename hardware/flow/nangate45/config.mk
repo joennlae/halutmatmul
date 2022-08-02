@@ -1,4 +1,4 @@
-export DESIGN_NAME = register_file_latch
+# export DESIGN_NAME  = register_file_latch # defined via edalize
 export PLATFORM    = nangate45
 
 export VERILOG_FILES = $(shell cat "files.txt")

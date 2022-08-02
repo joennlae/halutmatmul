@@ -82,27 +82,42 @@ targets:
       veribleformat:
         verible_format_args:
           - "--inplace"
-  openroad_asap7:
+
+  openroad_base: &openroad_target
     <<: *default_target
     filesets:
       - files_rtl
       - openroad_base_files
+    default_tool: openroad
+    tools:
+      openroad:
+        flow_path: flow/OpenROAD/flow
+
+  openroad_asap7: 
+    <<: *openroad_target
+    filesets_append:
       - openroad_asap7_files
-    parameters:
-      - SYNTHESIS=true
-    default_tool: openroad
-    tools:
-      openroad:
-        flow_path: flow/OpenROAD/flow
+
   openroad_nangate45:
-    <<: *default_target
-    filesets:
-      - files_rtl
-      - openroad_base_files
+    <<: *openroad_target
+    filesets_append:
       - openroad_nangate45_files
-    parameters:
-      - SYNTHESIS=true
+
+  openroad_nangate45_floor:
+    <<: *openroad_target
+    filesets_append:
+      - openroad_nangate45_files
+    tools:
+      openroad:
+        flow_path: flow/OpenROAD/flow
+        make_target: floorplan
+
+  openroad_asap7_floor:
+    <<: *openroad_target
+    filesets_append:
+      - openroad_asap7_files
     default_tool: openroad
     tools:
       openroad:
         flow_path: flow/OpenROAD/flow
+        make_target: floorplan
