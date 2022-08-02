@@ -1,16 +1,23 @@
 # Halutmatmul
 
+### Algorithmic CI
 [![GPU Tests (Vast.ai)](https://github.com/joennlae/halutmatmul/actions/workflows/gpu_tests.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/gpu_tests.yaml)
 [![PyTest](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml)
 [![Linting](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml)
 [![MyPy](https://github.com/joennlae/halutmatmul/actions/workflows/python_mypy.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_mypy.yaml)
 [![C++ build](https://github.com/joennlae/halutmatmul/actions/workflows/cpp_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/cpp_testing.yaml)
 
+### Hardware CI
+
+[![HW Synth + PAR OpenROAD](https://github.com/joennlae/halutmatmul/actions/workflows/hw_openroad.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_openroad.yaml)
+[![RTL Linting](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml)
+
+
+## General Information
+
 * Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
 * More information about the base project is [here](maddness/README.md)
 * [arXiv](https://arxiv.org/abs/2106.10860) paper link
-
-## General Information
 
 This repo is used for the algorithmic exploration. I will try to update this repo with as much hardware information as I am allowed to publish.
 
@@ -37,6 +44,17 @@ halut --help
 ## Hackernews mention (comments only) and discussion
 
 * [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
+
+## Hardware OpenROAD flow results
+
+| Latest Design  | ASAP7         |
+| -------------  | ------------- |
+| Final Routing  | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/reports/asap7/register_file_latch/base/final_routing.webp)  |
+| Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/reports/report-gallery-register_file_latch.html)  |
+| Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/metrics.html)  |
+| Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/reports/report-table.html)  |
+| All Report     | [All](https://github.com/joennlae/halutmatmul-openroad-reports/tree/main/latest/asap7)  |
+| History        | [History](https://github.com/joennlae/halutmatmul-openroad-reports/tree/main/history/asap7)  |
 
 ## Progress Slides
 
