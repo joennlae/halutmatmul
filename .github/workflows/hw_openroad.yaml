@@ -1,0 +1,37 @@
+name: HW Synth + PAR OpenROAD
+
+on: push
+
+jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
+
+  asap7:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run OpenROAD flow for ASAP7
+      run: |
+        source /venv/bin/activate
+        cd hardware
+        python util/vendor.py flow/openroad.vendor.hjson -v
+        fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top
+    - name: Copy & save reports
+      run: |
+        cd build
+        mkdir flow_reports
+        cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports 
+        cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
+        cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports
+        cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports
+    - uses: actions/upload-artifact@v3
+      with:
+        name: asap-7-openroad-report
+        path: flow_reports
