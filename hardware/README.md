@@ -76,6 +76,12 @@ Use the script `util/vendor.py` to update or added vendored IP.
 
 * [vendor.py Docs](https://docs.opentitan.org/doc/rm/vendor_in_tool/index.html)
 
+**Important** use it from the base git directory otherwise patches will be skipped silently.
+
+```bash
+python hardware/util/vendor.py hardware/vendor/lowrisc_ip.vendor.hjson -v
+```
+
 #### IIS tricks
 
 ```bash
