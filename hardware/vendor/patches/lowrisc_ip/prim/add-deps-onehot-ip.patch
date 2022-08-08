@@ -1,0 +1,13 @@
+diff --git a/prim_onehot.core b/prim_onehot.core
+index 2e5a52d..03642ef 100644
+--- a/prim_onehot.core
++++ b/prim_onehot.core
+@@ -9,6 +9,8 @@ filesets:
+   files_rtl:
+     depend:
+       - lowrisc:prim:util
++      - lowrisc:prim:assert
++      - lowrisc:prim:and2
+     files:
+       - rtl/prim_onehot_enc.sv
+       - rtl/prim_onehot_mux.sv

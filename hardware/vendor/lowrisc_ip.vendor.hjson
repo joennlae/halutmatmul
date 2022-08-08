@@ -11,7 +11,7 @@
     }
 
     mapping: [
-        {from: "hw/ip/prim",           to: "ip/prim"},
+        {from: "hw/ip/prim",           to: "ip/prim", patch_dir: "prim"},
         {from: "hw/ip/prim_generic",   to: "ip/prim_generic"},
         {from: "hw/ip/prim_xilinx",    to: "ip/prim_xilinx"},
 
