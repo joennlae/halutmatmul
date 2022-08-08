@@ -13,7 +13,7 @@ module prim_clock_gating (
 
   reg en_latch;
 
-  always @* begin
+  always_latch begin
     if (!clk_i) begin
       en_latch = en_i | test_en_i;
     end

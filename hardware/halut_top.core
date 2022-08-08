@@ -8,12 +8,12 @@ description: "Halut a hash LUT based AMM"
 filesets:
   files_rtl:
     depend:
-      - lowrisc:prim:buf
-      - lowrisc:prim:onehot_check
+      - lowrisc:prim:onehot
     files:
       # - rtl/register_file_ff.sv # generic FF-base
-      - rtl/register_file_latch.sv # ASIC
+      - rtl/register_file_mem_latch.sv # ASIC
       - rtl/prim_clock_gating.sv
+      - rtl/scm.sv
     file_type: systemVerilogSource
 
   files_verilator_waiver:
@@ -61,7 +61,7 @@ targets:
       - tool_verilator   ? (files_verilator_waiver)
       - tool_veriblelint ? (files_veriblelint_waiver)
       - files_rtl
-    toplevel: register_file_latch
+    toplevel: scm
   lint:
     <<: *default_target
     parameters:

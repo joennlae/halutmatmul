@@ -1,5 +1,7 @@
 
 `verilator_config
 
-lint_off -rule LATCH -file "*/rtl/prim_clock_gating.sv" -match "*register_file_latch.gen_cg_word_iter*"
-lint_off -rule LATCH -file "*/rtl/prim_clock_gating.sv" -match "*register_file_latch.cg_we_global*"
+lint_off -rule UNOPTFLAT -file "*/rtl/scm.sv" -match "*waddr_onehot_unit*"
+
+// lint_off -rule LATCH -file "*/rtl/prim_clock_gating.sv" -match "*register_file_latch.gen_cg_word_iter*"
+// lint_off -rule LATCH -file "*/rtl/prim_clock_gating.sv" -match "*register_file_latch.cg_we_global*"
