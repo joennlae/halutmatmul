@@ -88,7 +88,7 @@ python hardware/util/vendor.py hardware/vendor/lowrisc_ip.vendor.hjson -v
 mkdir -p /scratch2/janniss/halut_flow/OpenROAD
 # use vendor.py to OpenROAD (normally would use submodule but IIS storage limits)
 # symlink option is only needed when not enough space is available
-python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -S /scratch2/janniss/halut_flow/OpenROAD
+python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -S /scratch2/janniss/halut_flow/OpenROAD -v
 ```
 
 ## License
