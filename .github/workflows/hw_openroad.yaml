@@ -10,62 +10,127 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
-    container:
-      image: joennlae/halutmatmul-conda-hw:latest
-    defaults:
-      run:
-        shell: bash -el {0}
+    concurrency: vast.ai
+    timeout-minutes: 120 # keep costs in check
     steps:
-    - uses: actions/checkout@v2
-    - name: Run OpenROAD flow for ASAP7
-      run: |
-        source /venv/bin/activate
-        cd hardware
-        python util/vendor.py flow/openroad.vendor.hjson -v
-        fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top
-    - name: Copy & save reports
-      run: |
-        cd hardware/build
-        mkdir flow_reports
-        cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports 
-        cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
-        cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports
-        cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports
-        tar -cvf report.tar.gz flow_reports
-        mkdir backup
-        cp report.tar.gz backup/report.tar.gz
-    - uses: actions/upload-artifact@v3
-      with:
-        name: asap-7-openroad-report
-        path: hardware/build/flow_reports
-    - name: Pushes current reports to repo
-      uses: cpina/github-action-push-to-another-repository@main
-      env:
-        SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-      with:
-        source-directory: 'hardware/build/flow_reports'
-        destination-github-username: 'joennlae'
-        destination-repository-name: 'halutmatmul-openroad-reports'
-        user-email: openroad@reports.ch
-        target-branch: main
-        target-directory: 'latest/asap7/'
-    - name: Get Time
-      id: time
-      uses: nanzm/get-time-action@v1.1
-      with:
-        timeZone: 0
-        format: 'YYYY-MM-DD-HH-mm-ss'
-    - name: Pushes current reports to repo
-      uses: cpina/github-action-push-to-another-repository@main
-      env:
-        SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-      with:
-        source-directory: 'hardware/build/flow_reports'
-        destination-github-username: 'joennlae'
-        destination-repository-name: 'halutmatmul-openroad-reports'
-        user-email: openroad@reports.ch
-        target-branch: main
-        target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
+      - name: Run Synth+PAR OpenROAD on vast.ai servers
+        run: |
+          cd .github/vast.ai
+          pip install requests
+          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+          mkdir .ssh
+          python vast_ai_helper.py --hardware
+      # scp copy + execution of synth + par is done in vast_ai_helper.py
+      - uses: webiny/action-post-run@2.0.1
+        id: cleanup-gpu
+        name: Cleanup GPU Post
+        with:
+          run: |
+            python vast_ai_helper.py --cleanup
+      - name: Untar report
+        run: |
+          ls
+          tar -xvf report.tar.gz
+      - uses: actions/upload-artifact@v3
+        with:
+          name: asap-7-openroad-report
+          path: flow_reports
+      - name: Pushes current reports to repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+        with:
+          source-directory: 'flow_reports'
+          destination-github-username: 'joennlae'
+          destination-repository-name: 'halutmatmul-openroad-reports'
+          user-email: openroad@reports.ch
+          target-branch: main
+          target-directory: 'latest/asap7/'
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@v1.1
+        with:
+          timeZone: 0
+          format: 'YYYY-MM-DD-HH-mm-ss'
+      - name: Pushes current reports to repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+        with:
+          source-directory: 'flow_reports'
+          destination-github-username: 'joennlae'
+          destination-repository-name: 'halutmatmul-openroad-reports'
+          user-email: openroad@reports.ch
+          target-branch: main
+          target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
+
+#   asap7:
+#     needs: changes
+#     if: ${{ needs.changes.outputs.hardware == 'true' }}
+#     runs-on: ubuntu-latest
+#     container:
+#       image: joennlae/halutmatmul-conda-hw:latest
+#     defaults:
+#       run:
+#         shell: bash -el {0}
+#     steps:
+#     - uses: actions/checkout@v2
+#     - name: Run OpenROAD flow for ASAP7
+#       run: |
+#         source /venv/bin/activate
+#         cd hardware
+#         python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
+#         fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top
+#     - name: Copy & save reports
+#       run: |
+#         cd hardware/build
+#         mkdir flow_reports
+#         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports 
+#         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
+#         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports
+#         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports
+#         tar -cvf report.tar.gz flow_reports
+#         mkdir backup
+#         cp report.tar.gz backup/report.tar.gz
+#     - uses: actions/upload-artifact@v3
+#       with:
+#         name: asap-7-openroad-report
+#         path: hardware/build/flow_reports
+#     - name: Pushes current reports to repo
+#       uses: cpina/github-action-push-to-another-repository@main
+#       env:
+#         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+#       with:
+#         source-directory: 'hardware/build/flow_reports'
+#         destination-github-username: 'joennlae'
+#         destination-repository-name: 'halutmatmul-openroad-reports'
+#         user-email: openroad@reports.ch
+#         target-branch: main
+#         target-directory: 'latest/asap7/'
+#     - name: Get Time
+#       id: time
+#       uses: nanzm/get-time-action@v1.1
+#       with:
+#         timeZone: 0
+#         format: 'YYYY-MM-DD-HH-mm-ss'
+#     - name: Pushes current reports to repo
+#       uses: cpina/github-action-push-to-another-repository@main
+#       env:
+#         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+#       with:
+#         source-directory: 'hardware/build/flow_reports'
+#         destination-github-username: 'joennlae'
+#         destination-repository-name: 'halutmatmul-openroad-reports'
+#         user-email: openroad@reports.ch
+#         target-branch: main
+#         target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
 
   nangate45:
     needs: changes
@@ -82,7 +147,7 @@ jobs:
       run: |
         source /venv/bin/activate
         cd hardware
-        python util/vendor.py flow/openroad.vendor.hjson -v
+        python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
         fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
     - name: Copy & save reports
       run: |
@@ -127,3 +192,21 @@ jobs:
         user-email: openroad@reports.ch
         target-branch: main
         target-directory: 'history/nangate45/${{ steps.time.outputs.time }}/'
+
+
+cleanup:
+  name: Cleanup check
+  needs: gpu_tests
+  runs-on: ubuntu-latest
+  if: always()
+  steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v3
+      with:
+        python-version: '3.9'
+    - name: Cleanup Vast.ai instances
+      run: |
+        cd .github/vast.ai
+        pip install requests
+        ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+        python vast_ai_helper.py --cleanup

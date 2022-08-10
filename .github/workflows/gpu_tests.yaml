@@ -8,7 +8,7 @@ jobs:
   gpu_tests:
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
-    concurrency: gpu_tests
+    concurrency: vast.ai
     runs-on: ubuntu-latest
     timeout-minutes: 120 # keep costs in check
     steps:
