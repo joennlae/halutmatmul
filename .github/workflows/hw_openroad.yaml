@@ -36,6 +36,7 @@ jobs:
             python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
       - name: Untar report
         run: |
+          cd .github/vast.ai
           ls
           tar -xvf report.tar.gz
       - uses: actions/upload-artifact@v3
@@ -47,7 +48,7 @@ jobs:
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
         with:
-          source-directory: 'flow_reports'
+          source-directory: '.github/vast.ai/flow_reports'
           destination-github-username: 'joennlae'
           destination-repository-name: 'halutmatmul-openroad-reports'
           user-email: openroad@reports.ch
@@ -64,7 +65,7 @@ jobs:
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
         with:
-          source-directory: 'flow_reports'
+          source-directory: '.github/vast.ai/flow_reports'
           destination-github-username: 'joennlae'
           destination-repository-name: 'halutmatmul-openroad-reports'
           user-email: openroad@reports.ch
@@ -145,7 +146,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run OpenROAD flow for NanGATE45
       run: |
-        source /venv/bin/activat
+        source /venv/bin/activate
         python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
         cd hardware
         fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
