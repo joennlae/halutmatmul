@@ -336,10 +336,13 @@ views = set()
 images = defaultdict(lambda: defaultdict(dict))
 for parents, dirs, files in sorted(os.walk("reports", topdown=False)):
     for file in files:
-        if file.endswith(".webp"):
+        if file.endswith(".webp") or file.endswith(".webp.png"):
             path = os.path.join(parents, file).replace("reports", ".")
             platform, design = path.split(os.sep)[1:3]
-            view = file[:-5]
+            if file.endswith(".webp"):
+                view = file[:-5]
+            elif file.endswith(".webp.png"):
+                view = file[:-9]
             designs.add(design)
             platforms.add(platform)
             views.add(view)

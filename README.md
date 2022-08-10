@@ -49,7 +49,7 @@ halut --help
 
 | Latest Design  | ASAP7         | NanGate45      |
 | -------------  | ------------- | -------------  |
-| Final Routing  | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/reports/asap7/scm/base/final_routing.webp)  | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/reports/nangate45/scm/base/final_routing.webp)  |
+| Final Routing  | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/reports/asap7/scm/base/final_routing.webp.png)  | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/reports/nangate45/scm/base/final_routing.webp)  |
 | Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/reports/report-gallery-scm.html)  | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/reports/report-gallery-scm.html)  |
 | Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/metrics.html)  |  [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/metrics.html)  |
 | Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/reports/report-table.html)  | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/reports/report-table.html)  |
