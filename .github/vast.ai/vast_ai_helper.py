@@ -25,11 +25,17 @@ def run_command(cmd: str, print_all: bool = False) -> str:
     return total_output_str
 
 
-def cleanup() -> None:
+# image_uuid
+# joennlae/halutmatmul-conda-gpu:latest
+# joennlae/halutmatmul-conda-hw:latest
+def cleanup(image_name: str = "") -> None:
     out = run_command(
         "./vast.py show instances --raw",
     )
     list_out = json.loads(out)
+
+    if len(image_name) > 0:
+        list_out = list(filter(lambda x: x["image_uuid"] == image_name, list_out))
 
     for server in list_out:
         print(f"Start destroying {server['id']}")
@@ -196,17 +202,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hardware", "-hw", action="store_true", help="set is used for hardware tests"
     )
+    parser.add_argument(
+        "--image", "-i", default="", help="set image name to look after for cleanup", type=str
+    )
     args = parser.parse_args()
 
     print(args)
     if args.cleanup:
-        cleanup()
+        cleanup(args.image)
     else:
-        cleanup()
+        cleanup(args.image)
         ssh_host, ssh_port = startup(args.hardware)
         # ssh_host = "ssh4.vast.ai"
         # ssh_port = 11182
         sleep(5)
         error_code = run_ssh_commands(ssh_host, ssh_port, args.debug, args.hardware)
-        cleanup()
+        cleanup(args.image)
         sys.exit(error_code)

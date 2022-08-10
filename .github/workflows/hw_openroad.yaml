@@ -10,7 +10,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
-    concurrency: vast.ai
+    concurrency: vast.ai-hw
     timeout-minutes: 120 # keep costs in check
     steps:
       - uses: actions/checkout@v2
@@ -33,7 +33,7 @@ jobs:
         name: Cleanup GPU Post
         with:
           run: |
-            python vast_ai_helper.py --cleanup
+            python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
       - name: Untar report
         run: |
           ls
@@ -194,19 +194,19 @@ jobs:
         target-directory: 'history/nangate45/${{ steps.time.outputs.time }}/'
 
 
-cleanup:
-  name: Cleanup check
-  needs: gpu_tests
-  runs-on: ubuntu-latest
-  if: always()
-  steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v3
-      with:
-        python-version: '3.9'
-    - name: Cleanup Vast.ai instances
-      run: |
-        cd .github/vast.ai
-        pip install requests
-        ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
-        python vast_ai_helper.py --cleanup
+  cleanup:
+    name: Cleanup check
+    needs: asap7
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+      - name: Cleanup Vast.ai instances
+        run: |
+          cd .github/vast.ai
+          pip install requests
+          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+          python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
