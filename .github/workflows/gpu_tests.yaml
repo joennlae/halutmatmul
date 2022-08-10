@@ -25,7 +25,7 @@ jobs:
           pip install requests
           ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
           mkdir .ssh
-          python vast_ai_helper.py
+          python vast_ai_helper.py --image joennlae/halutmatmul-conda-gpu:latest
       - uses: webiny/action-post-run@2.0.1
         id: cleanup-gpu
         name: Cleanup GPU Post

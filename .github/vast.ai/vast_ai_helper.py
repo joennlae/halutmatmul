@@ -57,7 +57,7 @@ HW_TEST_SEARCH = ( "./vast.py search offers 'reliability > 0.98 rentable==True i
 GPU_TEST_COMMAND = "--image joennlae/halutmatmul-conda-gpu:latest --disk 32"
 HW_TEST_COMMAND = "--image joennlae/halutmatmul-conda-hw:latest --disk 32"
 
-def startup(is_hardware: bool = False) -> tuple[str, int]:
+def startup(image: str = "joennlae/halutmatmul-conda-gpu:latest", is_hardware: bool = False) -> tuple[str, int]:
     out = run_command(
         HW_TEST_SEARCH if is_hardware else GPU_TEST_SEARCH
     )
@@ -105,15 +105,17 @@ def startup(is_hardware: bool = False) -> tuple[str, int]:
         sleep(5)
         out = run_command(f"./vast.py show instances --raw")
         try:
-            out_dict = json.loads(out)
-            if len(out_dict):
-                print(out_dict)
-                print(out_dict[0]["status_msg"])
+            out_list = json.loads(out)
+            if len(image) > 0:
+                out_list = list(filter(lambda x: x["image_uuid"] == image, out_list))
+            if len(out_list):
+                print(out_list)
+                print(out_list[0]["status_msg"])
                 if ssh_port in (0, None):
-                    ssh_host = out_dict[0]["ssh_host"]
-                    if isinstance(out_dict[0]["ssh_port"], int):
-                        ssh_port = out_dict[0]["ssh_port"]
-                if out_dict[0]["actual_status"] == "running" and ssh_port != 0:
+                    ssh_host = out_list[0]["ssh_host"]
+                    if isinstance(out_list[0]["ssh_port"], int):
+                        ssh_port = out_list[0]["ssh_port"]
+                if out_list[0]["actual_status"] == "running" and ssh_port != 0:
                     starting = False
             counter += 1
         except json.JSONDecodeError:
@@ -212,10 +214,10 @@ if __name__ == "__main__":
         cleanup(args.image)
     else:
         cleanup(args.image)
-        ssh_host, ssh_port = startup(args.hardware)
+        ssh_host, ssh_port = startup(args.image, args.hardware)
         # ssh_host = "ssh4.vast.ai"
         # ssh_port = 11182
-        sleep(5)
+        sleep(10)
         error_code = run_ssh_commands(ssh_host, ssh_port, args.debug, args.hardware)
         cleanup(args.image)
         sys.exit(error_code)

@@ -26,7 +26,7 @@ jobs:
           pip install requests
           ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
           mkdir .ssh
-          python vast_ai_helper.py --hardware
+          python vast_ai_helper.py --hardware --image joennlae/halutmatmul-conda-hw:latest
       # scp copy + execution of synth + par is done in vast_ai_helper.py
       - uses: webiny/action-post-run@2.0.1
         id: cleanup-gpu
@@ -143,11 +143,11 @@ jobs:
         shell: bash -el {0}
     steps:
     - uses: actions/checkout@v2
-    - name: Run OpenROAD flow for ASAP7
+    - name: Run OpenROAD flow for NanGATE45
       run: |
-        source /venv/bin/activate
-        cd hardware
+        source /venv/bin/activat
         python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
+        cd hardware
         fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
     - name: Copy & save reports
       run: |
