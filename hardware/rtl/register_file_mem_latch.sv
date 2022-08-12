@@ -19,7 +19,6 @@ module register_file_mem_latch #(
 ) (
   // Clock and Reset
   input logic clk_i,
-  input logic rst_ni,
 
   input logic test_en_i,
 
@@ -42,7 +41,6 @@ module register_file_mem_latch #(
   logic [ NumWords-1:0] waddr_onehot_a;
 
   logic [ NumWords-1:0] mem_clocks;
-  logic [DataWidth-1:0] wdata_a_q;
 
   // internal addresses
   logic [AddrWidth-1:0] raddr_a_int, waddr_a_int;
@@ -67,18 +65,6 @@ module register_file_mem_latch #(
     .test_en_i(test_en_i),
     .clk_o    (clk_int)
   );
-
-  // Sample input data
-  // Use clk_int here, since otherwise we don't want to write anything anyway.
-  always_ff @(posedge clk_int or negedge rst_ni) begin : sample_wdata
-    if (!rst_ni) begin
-      wdata_a_q <= 0;
-    end else begin
-      if (we_a_i) begin
-        wdata_a_q <= wdata_a_i;
-      end
-    end
-  end
 
   // Write address decoding
   always_comb begin : wad
@@ -107,7 +93,7 @@ module register_file_mem_latch #(
   for (genvar i = 0; i < NumWords; i++) begin : g_rf_latches
     always_latch begin
       if (mem_clocks[i]) begin
-        mem[i] = wdata_a_q;
+        mem[i] = wdata_a_i;
       end
     end
   end

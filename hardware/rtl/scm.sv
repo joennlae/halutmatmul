@@ -89,7 +89,6 @@ module scm #(
       .DataWidth(DataTypeWidth)
     ) sub_unit_i (
       .clk_i(clk_i),  // clk_int?
-      .rst_ni(rst_ni),
       .test_en_i(test_en_i),
       .raddr_a_i(raddr_int_sub),
       .rdata_a_o(read_outputs_subunits[x]),
