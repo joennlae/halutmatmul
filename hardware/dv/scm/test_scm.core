@@ -13,11 +13,19 @@ filesets:
     depend:
       - halut:util:sv2v
 
+parameters:
+  COCOTB_SIM: # use to dump vcd file
+    datatype: bool
+    paramtype: vlogdefine
+    default: true
+
 targets:
   default: &default_target
     filesets:
       - files_test
     toplevel: scm
+    parameters:
+      - COCOTB_SIM=true
     default_tool: cocotb
   icarus:
     <<: *default_target

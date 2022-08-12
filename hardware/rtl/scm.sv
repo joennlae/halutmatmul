@@ -109,4 +109,12 @@ module scm #(
     .out_o (rdata_a_o)
   );
 
+  // https://docs.cocotb.org/en/stable/simulator_support.html#sim-icarus-waveforms
+`ifdef COCOTB_SIM
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, scm);
+    #1;
+  end
+`endif
 endmodule

@@ -34,8 +34,7 @@ scripts:
       - --sv2v=zachjs-sv2v
       - --verbose
       - files.txt
-      # - -DYOSYS
-      # - -DFORMAL
+      - -DCOCOTB_SIM
 
 
 targets:

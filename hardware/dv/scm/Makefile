@@ -7,11 +7,11 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += $(shell cat "files.txt") 
+VERILOG_SOURCES += $(shell cat "files.txt")
 
 
 ifeq ($(SIM),icarus)
-COMPILE_ARGS += -I $(shell cat "incdirs.txt") -gno-assertions
+COMPILE_ARGS += -I $(shell cat "incdirs.txt")
 else ifeq ($(SIM),verilator)
 COMPILE_ARGS += -I$(shell cat "incdirs.txt") # TODO fix when multiple include dirs
 # https://docs.cocotb.org/en/stable/simulator_support.html#sim-verilator-waveforms
