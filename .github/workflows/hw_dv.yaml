@@ -1,0 +1,24 @@
+name: HW Design Verification
+
+on: push
+
+jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
+
+  icarus_simulations:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Simulate and run DV with icarus
+      run: |
+        source /venv/bin/activate
+        cd hardware
+        fusesoc --cores-root=. run --target=icarus halut:test:scm
