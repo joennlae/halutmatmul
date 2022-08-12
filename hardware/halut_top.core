@@ -64,8 +64,6 @@ targets:
     toplevel: scm
   lint:
     <<: *default_target
-    parameters:
-      - SYNTHESIS=true
     default_tool: verilator
     tools:
       verilator:
@@ -75,8 +73,6 @@ targets:
       veriblelint:
   format:
     <<: *default_target
-    parameters:
-      - SYNTHESIS=true
     default_tool: veribleformat
     tools:
       veribleformat:
