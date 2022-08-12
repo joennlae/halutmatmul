@@ -1,0 +1,28 @@
+CAPI=2:
+name: "halut:test:scm:0.1"
+description: "Test for standard cell memory"
+
+filesets:
+  files_test:
+    depend:
+      - halut:ip:halut_top
+    files:
+      - Makefile : { file_type: Makefile}
+      - test.py : { file_type: Cocotb }
+  sv2v:
+    depend:
+      - halut:util:sv2v
+
+targets:
+  default: &default_target
+    filesets:
+      - files_test
+    toplevel: scm
+    default_tool: cocotb
+  icarus:
+    <<: *default_target
+    filesets_append:
+      - sv2v
+    tools:
+      cocotb:
+        make_args: SIM=icarus
