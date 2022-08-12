@@ -22,7 +22,6 @@
     100
   ],
   "editor.formatOnSave": true,
-  "verilog.ctags.path": "~/miniconda3/bin/ctags",
   "systemverilog.includeIndexing": [
     "hardware/**/*.{sv,v,svh,vh}",
   ],
