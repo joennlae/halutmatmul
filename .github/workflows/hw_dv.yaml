@@ -23,3 +23,5 @@ jobs:
         cd hardware
         fusesoc --cores-root=. run --target=icarus halut:test:scm
         fusesoc --cores-root=. run --target=icarus halut:test:fp_adder
+        fusesoc --cores-root=. run --target=icarus halut:test:fp_16_to_32_convert
+        fusesoc --cores-root=. run --target=icarus halut:test:fp_16_32_adder
