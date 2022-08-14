@@ -55,9 +55,9 @@ async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
 
     # Initial values
     dut.test_en_i.value = 0
-    dut.raddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=False)
-    dut.waddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=False)
-    dut.wdata_a_i.value = BinaryValue(0, n_bits=16, bigEndian=False)
+    dut.raddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.waddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.wdata_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
     dut.we_a_i.value = 0
 
     # Reset DUT

@@ -6,13 +6,13 @@ from cocotb.types import LogicArray
 def float_to_float16_binary(fl: np.float16) -> BinaryValue:
     # pylint: disable=too-many-function-args
     # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
-    return LogicArray(bin(np.float16(fl).view("H"))[2:].zfill(16)[::-1]).to_BinaryValue(
-        bigEndian=False
+    return LogicArray(bin(np.float16(fl).view("u2"))[2:].zfill(16)).to_BinaryValue(
+        bigEndian=True
     )
 
 
 def binary_to_float16(binary: BinaryValue) -> np.float16:
-    bin_str = binary.binstr[::-1]  # back to big endian
+    bin_str = binary.binstr # back to big endian
     padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
     bytes_list = list(int(padded_bits, 2).to_bytes(len(padded_bits) // 8, "big"))
     # print(bin_str, padded_bits, bytes_list, bytes(bytes_list))
