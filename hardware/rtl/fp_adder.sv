@@ -1,5 +1,3 @@
-
-
 module fp_adder #(
   parameter int unsigned C_OP = fp_defs::C_OP,
   parameter int unsigned C_EXP = fp_defs::C_EXP,
