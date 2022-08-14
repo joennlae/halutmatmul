@@ -7,7 +7,7 @@ from cocotb.triggers import RisingEdge
 from cocotb.clock import Clock
 from cocotb.binary import BinaryValue
 
-from util.helper_functions import binary_to_float16, float_to_float16_binary  # type: ignore[import]
+from util.helper_functions import binary_to_float16, float_to_float16_binary
 
 DATA_TYPE_WIDTH = 16
 C = 32

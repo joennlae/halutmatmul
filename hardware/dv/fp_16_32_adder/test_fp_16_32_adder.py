@@ -8,7 +8,7 @@ from cocotb.clock import Clock
 from cocotb.binary import BinaryValue
 from cocotb.types import LogicArray
 
-from util.helper_functions import (  # type: ignore[import]
+from util.helper_functions import (
     binary_to_float16,
     binary_to_float32,
     float_to_float16_binary,

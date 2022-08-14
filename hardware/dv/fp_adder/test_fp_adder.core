@@ -9,7 +9,7 @@ filesets:
       - halut:ip:halut_top
     files:
       - Makefile : { file_type: Makefile}
-      - test.py : { file_type: Cocotb }
+      - test_fp_adder.py : { file_type: Cocotb }
   sv2v:
     depend:
       - halut:util:sv2v

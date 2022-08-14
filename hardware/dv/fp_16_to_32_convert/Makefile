@@ -21,7 +21,7 @@ endif
 TOPLEVEL = fp_16_to_32_convert
 
 # MODULE is the basename of the Python test file
-MODULE = test
+MODULE = test_fp_16_to_32_convert
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

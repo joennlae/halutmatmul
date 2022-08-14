@@ -21,7 +21,24 @@ jobs:
     - name: Lint with pylint
       run: |
         $CONDA/bin/conda install -c conda-forge pylint=2.14
-        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/*
+        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/* hardware/dv/**/*.py
+
+  python_typechecking:
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check types with mypy
+      run: |
+        source /venv/bin/activate
+        pip install types-requests types-setuptools
+        mypy --config-file .mypy.ini --pretty hardware/util hardware/dv/**/*.py
 
   verilator_lint_hw:
     needs: changes
