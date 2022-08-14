@@ -69,6 +69,16 @@ Two extensions are recommended:
 * [SystemVerilog - Language Support](https://marketplace.visualstudio.com/items?itemName=eirikpre.systemverilog)
 * [SystemVerilog and Verilog Formatter](https://marketplace.visualstudio.com/items?itemName=bmpenuelas.systemverilog-formatter-vscode)
 
+Be sure to update the `.vscode` file with your own verilator path:
+
+`/scratch2/janniss/conda/halutmatmul_hw/bin/verilator` -> `verilator` or your custom path
+```json
+{
+  // the default with verilator 
+  "systemverilog.launchConfigurationVerilator": "/scratch2/janniss/conda/halutmatmul_hw/bin/verilator --sv --lint-only --language 1800-2012 --Wall -Ihardware/rtl -Ihardware/vendor/lowrisc_ip/ip/prim/rtl hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv",
+}
+```
+
 
 ## Vendored IP
 

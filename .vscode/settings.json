@@ -33,6 +33,6 @@
   "systemverilog.compileOnSave": true,
   "systemverilog.compilerType": "Verilator",
   "systemverilog.verifyOnOpen": true,
-  "systemverilog.launchConfigurationVerilator": "/scratch2/janniss/conda/halutmatmul_hw/bin/verilator --sv --lint-only --language 1800-2012 --Wall -Ihardware/rtl -Ihardware/vendor/lowrisc_ip/ip/prim/rtl hardware/lint/verilator/verilator_waiver.vlt",
+  "systemverilog.launchConfigurationVerilator": "/scratch2/janniss/conda/halutmatmul_hw/bin/verilator --sv --lint-only --language 1800-2012 --Wall -Ihardware/rtl -Ihardware/vendor/lowrisc_ip/ip/prim/rtl hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv",
   "systemverilogFormatter.commandLineArguments": "--formal_parameters_indentation=indent --named_parameter_indentation=indent --named_port_indentation=indent --port_declarations_indentation=indent" // lowRISC 
 }
