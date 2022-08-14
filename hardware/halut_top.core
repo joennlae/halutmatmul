@@ -16,6 +16,8 @@ filesets:
       - rtl/fp_leading_one.sv
       - rtl/fp_norm.sv
       - rtl/fp_adder.sv
+      - rtl/fp_16_to_32_convert.sv
+      - rtl/fp_16_32_adder.sv
       - rtl/register_file_mem_latch.sv # ASIC
       - rtl/prim_clock_gating.sv
       - rtl/scm.sv
