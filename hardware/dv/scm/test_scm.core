@@ -5,6 +5,7 @@ description: "Test for standard cell memory"
 filesets:
   files_test:
     depend:
+      - halut:test:util
       - halut:ip:halut_top
     files:
       - Makefile : { file_type: Makefile}

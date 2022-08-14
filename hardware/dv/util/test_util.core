@@ -1,0 +1,13 @@
+CAPI=2:
+name: "halut:test:util:0.1"
+description: "Test util"
+
+filesets:
+  files_util:
+    files:
+      - helper_functions.py : { copyto: util/helper_functions.py }
+
+targets:
+  default:
+    filesets:
+      - files_util

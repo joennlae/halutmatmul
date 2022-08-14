@@ -3,10 +3,11 @@ from math import log2
 from random import getrandbits
 import numpy as np
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge
 from cocotb.clock import Clock
-from cocotb.binary import BinaryValue, BinaryRepresentation
-from cocotb.types import LogicArray
+from cocotb.binary import BinaryValue
+
+from util.helper_functions import binary_to_float16, float_to_float16_binary  # type: ignore[import]
 
 DATA_TYPE_WIDTH = 16
 C = 32
@@ -48,24 +49,6 @@ async def read_write_test(dut) -> None:  # type: ignore[no-untyped-def]
     assert dut.rdata_a_o.value == 4419, "read != write"
 
 
-def float_to_float16_binary(fl: np.float16) -> BinaryValue:
-    # pylint: disable=too-many-function-args
-    # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
-    return LogicArray(bin(np.float16(fl).view("H"))[2:].zfill(16)[::-1]).to_BinaryValue(
-        bigEndian=False
-    )
-
-
-def binary_to_float16(binary: BinaryValue) -> np.float16:
-    bin_str = binary.binstr[::-1]  # back to big endian
-    padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
-    bytes_list = list(int(padded_bits, 2).to_bytes(len(padded_bits) // 8, "big"))
-    # print(bin_str, padded_bits, bytes_list, bytes(bytes_list))
-    dt = np.dtype(np.float16)
-    dt = dt.newbyteorder(">")
-    return np.frombuffer(bytes(bytes_list), dtype=dt, count=-1)[0]
-
-
 @cocotb.test()
 async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
     cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
@@ -83,7 +66,7 @@ async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
         await RisingEdge(dut.clk_i)
     dut.rst_ni.value = 1
 
-    for _ in range(100):
+    for _ in range(1000):
         random_val = np.float16(np.random.random_sample())
         random_val_bin = float_to_float16_binary(random_val)
         random_addr = getrandbits(TOTAL_ADDR_WIDTH)
