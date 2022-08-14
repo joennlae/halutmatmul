@@ -13,14 +13,14 @@
 
 
 module fp_add #(
-  parameter C_EXP_PRENORM  = fp_defs::C_EXP_PRENORM,
-  parameter C_MANT_PRENORM = fp_defs::C_MANT_PRENORM,
-  parameter C_MANT_SHIFTED = fp_defs::C_MANT_SHIFTED,
-  parameter C_MANT_SHIFTIN = fp_defs::C_MANT_SHIFTIN,
-  parameter C_MANT_ADDOUT  = fp_defs::C_MANT_ADDOUT,
-  parameter C_MANT_ADDIN   = fp_defs::C_MANT_ADDIN,
-  parameter C_EXP          = fp_defs::C_EXP,
-  parameter C_MANT         = fp_defs::C_MANT
+  parameter int unsigned C_EXP_PRENORM  = fp_defs::C_EXP_PRENORM,
+  parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM,
+  parameter int unsigned C_MANT_SHIFTED = fp_defs::C_MANT_SHIFTED,
+  parameter int unsigned C_MANT_SHIFTIN = fp_defs::C_MANT_SHIFTIN,
+  parameter int unsigned C_MANT_ADDOUT  = fp_defs::C_MANT_ADDOUT,
+  parameter int unsigned C_MANT_ADDIN   = fp_defs::C_MANT_ADDIN,
+  parameter int unsigned C_EXP          = fp_defs::C_EXP,
+  parameter int unsigned C_MANT         = fp_defs::C_MANT
 ) (  //Input
   input logic             Sign_a_DI,
   input logic             Sign_b_DI,

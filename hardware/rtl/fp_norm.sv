@@ -12,26 +12,26 @@
 // heavily adapted
 
 module fp_norm #(
-  parameter C_MANT_PRENORM     = fp_defs::C_MANT_PRENORM,
-  parameter C_EXP_PRENORM      = fp_defs::C_EXP_PRENORM,
-  parameter C_MANT_PRENORM_IND = fp_defs::C_MANT_PRENORM_IND,
-  parameter C_EXP_ZERO         = fp_defs::C_EXP_ZERO,
+  parameter int unsigned       C_MANT_PRENORM     = fp_defs::C_MANT_PRENORM,
+  parameter int unsigned       C_EXP_PRENORM      = fp_defs::C_EXP_PRENORM,
+  parameter int unsigned       C_MANT_PRENORM_IND = fp_defs::C_MANT_PRENORM_IND,
+  parameter bit          [7:0] C_EXP_ZERO         = fp_defs::C_EXP_ZERO,
   // parameter C_EXP_INF          = fp_defs::C_EXP_INF,
 
   // parameter C_RM   = fp_defs::C_RM,
   // parameter C_CMD  = fp_defs::C_CMD,
-  parameter C_MANT = fp_defs::C_MANT,
-  parameter C_EXP  = fp_defs::C_EXP,
+  parameter int unsigned C_MANT = fp_defs::C_MANT,
+  parameter int unsigned C_EXP  = fp_defs::C_EXP,
 
   // parameter C_FPU_ADD_CMD = fp_defs::C_FPU_ADD_CMD,
   // parameter C_FPU_SUB_CMD = fp_defs::C_FPU_SUB_CMD,
   // parameter C_FPU_MUL_CMD = fp_defs::C_FPU_MUL_CMD,
 
-  parameter C_RM_NEAREST  = fp_defs::C_RM_NEAREST,
-  parameter C_RM_TRUNC    = fp_defs::C_RM_TRUNC,
-  parameter C_RM_PLUSINF  = fp_defs::C_RM_PLUSINF,
-  parameter C_RM_MINUSINF = fp_defs::C_RM_MINUSINF,
-  parameter RM_SI = fp_defs::C_RM_NEAREST
+  parameter bit [2:0] C_RM_NEAREST  = fp_defs::C_RM_NEAREST,
+  parameter bit [2:0] C_RM_TRUNC    = fp_defs::C_RM_TRUNC,
+  parameter bit [2:0] C_RM_PLUSINF  = fp_defs::C_RM_PLUSINF,
+  parameter bit [2:0] C_RM_MINUSINF = fp_defs::C_RM_MINUSINF,
+  parameter bit [2:0] RM_SI = fp_defs::C_RM_NEAREST
 ) (
   //Input Operands
   input logic        [C_MANT_PRENORM-1:0] Mant_in_DI,
@@ -84,11 +84,13 @@ module fp_norm #(
 
   logic Denormals_shift_add_D;
   logic Denormals_exp_add_D;
-  assign Denormals_shift_add_D = ~Mant_zero_S & (Exp_in_DI == (C_EXP_PRENORM)'(C_EXP_ZERO)); // & ((OP_SI != C_FPU_MUL_CMD) | (~Mant_in_DI[C_MANT_PRENORM-1] & ~Mant_in_DI[C_MANT_PRENORM-2]));
-  assign Denormals_exp_add_D   =  Mant_in_DI[C_MANT_PRENORM-2] & (Exp_in_DI == (C_EXP_PRENORM)'(C_EXP_ZERO)); // & ((OP_SI == C_FPU_ADD_CMD) | (OP_SI == C_FPU_SUB_CMD ));
+  assign Denormals_shift_add_D = ~Mant_zero_S & (Exp_in_DI == (C_EXP_PRENORM)'(C_EXP_ZERO));
+  assign Denormals_exp_add_D   =  Mant_in_DI[C_MANT_PRENORM-2] &
+    (Exp_in_DI == (C_EXP_PRENORM)'(C_EXP_ZERO));
 
   assign Denormal_S = ((C_EXP_PRENORM)'(signed'(Mant_leadingOne_D)) >= Exp_in_DI) || Mant_zero_S;
-  assign Mant_shAmt_D = Denormal_S ? Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : Mant_leadingOne_D;
+  assign Mant_shAmt_D = Denormal_S ?
+    Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : Mant_leadingOne_D;
   assign Mant_shAmt2_D = {Mant_shAmt_D[$high(Mant_shAmt_D)], Mant_shAmt_D} + (C_MANT + 4 + 1);
 
   //Shift mantissa
@@ -105,7 +107,8 @@ module fp_norm #(
   end
 
   //adjust exponent
-  assign Exp_norm_D = Exp_in_DI - (C_EXP_PRENORM)'(signed'(Mant_leadingOne_D)) + 1 + (C_EXP_PRENORM)'(Denormals_exp_add_D);
+  assign Exp_norm_D = Exp_in_DI - (C_EXP_PRENORM)'(signed'(Mant_leadingOne_D)) + 1
+    + (C_EXP_PRENORM)'(Denormals_exp_add_D);
   //Explanation of the +1 since I'll probably forget:
   //we get numbers in the format xx.x...
   //but to make things easier we interpret them as
@@ -151,7 +154,8 @@ module fp_norm #(
     Mant_roundUp_S = 1'b0;
     case (RM_SI)
       C_RM_NEAREST:
-      Mant_roundUp_S = Mant_lower_D[3] && (((| Mant_lower_D[2:0]) | Mant_sticky_D) || Mant_upper_D[0]);
+      Mant_roundUp_S = Mant_lower_D[3] &&
+        (((| Mant_lower_D[2:0]) | Mant_sticky_D) || Mant_upper_D[0]);
       C_RM_TRUNC: Mant_roundUp_S = 0;
       C_RM_PLUSINF: Mant_roundUp_S = Mant_rounded_S & ~Sign_in_DI;
       C_RM_MINUSINF: Mant_roundUp_S = Mant_rounded_S & Sign_in_DI;

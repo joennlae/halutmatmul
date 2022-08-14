@@ -1,11 +1,11 @@
 
 
 module fp_adder #(
-  parameter C_OP = fp_defs::C_OP,
-  parameter C_EXP = fp_defs::C_EXP,
-  parameter C_MANT = fp_defs::C_MANT,
-  parameter C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
-  parameter C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
+  parameter int unsigned C_OP = fp_defs::C_OP,
+  parameter int unsigned C_EXP = fp_defs::C_EXP,
+  parameter int unsigned C_MANT = fp_defs::C_MANT,
+  parameter int unsigned C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
+  parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -49,7 +49,7 @@ module fp_adder #(
   end
 
   assign sign_a_d = operand_a_dp[C_OP-1];
-  assign sign_b_d = operand_b_dp[C_OP-1];  // (OP_SP == C_FPU_SUB_CMD) ? ~Operand_b_DP[C_OP-1] : 
+  assign sign_b_d = operand_b_dp[C_OP-1];
   assign exp_a_d  = operand_a_dp[C_OP-2:C_MANT];
   assign exp_b_d  = operand_b_dp[C_OP-2:C_MANT];
   assign mant_a_d = {hb_a_d, operand_a_dp[C_MANT-1:0]};

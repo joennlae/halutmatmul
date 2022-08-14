@@ -9,4 +9,5 @@ lint_off -rule UNOPTFLAT -file "*/rtl/scm.sv" -match "*waddr_onehot_unit*"
 
 // only for vscode support
 
-lint_off -rule MODDUP -file "*rtl/fp_defs.sv" -match "*fp_defs*"
+lint_off -rule MODDUP -file "*rtl/fp_defs_pkg.sv" -match "*fp_defs*"
+lint_off -rule DECLFILENAME -file "*rtl/fp_defs_pkg.sv" -match "*fp_defs_pkg*"

@@ -11,7 +11,7 @@
 // src: https://github.com/pulp-platform/fpu/blob/master/hdl/fpu_v0.1/fpu_ff.sv
 
 module fp_leading_one #(
-  parameter LEN = 32
+  parameter int unsigned LEN = 32
 ) (
   input logic [LEN-1:0] in_i,
 
@@ -19,7 +19,7 @@ module fp_leading_one #(
   output logic                   no_ones_o
 );
 
-  localparam NUM_LEVELS = $clog2(LEN);
+  localparam int unsigned NUM_LEVELS = $clog2(LEN);
 
   logic [          LEN-1:0][NUM_LEVELS-1:0] index_lut;
   logic [2**NUM_LEVELS-1:0]                 sel_nodes;
@@ -32,13 +32,9 @@ module fp_leading_one #(
   // generate tree structure                                                  //
   //////////////////////////////////////////////////////////////////////////////
 
-
-  // 
-  // 
-  // 
   generate
     genvar j;
-    for (j = 0; j < LEN; j++) begin
+    for (j = 0; j < LEN; j++) begin : gen_index_lut
       assign index_lut[j]  = (NUM_LEVELS)'($unsigned(j));
       assign in_flipped[j] = in_i[LEN-j-1];
     end
@@ -55,7 +51,7 @@ module fp_leading_one #(
   // ┌────────────┬┴┬────────────┐
   // │sel_nodes[3]│ │sel_nodes[4]│
   // └────────────┘ └────────────┘
-  // 
+  //
   // all are or conditions
   // https://asciiflow.com/#/
   // same for index nodes where the first 1 position will propagate through
@@ -64,30 +60,32 @@ module fp_leading_one #(
     genvar k;
     genvar l;
     genvar level;
-    for (level = 0; level < NUM_LEVELS; level++) begin
+    for (level = 0; level < NUM_LEVELS; level++) begin : gen_tree
       //------------------------------------------------------------
-      if (level < NUM_LEVELS - 1) begin
-        for (l = 0; l < 2 ** level; l++) begin
-          assign sel_nodes[2**level-1+l]   = sel_nodes[2**(level+1)-1+l*2] | sel_nodes[2**(level+1)-1+l*2+1];
+      if (level < NUM_LEVELS - 1) begin : gen_tree_lower_levels
+        for (l = 0; l < 2 ** level; l++) begin : gen_tree_lower_levels_loop
+          assign sel_nodes[2**level-1+l]   =
+            sel_nodes[2**(level+1)-1+l*2] | sel_nodes[2**(level+1)-1+l*2+1];
           assign index_nodes[2**level-1+l] = (sel_nodes[2**(level+1)-1+l*2] == 1'b1) ?
-                                           index_nodes[2**(level+1)-1+l*2] : index_nodes[2**(level+1)-1+l*2+1];
+            index_nodes[2**(level+1)-1+l*2] : index_nodes[2**(level+1)-1+l*2+1];
         end
       end
       //------------------------------------------------------------
-      if (level == NUM_LEVELS - 1) begin
-        for (k = 0; k < 2 ** level; k++) begin
+      if (level == NUM_LEVELS - 1) begin : gen_tree_to_level
+        for (k = 0; k < 2 ** level; k++) begin : gen_tree_map_inputs
           // if two successive indices are still in the vector...
-          if (k * 2 < LEN - 1) begin
+          if (k * 2 < LEN - 1) begin : gen_tree_map_incoming_value_to_tree
             assign sel_nodes[2**level-1+k] = in_flipped[k*2] | in_flipped[k*2+1];
-            assign index_nodes[2**level-1+k] = (in_flipped[k*2] == 1'b1) ? index_lut[k*2] : index_lut[k*2+1];
+            assign index_nodes[2**level-1+k] = (in_flipped[k*2] == 1'b1) ?
+              index_lut[k*2] : index_lut[k*2+1];
           end
           // if only the first index is still in the vector...
-          if (k * 2 == LEN - 1) begin
+          if (k * 2 == LEN - 1) begin : gen_tree_map_first_bit
             assign sel_nodes[2**level-1+k]   = in_flipped[k*2];
             assign index_nodes[2**level-1+k] = index_lut[k*2];
           end
           // if index is out of range
-          if (k * 2 > LEN - 1) begin
+          if (k * 2 > LEN - 1) begin : gen_tree_edge_of_tree
             assign sel_nodes[2**level-1+k]   = 1'b0;
             assign index_nodes[2**level-1+k] = '0;
           end
