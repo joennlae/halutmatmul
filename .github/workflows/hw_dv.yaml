@@ -22,3 +22,4 @@ jobs:
         source /venv/bin/activate
         cd hardware
         fusesoc --cores-root=. run --target=icarus halut:test:scm
+        fusesoc --cores-root=. run --target=icarus halut:test:fp_adder
