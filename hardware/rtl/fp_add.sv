@@ -160,7 +160,7 @@ module fp_add #(
   /////////////////////////////////////////////////////////////////////////////
 
   assign Sign_prenorm_DO = Sign_norm_D;
-  assign Exp_prenorm_DO  = signed'({2'b0, Exp_prenorm_D});
+  assign Exp_prenorm_DO  = $signed(({2'b0, Exp_prenorm_D}));
   assign Mant_prenorm_DO = Mant_prenorm_D;
 
 endmodule  // fpadd

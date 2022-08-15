@@ -88,7 +88,7 @@ module fp_norm #(
   assign Denormals_exp_add_D   =  Mant_in_DI[C_MANT_PRENORM-2] &
     (Exp_in_DI == (C_EXP_PRENORM)'(C_EXP_ZERO));
 
-  assign Denormal_S = ((C_EXP_PRENORM)'(signed'(Mant_leadingOne_D)) >= Exp_in_DI) || Mant_zero_S;
+  assign Denormal_S = ((C_EXP_PRENORM)'($signed((Mant_leadingOne_D))) >= Exp_in_DI) || Mant_zero_S;
   assign Mant_shAmt_D = Denormal_S ?
     Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : Mant_leadingOne_D;
   assign Mant_shAmt2_D = {Mant_shAmt_D[$high(Mant_shAmt_D)], Mant_shAmt_D} + (C_MANT + 4 + 1);
@@ -107,8 +107,9 @@ module fp_norm #(
   end
 
   //adjust exponent
-  assign Exp_norm_D = Exp_in_DI - (C_EXP_PRENORM)'(signed'(Mant_leadingOne_D)) + 1
-    + (C_EXP_PRENORM)'(Denormals_exp_add_D);
+  assign Exp_norm_D = Exp_in_DI - (C_EXP_PRENORM)'($signed(
+      (Mant_leadingOne_D)
+  )) + 1 + (C_EXP_PRENORM)'(Denormals_exp_add_D);
   //Explanation of the +1 since I'll probably forget:
   //we get numbers in the format xx.x...
   //but to make things easier we interpret them as
