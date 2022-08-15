@@ -1,28 +1,23 @@
-// Adapted by Jannis Schönleber 2022
 
 module scm #(
   parameter int unsigned C = 32,
-  parameter int unsigned M = 1,
   parameter int unsigned K = 16,
   parameter int unsigned DataTypeWidth = 16,
   // default
   parameter int unsigned SubUnitAddrWidth = 5,
-  parameter int unsigned TotalAddrWidth = $clog2(C * K),
-  parameter int unsigned TotalDataWidth = M * DataTypeWidth
+  parameter int unsigned TotalAddrWidth = $clog2(C * K)
 ) (
   // Clock and Reset
   input logic clk_i,
   input logic rst_ni,
 
-  input logic test_en_i,
-
   // Read port R1
   input  logic [TotalAddrWidth-1:0] raddr_a_i,
-  output logic [TotalDataWidth-1:0] rdata_a_o,
+  output logic [ DataTypeWidth-1:0] rdata_a_o,
 
   // Write port W1
   input logic [TotalAddrWidth-1:0] waddr_a_i,
-  input logic [TotalDataWidth-1:0] wdata_a_i,
+  input logic [ DataTypeWidth-1:0] wdata_a_i,
   input logic                      we_a_i
 );
 
@@ -44,7 +39,7 @@ module scm #(
   prim_clock_gating cg_we_global (
     .clk_i    (clk_i),
     .en_i     (we_a_i),
-    .test_en_i(test_en_i),
+    .test_en_i(1'b0),
     .clk_o    (clk_int)
   );
 
@@ -89,7 +84,6 @@ module scm #(
       .DataWidth(DataTypeWidth)
     ) sub_unit_i (
       .clk_i(clk_i),  // clk_int?
-      .test_en_i(test_en_i),
       .raddr_a_i(raddr_int_sub),
       .rdata_a_o(read_outputs_subunits[x]),
       .waddr_a_i(waddr_int_sub),

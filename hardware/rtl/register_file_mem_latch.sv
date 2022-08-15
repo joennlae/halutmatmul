@@ -20,8 +20,6 @@ module register_file_mem_latch #(
   // Clock and Reset
   input logic clk_i,
 
-  input logic test_en_i,
-
   // Read port R1
   input  logic [AddrWidth-1:0] raddr_a_i,
   output logic [DataWidth-1:0] rdata_a_o,
@@ -62,7 +60,7 @@ module register_file_mem_latch #(
   prim_clock_gating cg_we_global (
     .clk_i    (clk_i),
     .en_i     (we_a_i),
-    .test_en_i(test_en_i),
+    .test_en_i(1'b0),
     .clk_o    (clk_int)
   );
 
@@ -82,7 +80,7 @@ module register_file_mem_latch #(
     prim_clock_gating cg_i (
       .clk_i    (clk_int),
       .en_i     (waddr_onehot_a[x]),
-      .test_en_i(test_en_i),
+      .test_en_i(1'b0),
       .clk_o    (mem_clocks[x])
     );
   end
