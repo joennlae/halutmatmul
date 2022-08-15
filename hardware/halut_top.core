@@ -11,6 +11,7 @@ filesets:
       - lowrisc:prim:onehot
     files:
       # - rtl/register_file_ff.sv # generic FF-base
+      - rtl/fp_16_comparision.sv
       - rtl/fp_defs_pkg.sv
       - rtl/fp_add.sv
       - rtl/fp_leading_one.sv
