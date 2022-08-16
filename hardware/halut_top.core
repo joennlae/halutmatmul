@@ -10,7 +10,7 @@ filesets:
     depend:
       - lowrisc:prim:onehot
     files:
-      # - rtl/register_file_ff.sv # generic FF-base
+      - rtl/halut_encoder.sv
       - rtl/fp_16_comparision.sv
       - rtl/fp_defs_pkg.sv
       - rtl/fp_add.sv
