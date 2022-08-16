@@ -1,6 +1,21 @@
+import typing
 import numpy as np
 from cocotb.binary import BinaryValue
 from cocotb.types import LogicArray
+
+
+def convert_fp16_array(vals: np.ndarray) -> BinaryValue:
+    bin_vals = []
+    for val in vals:
+        bin_vals.append(float_to_float16_binary(val))
+    return fuse_binary_values(bin_vals)
+
+
+def fuse_binary_values(vals: "typing.List[BinaryValue]") -> BinaryValue:
+    tot_binstr = ""
+    for val in vals:
+        tot_binstr += val.binstr
+    return LogicArray(tot_binstr).to_BinaryValue(bigEndian=True)
 
 
 def float_to_float16_binary(fl: np.float16) -> BinaryValue:
@@ -12,7 +27,7 @@ def float_to_float16_binary(fl: np.float16) -> BinaryValue:
 
 
 def binary_to_float16(binary: BinaryValue) -> np.float16:
-    bin_str = binary.binstr # back to big endian
+    bin_str = binary.binstr  # back to big endian
     padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
     bytes_list = list(int(padded_bits, 2).to_bytes(len(padded_bits) // 8, "big"))
     # print(bin_str, padded_bits, bytes_list, bytes(bytes_list))
