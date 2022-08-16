@@ -31,7 +31,10 @@ module fp_16_comparision (
   assign exp_fp16_b = operand_b_i[14:10];
   assign mant_fp16_b = operand_b_i[9:0];
 
-  // check for a>=b
+  // if a>=b
+  assign all_same = !sign_unequal & !exp_unequal & (mant_fp16_a == mant_fp16_b);
+
+  // check for a>b
   assign sign_unequal = sign_a != sign_b;
   assign sign_decision = sign_unequal & (sign_a < sign_b);
 
@@ -41,14 +44,13 @@ module fp_16_comparision (
   assign mant_decision_intermediate = (mant_fp16_a > mant_fp16_b);
 
   assign exp_decision_corr = sign_a == 1'b1 ?
-    ~exp_decision_intermediate : exp_decision_intermediate;
+    ~exp_decision_intermediate & !all_same : exp_decision_intermediate;
   assign mant_decision_corr = sign_a == 1'b1 ?
-    ~mant_decision_intermediate : mant_decision_intermediate;
+    ~mant_decision_intermediate & !all_same : mant_decision_intermediate;
 
   assign exp_decision = !sign_unequal & exp_unequal & exp_decision_corr;
   assign mant_decision = !sign_unequal & !exp_unequal & mant_decision_corr;
 
-  assign all_same = !sign_unequal & !exp_unequal & (mant_fp16_a == mant_fp16_b);
-  assign comparision_o = sign_decision | exp_decision | mant_decision | all_same;
+  assign comparision_o = sign_decision | exp_decision | mant_decision;  // | all_same;
 
 endmodule
