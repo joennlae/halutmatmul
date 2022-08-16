@@ -83,6 +83,11 @@ async def halut_decoder_test(dut) -> None:  # type: ignore[no-untyped-def]
                 assert binary_to_float32(dut.result_o.value) == np.float32(
                     result[row - 1]
                 ), "result not correct"
+            if row > 0 and c > 0:
+                assert (
+                    binary_to_float32(dut.result_int_q.value)
+                    == result_history[row, c - 1]
+                ), "res_history not correct"
             dut.c_addr_i.value = int(c)
             dut.k_addr_i.value = int(encoded[row, c])
             await RisingEdge(dut.clk_i)
