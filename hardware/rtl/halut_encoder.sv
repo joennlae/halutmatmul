@@ -17,11 +17,11 @@ module halut_encoder #(
   input logic [DataTypeWidth-1:0] a_input_i[TreeDepth],
 
   // write ports for threshold memory
-  input logic [ThreshMemAddrWidth-1:0] waddr_a_i,
-  input logic [     DataTypeWidth-1:0] wdata_a_i,
-  input logic                          we_a_i,
+  input logic [ThreshMemAddrWidth-1:0] waddr_i,
+  input logic [     DataTypeWidth-1:0] wdata_i,
+  input logic                          we_i,
 
-  input logic encoder_a_i,
+  input logic encoder_i,
 
   output logic [CAddrWidth-1:0] c_addr_o,
   output logic [TreeDepth-1:0] k_addr_o,
@@ -122,9 +122,9 @@ module halut_encoder #(
     .rst_ni(rst_ni),
     .raddr_a_i(read_addr_thresh_mem),
     .rdata_a_o(data_thresh_mem_o),
-    .waddr_a_i(waddr_a_i),
-    .wdata_a_i(wdata_a_i),
-    .we_a_i(we_a_i)
+    .waddr_a_i(waddr_i),
+    .wdata_a_i(wdata_i),
+    .we_a_i(we_i)
   );
 
   fp_16_comparision fp_compare (
@@ -153,7 +153,7 @@ module halut_encoder #(
       c_addr_o_q <= 0;
       valid_o <= 0;
     end else begin
-      if (encoder_a_i) begin
+      if (encoder_i) begin
         if (tree_level_cnt < (CntWidth)'(TreeDepth - 1)) begin : increment
           tree_level_cnt <= tree_level_cnt + 1;
           k_addr <= (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);

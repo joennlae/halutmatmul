@@ -72,10 +72,10 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     # Initial values
     dut.a_input_i.value = BinaryValue(0, n_bits=4 * 16, bigEndian=True)
-    dut.waddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
-    dut.wdata_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
-    dut.we_a_i.value = 0
-    dut.encoder_a_i.value = 0
+    dut.waddr_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.wdata_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.we_i.value = 0
+    dut.encoder_i.value = 0
 
     # Reset DUT
     dut.rst_ni.value = 0
@@ -86,19 +86,18 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
     # write threshold values
     await RisingEdge(dut.clk_i)
     for idx in range(threshold_table.shape[0]):
-        dut.waddr_a_i.value = idx
-        dut.we_a_i.value = 1
-        dut.wdata_a_i.value = float_to_float16_binary(threshold_table[idx])
-        await RisingEdge(dut.clk_i)
+        dut.waddr_i.value = idx
+        dut.we_i.value = 1
+        dut.wdata_i.value = float_to_float16_binary(threshold_table[idx])
         await RisingEdge(dut.clk_i)
 
-    dut.we_a_i.value = 0
+    dut.we_i.value = 0
 
     await RisingEdge(dut.clk_i)
     for row in range(input_a.shape[0]):
         for c_ in range(input_a.shape[1]):
             dut.a_input_i.value = convert_fp16_array(input_a[row, c_])
-            dut.encoder_a_i.value = 1
+            dut.encoder_i.value = 1
             await RisingEdge(dut.clk_i)
             # do asserts
             dut._log.info(

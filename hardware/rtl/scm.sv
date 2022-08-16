@@ -32,7 +32,6 @@ module scm #(
   logic [NumSubUnits-1:0] waddr_onehot_unit, raddr_onehot_unit;
 
   logic [DataTypeWidth-1:0] read_outputs_subunits[NumSubUnits];
-  // logic [DataTypeWidth-1:0] write_inputs_subunits[NumSubUnits];
 
   logic clk_int;
   // Global clock gating
