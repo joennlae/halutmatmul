@@ -10,6 +10,7 @@ filesets:
     depend:
       - lowrisc:prim:onehot
     files:
+      - rtl/halut_decoder.sv
       - rtl/halut_encoder.sv
       - rtl/fp_16_comparision.sv
       - rtl/fp_defs_pkg.sv
