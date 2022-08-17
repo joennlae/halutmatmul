@@ -12,6 +12,7 @@ from cocotb.binary import BinaryValue
 from util.helper_functions import (
     binary_to_float16,
     convert_fp16_array,
+    encoding_function,
     float_to_float16_binary,
 )
 
@@ -24,47 +25,17 @@ CPerEncUnit = C // EncUnits
 ThreshMemAddrWidth = int(log2(CPerEncUnit * K))
 TreeDepth = int(log2(K))
 
-
-def encoding_function(
-    threshold_table: np.ndarray, input_a: np.ndarray, tree_depth: int = 4
-) -> "typing.Tuple[np.ndarray, np.ndarray, np.ndarray]":
-    encoded = np.zeros((input_a.shape[0], input_a.shape[1]), dtype=np.int32)
-    kaddr_history = np.zeros(
-        (input_a.shape[0], input_a.shape[1], tree_depth), dtype=np.int32
-    )
-    thresh_mem_history = np.zeros(
-        (input_a.shape[0], input_a.shape[1], tree_depth), dtype=np.float16
-    )
-    # CPerEncUnit = input_a.shape[1]
-    caddr_internal_offset = np.arange(input_a.shape[1]) * K
-    prototype_addr_internal_offset = 2 ** np.arange(tree_depth + 1) - 1
-    for row in range(input_a.shape[0]):
-        kaddr = np.zeros(input_a.shape[1], dtype=np.int64)
-        prototype_addr_internal = np.zeros(input_a.shape[1], dtype=np.int64)
-        for tree_level_cnt in range(tree_depth):
-            kaddr_history[row, :, tree_level_cnt] = kaddr
-            data_thresh_mem_o = threshold_table[
-                prototype_addr_internal + caddr_internal_offset
-            ]
-            thresh_mem_history[row, :, tree_level_cnt] = data_thresh_mem_o
-            data_input_comparision = input_a[row, :, tree_level_cnt]
-            fp_16_comparision_o = data_input_comparision > data_thresh_mem_o
-            kaddr = (kaddr * 2) + fp_16_comparision_o
-            prototype_addr_internal = (
-                kaddr + prototype_addr_internal_offset[tree_level_cnt + 1]
-            )
-        encoded[row] = kaddr
-    return encoded, kaddr_history, thresh_mem_history
+ROWS = 64
 
 
 @cocotb.test()
 async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
     # generate threshold table
     threshold_table = np.random.random((CPerEncUnit * K)).astype(np.float16)
-    input_a = np.random.random((64, CPerEncUnit, 4)).astype(np.float16)
+    input_a = np.random.random((ROWS, CPerEncUnit, 4)).astype(np.float16)
 
     encoded, kaddr_hist, thres_mem_hist = encoding_function(
-        threshold_table, input_a, tree_depth=TreeDepth
+        threshold_table, input_a, tree_depth=TreeDepth, K=K
     )
 
     print("encoded", encoded, kaddr_hist, thres_mem_hist)
@@ -114,8 +85,10 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
                     == encoded[row - (1 if c_ == 0 else 0), c_ - 1]
                 ), "encoded value wrong"
                 assert (
-                    read_out_c_addr_bin.value == np.arange(input_a.shape[1])[c_ - 1]
+                    read_out_c_addr_bin.value
+                    == (np.arange(input_a.shape[1]) * 4)[c_ - 1]
                 ), "c value wrong"
+            dut._log.info(f"c_out: {dut.c_addr_o.value.value}")
             # logging
             dut._log.info(
                 f"(0) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 0]}\n"
