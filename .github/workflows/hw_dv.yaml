@@ -29,3 +29,4 @@ jobs:
         fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder
         fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder
         fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder_4
+        fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder_x
