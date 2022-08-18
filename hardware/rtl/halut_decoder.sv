@@ -2,6 +2,7 @@ module halut_decoder #(
   parameter int unsigned K = 16,
   parameter int unsigned C = 32,
   parameter int unsigned DataTypeWidth = 16,
+  parameter int unsigned DecoderUnits = 16,
   // defaults
   parameter int unsigned TotalAddrWidth = $clog2(C * K),
   parameter int unsigned CAddrWidth = $clog2(C),
@@ -81,8 +82,8 @@ module halut_decoder #(
         valid_o <= 1'b1;
         result_o_q <= result_int_d;
         result_int_q <= 0;
-      end else begin
-        valid_o <= 1'b0;
+      end else if (c_addr_i >= DecoderUnits) begin : apply_valid_1_DecoderUnit_cycles
+        valid_o <= 1'b0;  // applies invalid symbol to work with halut_decoder_x
       end
     end
   end
