@@ -63,8 +63,8 @@ module scm #(
   prim_onehot_enc #(
     .OneHotWidth(NumSubUnits)
   ) wadd_onehot (
-    .in_i(waddr_int_unit),
-    .en_i(1'b1),  // we_a_i
+    .in_i (waddr_int_unit),
+    .en_i (we_a_i),
     .out_o(waddr_onehot_unit)
   );
 
@@ -103,11 +103,11 @@ module scm #(
   );
 
   // https://docs.cocotb.org/en/stable/simulator_support.html#sim-icarus-waveforms
-`ifdef COCOTB_SIM
-  initial begin
-    $dumpfile("dump.vcd");
-    $dumpvars(0, scm);
-    #1;
-  end
-`endif
+  //`ifdef COCOTB_SIM
+  //  initial begin
+  //    $dumpfile("dump.vcd");
+  //    $dumpvars(0, scm);
+  //    #1;
+  //  end
+  //`endif
 endmodule
