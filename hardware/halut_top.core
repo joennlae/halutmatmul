@@ -10,6 +10,7 @@ filesets:
     depend:
       - lowrisc:prim:onehot
     files:
+      - rtl/halut_matmul.sv
       - rtl/halut_decoder_x.sv
       - rtl/halut_encoder_4.sv
       - rtl/halut_decoder.sv
