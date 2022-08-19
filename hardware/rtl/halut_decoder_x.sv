@@ -84,6 +84,9 @@ module halut_decoder_x #(
           valid_o_q  <= 1'b0;
           m_addr_cnt <= 0;
         end
+      end else begin : deactivate_decoding
+        valid_o_q  <= 1'b0;
+        m_addr_cnt <= 0;
       end
     end
   end

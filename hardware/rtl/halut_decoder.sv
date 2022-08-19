@@ -77,13 +77,15 @@ module halut_decoder #(
     end else begin
       if (decoder_i) begin
         result_int_q <= result_int_d;
-      end
-      if (c_addr_i == CAddrWidth'(C - 1)) begin
-        valid_o <= 1'b1;
-        result_o_q <= result_int_d;
-        result_int_q <= 0;
-      end else if (c_addr_i >= DecoderUnits) begin : apply_valid_1_DecoderUnit_cycles
-        valid_o <= 1'b0;  // applies invalid symbol to work with halut_decoder_x
+        if (c_addr_i == CAddrWidth'(C - 1)) begin  // Attention: do net let it stay on address C - 1
+          valid_o <= 1'b1;
+          result_o_q <= result_int_d;
+          result_int_q <= 0;
+        end else if (c_addr_i >= (CAddrWidth)'(DecoderUnits - 1)) begin : valid_for_DecUnit_cycles
+          valid_o <= 1'b0;  // applies invalid symbol to work with halut_decoder_x
+        end
+      end else begin
+        valid_o <= 1'b0;
       end
     end
   end

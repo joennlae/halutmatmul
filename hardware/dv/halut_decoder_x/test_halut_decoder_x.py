@@ -11,6 +11,7 @@ from cocotb.binary import BinaryValue
 
 from util.helper_functions import (
     binary_to_float32,
+    decoding_2d,
     float_to_float16_binary,
 )
 
@@ -26,23 +27,11 @@ CAddrWidth = int(log2(C))
 TreeDepth = int(log2(K))
 
 
-def decoding_2d(
-    lut: np.ndarray, encoded: np.ndarray
-) -> "typing.Tuple[np.ndarray, np.ndarray]":
-    result = np.zeros((encoded.shape[0], lut.shape[0]), dtype=np.float32)  # [N, M]
-    result_history = np.zeros((encoded.shape[0], lut.shape[0], C), dtype=np.float32)
-    for m in range(lut.shape[0]):
-        for c in range(C):
-            result_history[:, m, c] = result[:, m]
-            result[:, m] += lut[m, c, encoded[:, c]]
-    return result, result_history
-
-
 @cocotb.test()
 async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
     # generate threshold table
     lut = np.random.random((DecoderUnits, C, K)).astype(np.float16)
-    encoded = (np.random.random((ROWS, C)) * 16).astype(np.int32)
+    encoded = (np.random.random((ROWS, C)) * K).astype(np.int32)
 
     # pylint: disable=unused-variable
     result, result_history = decoding_2d(lut, encoded)
@@ -66,7 +55,7 @@ async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     # write lut values
     await RisingEdge(dut.clk_i)
-    for m in np.arange(DecoderUnits):
+    for m in range(DecoderUnits):
         for c in range(C):
             for k in range(K):
                 dut.waddr_i.value = c * K + k
@@ -88,7 +77,7 @@ async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
     await RisingEdge(dut.clk_i)
 
     dut.decoder_i.value = 1
-    for row in range(encoded.shape[0]):
+    for row in range(encoded.shape[0] + 1):
         for c in range(C):
             # dut._log.info(
             #     f"r: {row}, c: {c}, valid_o: {dut.valid_o.value}, \n"
@@ -98,12 +87,22 @@ async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
             # )
             if row > 0 and c >= 2:
                 if c < 2 + DecoderUnits:
+                    dut._log.info(f"c:{c - 2}, r:{row - 1}")
                     assert dut.valid_o.value == 1, "output not valid"
                     assert binary_to_float32(dut.result_o.value) == np.float32(
                         result[row - 1, c - 2]  # [N, M]
                     ), "result not correct"
                     assert dut.m_addr_o.value.value == c - 2, " m_addr_o wrong"
-            dut.c_addr_i.value = int(c)
-            dut.k_addr_i.value = int(encoded[row, c])
+                elif c >= 2 + DecoderUnits:
+                    assert dut.valid_o.value == 0, "output should be invalid"
+                if row == ROWS and c == 2 + DecoderUnits - 2:
+                    dut.decoder_i.value = 0  # turn of decoder
+            else:
+                assert dut.valid_o.value == 0, "output should be invalid"
+            if row < encoded.shape[0]:
+                dut.c_addr_i.value = int(c)
+                dut.k_addr_i.value = int(encoded[row, c])
+            else:
+                dut.c_addr_i.value = int(0)  # set zero address to garantee running
             await RisingEdge(dut.clk_i)
         dut._log.info(f"finished row {row + 1} / {encoded.shape[0]}")
