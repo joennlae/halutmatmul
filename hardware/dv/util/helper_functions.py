@@ -35,6 +35,19 @@ def float_to_float16_binary(fl: np.float16) -> BinaryValue:
     )
 
 
+def create_bin_vals_from_binstr(binstr: str, amount: int) -> "typing.List[BinaryValue]":
+    if len(binstr) % amount != 0:
+        raise Exception("binstr not splittable in specified amount")
+
+    n = len(binstr) // amount
+    chunks = [binstr[i : i + n] for i in range(0, len(binstr), n)]
+
+    bin_vals = []
+    for val in chunks:
+        bin_vals.append(LogicArray(val).to_BinaryValue(bigEndian=True))
+    return bin_vals
+
+
 def binary_to_float16(binary: BinaryValue) -> np.float16:
     bin_str = binary.binstr  # back to big endian
     padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
@@ -95,3 +108,17 @@ def encoding_function(
             )
         encoded[row] = kaddr
     return encoded, kaddr_history, thresh_mem_history
+
+
+def decoding_2d(
+    lut: np.ndarray, encoded: np.ndarray
+) -> "typing.Tuple[np.ndarray, np.ndarray]":
+    result = np.zeros((encoded.shape[0], lut.shape[0]), dtype=np.float32)  # [N, M]
+    result_history = np.zeros(
+        (encoded.shape[0], lut.shape[0], lut.shape[1]), dtype=np.float32
+    )
+    for m in range(lut.shape[0]):
+        for c in range(lut.shape[1]):
+            result_history[:, m, c] = result[:, m]
+            result[:, m] += lut[m, c, encoded[:, c]]
+    return result, result_history
