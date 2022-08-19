@@ -4,8 +4,7 @@ module halut_encoder_4 #(
   parameter int unsigned DataTypeWidth = 16,
   parameter int unsigned EncUnits = 4,
 
-  // defauls
-  parameter int unsigned TotalAddrWidth = $clog2(C * K),
+  // do not change
   parameter int unsigned CAddrWidth = $clog2(C),
   parameter int unsigned TreeDepth = $clog2(K),
   parameter int unsigned CPerEncUnit = C / EncUnits,

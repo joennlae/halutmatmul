@@ -39,7 +39,7 @@ async def halut_encoder_4_test(dut) -> None:  # type: ignore[no-untyped-def]
     )
 
     print("encoded", encoded, kaddr_hist, thres_mem_hist)
-    cocotb.start_soon(Clock(dut.clk_i, 2, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk_i, 1, units="ns").start())
 
     # Initial values
     dut.a_input_i.value = BinaryValue(0, n_bits=EncUnits * 4 * 16, bigEndian=True)
