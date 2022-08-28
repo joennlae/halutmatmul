@@ -1,0 +1,6 @@
+reports/
+outputs/
+logs/
+inputs/
+
+*.log
