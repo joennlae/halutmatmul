@@ -38,7 +38,7 @@
   "verilog.linting.linter": "verilator",
   "verilog.linting.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/",
   "verilog.linting.verilator.runAtFileLocation": false,
-  "verilog.linting.verilator.arguments": "--language 1800-2012 --Wall -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_prim_pkg_0.1/prim_pkg.sv hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv",
+  "verilog.linting.verilator.arguments": "--language 1800-2012 --Wall -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_prim_pkg_0.1/prim_pkg.sv hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv hardware/rtl/halut_pkg.sv",
   "verilog.logging.enabled": true,
-  "verilog.ctags.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/ctags"
+  "verilog.ctags.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/ctags",
 }
