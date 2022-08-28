@@ -1,5 +1,5 @@
 diff --git a/flow/platforms/asap7/config.mk b/flow/platforms/asap7/config.mk
-index 2c9edd59..a0b3b46f 100644
+index 2c9edd59..dbe54816 100644
 --- a/flow/platforms/asap7/config.mk
 +++ b/flow/platforms/asap7/config.mk
 @@ -48,15 +48,15 @@ export WC_VOLTAGE          = 0.63
@@ -30,8 +30,11 @@ index 2c9edd59..a0b3b46f 100644
  
  # Fill cells used in fill cell insertion
  export FILL_CELLS              = "FILLERxp5_ASAP7_75t_R"
-@@ -113,6 +113,9 @@ export SET_RC_TCL              = $(PLATFORM_DIR)/setRC.tcl
+@@ -111,8 +111,12 @@ export SET_RC_TCL              = $(PLATFORM_DIR)/setRC.tcl
+ 
+ # Route options
  export MIN_ROUTING_LAYER       = M2
++export MIN_CLOCK_ROUTING_LAYER = M4
  export MAX_ROUTING_LAYER       = M7
  
 +# Define fastRoute tcl
@@ -40,6 +43,20 @@ index 2c9edd59..a0b3b46f 100644
  # KLayout technology file
  export KLAYOUT_TECH_FILE       = $(PLATFORM_DIR)/KLayout/asap7.lyt
  
+diff --git a/flow/platforms/asap7/fastroute.tcl b/flow/platforms/asap7/fastroute.tcl
+new file mode 100644
+index 00000000..063896e2
+--- /dev/null
++++ b/flow/platforms/asap7/fastroute.tcl
+@@ -0,0 +1,8 @@
++set_global_routing_layer_adjustment M1 0.5
++set_global_routing_layer_adjustment M2 0.8
++set_global_routing_layer_adjustment M3 0.7
++set_global_routing_layer_adjustment M4 0.7
++set_global_routing_layer_adjustment M5-$::env(MAX_ROUTING_LAYER) 0.5
++
++set_routing_layers -signal $::env(MIN_ROUTING_LAYER)-$::env(MAX_ROUTING_LAYER) -clock $env(MIN_CLOCK_ROUTING_LAYER)-$env(MAX_ROUTING_LAYER)
++set_macro_extension 2
 diff --git a/flow/scripts/cts.tcl b/flow/scripts/cts.tcl
 index 87c672dc..614c8046 100644
 --- a/flow/scripts/cts.tcl
