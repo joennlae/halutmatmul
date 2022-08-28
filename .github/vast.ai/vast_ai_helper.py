@@ -44,23 +44,27 @@ def cleanup(image_name: str = "") -> None:
         )
         print(out)
 
-GPU_TEST_SEARCH = ( "./vast.py search offers 'reliability > 0.98  num_gpus==1 rentable==True"
-        " inet_down > 100 disk_space > 50 dph_total < 0.35 inet_down_cost < 0.021"
-        " inet_up_cost < 0.021 cuda_vers >= 11.2' -o 'cpu_cores_effective-' --storage=32 --raw"
+
+GPU_TEST_SEARCH = (
+    "./vast.py search offers 'reliability > 0.98  num_gpus==1 rentable==True"
+    " inet_down > 100 disk_space > 50 dph_total < 0.35 inet_down_cost < 0.021"
+    " inet_up_cost < 0.021 cuda_vers >= 11.2' -o 'cpu_cores_effective-' --storage=32 --raw"
 )
 
-HW_TEST_SEARCH = ( "./vast.py search offers 'reliability > 0.98 rentable==True inet_down > 100"
-        " disk_space > 52 dph_total < 0.40 inet_down_cost < 0.021 inet_up_cost < 0.021"
-        " ' -o 'cpu_cores_effective-' --storage=32 --raw"
+HW_TEST_SEARCH = (
+    "./vast.py search offers 'reliability > 0.98 rentable==True inet_down > 100"
+    " disk_space > 52 dph_total < 0.40 inet_down_cost < 0.021 inet_up_cost < 0.021"
+    " ' -o 'cpu_cores_effective-' --storage=32 --raw"
 )
 
 GPU_TEST_COMMAND = "--image joennlae/halutmatmul-conda-gpu:latest --disk 32"
 HW_TEST_COMMAND = "--image joennlae/halutmatmul-conda-hw:latest --disk 32"
 
-def startup(image: str = "joennlae/halutmatmul-conda-gpu:latest", is_hardware: bool = False) -> tuple[str, int]:
-    out = run_command(
-        HW_TEST_SEARCH if is_hardware else GPU_TEST_SEARCH
-    )
+
+def startup(
+    image: str = "joennlae/halutmatmul-conda-gpu:latest", is_hardware: bool = False
+) -> tuple[str, int]:
+    out = run_command(HW_TEST_SEARCH if is_hardware else GPU_TEST_SEARCH)
     list_out = json.loads(out)
 
     print("Starting best server")
@@ -73,21 +77,24 @@ def startup(image: str = "joennlae/halutmatmul-conda-gpu:latest", is_hardware: b
             cpu_ram_effective = elem["cpu_ram"] * ratio
             list_out[idx]["cpu_ram_effective"] = cpu_ram_effective
         list_out.sort(key=lambda x: x["cpu_ram_effective"], reverse=True)
-        list_out = list(filter(lambda x: x["cpu_ram_effective"] > 30000, list_out)) # larger than 30 GB
+        list_out = list(
+            filter(lambda x: x["cpu_ram_effective"] > 30000, list_out)
+        )  # larger than 30 GB
         print(type(list_out))
         for idx, elem in enumerate(list_out):
-            print(f"Option {idx + 1}", 
-              elem["cpu_cores"], 
-              elem["cpu_cores_effective"], 
-              elem["cpu_ram"],  
-              elem["cpu_ram_effective"],
-              elem["dph_total"]
+            print(
+                f"Option {idx + 1}",
+                elem["cpu_cores"],
+                elem["cpu_cores_effective"],
+                elem["cpu_ram"],
+                elem["cpu_ram_effective"],
+                elem["dph_total"],
             )
 
     if is_hardware and len(list_out) == 0:
         print("NO SERVER FOUND")
         sys.exit(1)
-  
+
     out = run_command(
         f"./vast.py create instance {list_out[0]['id']} "
         f"{(HW_TEST_COMMAND if is_hardware else GPU_TEST_COMMAND)}"
@@ -147,18 +154,43 @@ HW_TEST_COMMANDS = """cd /; mv /venv/ /venv2; source /venv2/bin/activate;
       git clone https://github.com/joennlae/halutmatmul.git;
       cd halutmatmul; python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v;
       cd hardware;
-      fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top;
+      NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_asap7 --build-root=/hw_out/halut_matmul halut:ip:halut_top;
       echo "ERROR CODE: $?";
-      cd build; mkdir flow_reports;
-      cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports;
-      cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports;
-      cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports;
-      cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports;
+      fusesoc --cores-root=. run --target=openroad_asap7_encoder_4 --build-root=/hw_out/halut_encoder_4 halut:ip:halut_top;
+      echo "ERROR CODE: $?";
+      fusesoc --cores-root=. run --target=openroad_asap7_decoder --build-root=/hw_out/halut_decoder halut:ip:halut_top;
+      echo "ERROR CODE: $?";
+      fusesoc --cores-root=. run --target=openroad_asap7_fp_16_32_adder --build-root=/hw_out/fp_16_32_adder halut:ip:halut_top;
+      echo "ERROR CODE: $?";
+      cd /hw_out;
+      mkdir -p flow_reports/halut_matmul;
+      mkdir -p flow_reports/halut_encoder_4;
+      mkdir -p flow_reports/halut_decoder;
+      mkdir -p flow_reports/fp_16_32_adder;
+      cp /hw_out/halut_matmul/openroad_asap7-openroad/metrics.html flow_reports/halut_matmul;
+      cp /hw_out/halut_matmul/openroad_asap7-openroad/metrics.json flow_reports/halut_matmul;
+      cp -R /hw_out/halut_matmul/openroad_asap7-openroad/reports/ flow_reports/halut_matmul;
+      cp -R /hw_out/halut_matmul/openroad_asap7-openroad/logs/ flow_reports/halut_matmul;
+      cp /hw_out/halut_encoder_4/openroad_asap7_encoder_4-openroad/metrics.html flow_reports/halut_encoder_4;
+      cp /hw_out/halut_encoder_4/openroad_asap7_encoder_4-openroad/metrics.json flow_reports/halut_encoder_4;
+      cp -R /hw_out/halut_encoder_4/openroad_asap7_encoder_4-openroad/reports/ flow_reports/halut_encoder_4;
+      cp -R /hw_out/halut_encoder_4/openroad_asap7_encoder_4-openroad/logs/ flow_reports/halut_encoder_4;
+      cp /hw_out/halut_decoder/openroad_asap7_decoder-openroad/metrics.html flow_reports/halut_decoder;
+      cp /hw_out/halut_decoder/openroad_asap7_decoder-openroad/metrics.json flow_reports/halut_decoder;
+      cp -R /hw_out/halut_decoder/openroad_asap7_decoder-openroad/reports/ flow_reports/halut_decoder;
+      cp -R /hw_out/halut_decoder/openroad_asap7_decoder-openroad/logs/ flow_reports/halut_decoder;
+      cp /hw_out/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder;
+      cp /hw_out/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder;
+      cp -R /hw_out/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder;
+      cp -R /hw_out/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder;
       tar -cvf report.tar.gz flow_reports
       cp report.tar.gz /report.tar.gz
 """
 
-def run_ssh_commands(ssh_host: str, ssh_port: int, debug: bool = False, is_hardware: bool = False) -> int:
+
+def run_ssh_commands(
+    ssh_host: str, ssh_port: int, debug: bool = False, is_hardware: bool = False
+) -> int:
 
     commands = HW_TEST_COMMANDS if is_hardware else GPU_TEST_COMMANDS
 
@@ -175,12 +207,11 @@ def run_ssh_commands(ssh_host: str, ssh_port: int, debug: bool = False, is_hardw
 
     if is_hardware:
         out_scp = run_command(
-          f"scp -o StrictHostKeyChecking=no {ssh_identity_str} "
-          f"-P {ssh_port} root@{ssh_host}:/report.tar.gz .",
-          print_all=True
+            f"scp -o StrictHostKeyChecking=no {ssh_identity_str} "
+            f"-P {ssh_port} root@{ssh_host}:/report.tar.gz .",
+            print_all=True,
         )
         file_exists = os.path.exists("report.tar.gz")
-
 
     if not is_hardware:
         error_code = re.findall(r"(?<=ERROR CODE: )\d+", out)
@@ -205,7 +236,11 @@ if __name__ == "__main__":
         "--hardware", "-hw", action="store_true", help="set is used for hardware tests"
     )
     parser.add_argument(
-        "--image", "-i", default="", help="set image name to look after for cleanup", type=str
+        "--image",
+        "-i",
+        default="",
+        help="set image name to look after for cleanup",
+        type=str,
     )
     args = parser.parse_args()
 

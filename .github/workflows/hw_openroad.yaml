@@ -72,67 +72,6 @@ jobs:
           target-branch: main
           target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
 
-#   asap7:
-#     needs: changes
-#     if: ${{ needs.changes.outputs.hardware == 'true' }}
-#     runs-on: ubuntu-latest
-#     container:
-#       image: joennlae/halutmatmul-conda-hw:latest
-#     defaults:
-#       run:
-#         shell: bash -el {0}
-#     steps:
-#     - uses: actions/checkout@v2
-#     - name: Run OpenROAD flow for ASAP7
-#       run: |
-#         source /venv/bin/activate
-#         cd hardware
-#         python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
-#         fusesoc --cores-root=. run --target=openroad_asap7 halut:ip:halut_top
-#     - name: Copy & save reports
-#       run: |
-#         cd hardware/build
-#         mkdir flow_reports
-#         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports 
-#         cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports
-#         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports
-#         cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports
-#         tar -cvf report.tar.gz flow_reports
-#         mkdir backup
-#         cp report.tar.gz backup/report.tar.gz
-#     - uses: actions/upload-artifact@v3
-#       with:
-#         name: asap-7-openroad-report
-#         path: hardware/build/flow_reports
-#     - name: Pushes current reports to repo
-#       uses: cpina/github-action-push-to-another-repository@main
-#       env:
-#         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-#       with:
-#         source-directory: 'hardware/build/flow_reports'
-#         destination-github-username: 'joennlae'
-#         destination-repository-name: 'halutmatmul-openroad-reports'
-#         user-email: openroad@reports.ch
-#         target-branch: main
-#         target-directory: 'latest/asap7/'
-#     - name: Get Time
-#       id: time
-#       uses: nanzm/get-time-action@v1.1
-#       with:
-#         timeZone: 0
-#         format: 'YYYY-MM-DD-HH-mm-ss'
-#     - name: Pushes current reports to repo
-#       uses: cpina/github-action-push-to-another-repository@main
-#       env:
-#         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-#       with:
-#         source-directory: 'hardware/build/flow_reports'
-#         destination-github-username: 'joennlae'
-#         destination-repository-name: 'halutmatmul-openroad-reports'
-#         user-email: openroad@reports.ch
-#         target-branch: main
-#         target-directory: 'history/asap7/${{ steps.time.outputs.time }}/'
-
   nangate45:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
@@ -149,15 +88,34 @@ jobs:
         source /venv/bin/activate
         python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
         cd hardware
-        fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
+        NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
+        fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
+        fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
+        fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
     - name: Copy & save reports
       run: |
         cd hardware/build
         mkdir flow_reports
-        cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.html flow_reports 
-        cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.json flow_reports
-        cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/reports/ flow_reports
-        cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/logs/ flow_reports
+        mkdir -p flow_reports/halut_matmul
+        mkdir -p flow_reports/halut_encoder_4
+        mkdir -p flow_reports/halut_decoder
+        mkdir -p flow_reports/fp_16_32_adder
+        cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.html flow_reports/halut_matmul 
+        cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.json flow_reports/halut_matmul
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/reports/ flow_reports/halut_matmul
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/logs/ flow_reports/halut_matmul
+        cp halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/metrics.html flow_reports/halut_encoder_4
+        cp halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/metrics.json flow_reports/halut_encoder_4
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/reports/ flow_reports/halut_encoder_4
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/logs/ flow_reports/halut_encoder_4
+        cp halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/metrics.html flow_reports/halut_decoder
+        cp halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/metrics.json flow_reports/halut_decoder
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/reports/ flow_reports/halut_decoder
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/logs/ flow_reports/halut_decoder
+        cp halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder
+        cp halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder
+        cp -R halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder
         tar -cvf report.tar.gz flow_reports
         mkdir backup
         cp report.tar.gz backup/report.tar.gz

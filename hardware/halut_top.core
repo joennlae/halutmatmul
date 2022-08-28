@@ -106,12 +106,12 @@ targets:
       openroad:
         flow_path: flow/OpenROAD/flow
 
-  openroad_asap7: 
+  openroad_asap7: &openroad_asap7
     <<: *openroad_target
     filesets_append:
       - openroad_asap7_files
 
-  openroad_nangate45:
+  openroad_nangate45: &openroad_nangate45
     <<: *openroad_target
     filesets_append:
       - openroad_nangate45_files
@@ -141,3 +141,27 @@ targets:
       - export_design_files
     toplevel: halut_decoder_x # not used
     default_tool: export
+
+  openroad_asap7_encoder_4: 
+    <<: *openroad_asap7
+    toplevel: halut_encoder_4
+
+  openroad_nangate45_encoder_4:
+    <<: *openroad_nangate45
+    toplevel: halut_encoder_4
+
+  openroad_asap7_decoder: 
+    <<: *openroad_asap7
+    toplevel: halut_decoder
+
+  openroad_nangate45_decoder:
+    <<: *openroad_nangate45
+    toplevel: halut_decoder
+
+  openroad_asap7_fp_16_32_adder: 
+    <<: *openroad_asap7
+    toplevel: fp_16_32_adder
+
+  openroad_nangate45_fp_16_32_adder:
+    <<: *openroad_nangate45
+    toplevel: fp_16_32_adder
