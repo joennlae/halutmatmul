@@ -10,6 +10,7 @@ filesets:
     depend:
       - lowrisc:prim:onehot
     files:
+      - rtl/halut_pkg.sv
       - rtl/halut_matmul.sv
       - rtl/halut_decoder_x.sv
       - rtl/halut_encoder_4.sv
@@ -61,6 +62,10 @@ filesets:
       - flow/nangate45/config.mk : {file_type: configFile}
       - flow/nangate45/constraint.sdc : {file_type: SDC}
 
+  export_design_files:
+    depend:
+      - halut:util:sv2v
+
 parameters:
   SYNTHESIS:
     datatype: bool
@@ -73,7 +78,7 @@ targets:
       - tool_verilator   ? (files_verilator_waiver)
       - tool_veriblelint ? (files_veriblelint_waiver)
       - files_rtl
-    toplevel: scm
+    toplevel: halut_matmul
   lint:
     <<: *default_target
     default_tool: verilator
@@ -129,3 +134,10 @@ targets:
       openroad:
         flow_path: flow/OpenROAD/flow
         make_target: floorplan
+
+  export_design:
+    filesets:
+      - files_rtl
+      - export_design_files
+    toplevel: halut_decoder_x # not used
+    default_tool: export
