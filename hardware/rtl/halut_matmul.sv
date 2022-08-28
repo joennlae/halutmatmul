@@ -1,11 +1,12 @@
+
 module halut_matmul #(
-  parameter int unsigned K = 16,
-  parameter int unsigned C = 32,
-  parameter int unsigned M = 32,
+  parameter int unsigned K = halut_pkg::K,
+  parameter int unsigned C = halut_pkg::C,
+  parameter int unsigned M = halut_pkg::M,
+  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+  parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
   // do not change
-  parameter int unsigned DataTypeWidth = 16,
   parameter int unsigned EncUnits = 4,  // default
-  parameter int unsigned DecoderUnits = 16,
   parameter int unsigned DecUnitsX = M / DecoderUnits,
   parameter int unsigned DecAddrWidth = $clog2(DecoderUnits),
   parameter int unsigned TotalAddrWidth = $clog2(C * K),
@@ -99,6 +100,13 @@ module halut_matmul #(
     assign m_addr_o[x] = (MAddrWidth)'(m_addr_int[x]) + (MAddrWidth)'(x * DecoderUnits);
   end
 
-
+  // https://docs.cocotb.org/en/stable/simulator_support.html#sim-icarus-waveforms
+`ifdef COCOTB_SIM
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, halut_matmul);
+    #1;
+  end
+`endif
 
 endmodule

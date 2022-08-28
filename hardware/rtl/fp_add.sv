@@ -110,9 +110,9 @@ module fp_add #(
   //sticky bit
   always_comb begin
     Mant_sticky_D = 1'b0;
-    if (Exp_diff_D >= (C_MANT + 3))  // 23 + guard, round, sticky
+    if (Exp_diff_D >= (C_EXP)'(C_MANT + 3))  // 23 + guard, round, sticky
       Mant_sticky_D = |Mant_shiftIn_D;
-    else Mant_sticky_D = |(Mant_shiftIn_D << ((C_MANT + 3) - Exp_diff_D));
+    else Mant_sticky_D = |(Mant_shiftIn_D << ((C_EXP)'(C_MANT + 3) - Exp_diff_D));
   end
   assign Mant_shifted_D = {(Mant_shiftIn_D >> Exp_diff_D), Mant_sticky_D};
 

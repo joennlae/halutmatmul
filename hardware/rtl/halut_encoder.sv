@@ -149,7 +149,7 @@ module halut_encoder #(
       c_addr_internal <= 0;
       k_addr <= 0;
       k_addr_o_q <= 0;
-      c_addr_o_q <= EncUnitNumber - EncUnits;
+      c_addr_o_q <= (CAddrWidth)'(EncUnitNumber - EncUnits);
       valid_o <= 0;
     end else begin
       if (encoder_i) begin
@@ -159,7 +159,7 @@ module halut_encoder #(
           valid_o <= 1'b0;
         end else begin : encoding_finished
           tree_level_cnt <= 2'b0;
-          c_addr_o_q <= c_addr_o_q + EncUnits;
+          c_addr_o_q <= (CAddrWidth)'(c_addr_o_q + (CAddrWidth)'(EncUnits));
           c_addr_internal <= c_addr_internal + 1;
           k_addr_o_q <= (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
           k_addr <= 0;

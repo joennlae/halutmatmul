@@ -90,8 +90,10 @@ module fp_norm #(
 
   assign Denormal_S = ((C_EXP_PRENORM)'($signed((Mant_leadingOne_D))) >= Exp_in_DI) || Mant_zero_S;
   assign Mant_shAmt_D = Denormal_S ?
-    Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : Mant_leadingOne_D;
-  assign Mant_shAmt2_D = {Mant_shAmt_D[$high(Mant_shAmt_D)], Mant_shAmt_D} + (C_MANT + 4 + 1);
+    Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : (C_EXP_PRENORM)'(Mant_leadingOne_D);
+  assign Mant_shAmt2_D = {Mant_shAmt_D[$high(
+      Mant_shAmt_D
+  )], Mant_shAmt_D} + (C_EXP_PRENORM)'(C_MANT + 4 + 1);
 
   //Shift mantissa
   always_comb begin
@@ -103,7 +105,8 @@ module fp_norm #(
   always_comb begin
     Mant_sticky_D = 1'b0;
     if (Mant_shAmt2_D <= 0) Mant_sticky_D = |Mant_in_DI;
-    else if (Mant_shAmt2_D <= C_MANT_PRENORM) Mant_sticky_D = |(Mant_in_DI << (Mant_shAmt2_D));
+    else if (Mant_shAmt2_D <= (C_EXP_PRENORM + 1)'(C_MANT_PRENORM))
+      Mant_sticky_D = |(Mant_in_DI << (Mant_shAmt2_D));
   end
 
   //adjust exponent

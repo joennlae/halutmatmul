@@ -1,8 +1,9 @@
 module halut_decoder_x #(
-  parameter int unsigned DecoderUnits = 16,  // how many decoders, needs to be overflowing!!
-  parameter int unsigned K = 16,
-  parameter int unsigned C = 32,
-  parameter int unsigned DataTypeWidth = 16,
+  parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
+  // how many decoders, needs to be overflowing!!
+  parameter int unsigned K = halut_pkg::K,
+  parameter int unsigned C = halut_pkg::C,
+  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
   // defaults
   parameter int unsigned TotalAddrWidth = $clog2(C * K),
   parameter int unsigned CAddrWidth = $clog2(C),
