@@ -9,6 +9,6 @@
   upstream:
   {
     url: https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
-    rev: 1aa3fd385f0f97c27a0c3e047644b345a39099a0
+    rev: 082e40a2513eed0775dac6197f13aa5cf111f710
   }
 }
