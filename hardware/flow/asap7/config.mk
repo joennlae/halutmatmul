@@ -29,7 +29,7 @@ export RESYNTH_TIMING_RECOVER = 1
 export CORE_UTILIZATION       = 40
 export CORE_ASPECT_RATIO      = 1
 export CORE_MARGIN            = 2
-export PLACE_DENSITY          = 0.60
+export PLACE_DENSITY          ?= 0.60
 
 # export HAS_IO_CONSTRAINTS = 1 # fix error [ERROR GPL-0305] RePlAce diverged at newStepLength.
 

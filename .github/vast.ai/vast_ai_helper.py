@@ -160,7 +160,7 @@ HW_TEST_COMMANDS = """cd /; mv /venv/ /venv2; source /venv2/bin/activate;
       echo "ERROR CODE: $?";
       fusesoc --cores-root=. run --target=openroad_asap7_decoder halut:ip:halut_top;
       echo "ERROR CODE: $?";
-      fusesoc --cores-root=. run --target=openroad_asap7_fp_16_32_adder halut:ip:halut_top;
+      PLACE_DENSITY=0.65 fusesoc --cores-root=. run --target=openroad_asap7_fp_16_32_adder halut:ip:halut_top;
       echo "ERROR CODE: $?";
       cd build;
       mkdir flow_reports;
