@@ -66,8 +66,9 @@ patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter 
 
 Two extensions are recommended:
 
-* [SystemVerilog - Language Support](https://marketplace.visualstudio.com/items?itemName=eirikpre.systemverilog)
+* [Verilog-HDL/SystemVerilog/Bluespec SystemVerilog](https://marketplace.visualstudio.com/items?itemName=mshr-h.VerilogHDL)
 * [SystemVerilog and Verilog Formatter](https://marketplace.visualstudio.com/items?itemName=bmpenuelas.systemverilog-formatter-vscode)
+* [WaveTrace](https://marketplace.visualstudio.com/items?itemName=wavetrace.wavetrace)
 
 Be sure to update the `.vscode` file with your own verilator path:
 
@@ -75,7 +76,10 @@ Be sure to update the `.vscode` file with your own verilator path:
 ```json
 {
   // the default with verilator 
-  "systemverilog.launchConfigurationVerilator": "/scratch2/janniss/conda/halutmatmul_hw/bin/verilator --sv --lint-only --language 1800-2012 --Wall -Ihardware/rtl -Ihardware/vendor/lowrisc_ip/ip/prim/rtl hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv",
+  "verilog.linting.linter": "verilator",
+  "verilog.linting.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/",
+  "verilog.linting.verilator.runAtFileLocation": false,
+  "verilog.linting.verilator.arguments": "--language 1800-2012 --Wall -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_prim_pkg_0.1/prim_pkg.sv hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv hardware/rtl/halut_pkg.sv",
 }
 ```
 
