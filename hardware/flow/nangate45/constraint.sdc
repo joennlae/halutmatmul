@@ -1,4 +1,4 @@
-set clk_name  clk
+set clk_name  clk_i
 set clk_port_name clk_i
 set clk_period 1000
 set clk_io_pct 0.1
