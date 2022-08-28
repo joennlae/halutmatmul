@@ -34,7 +34,10 @@ scripts:
       - --sv2v=zachjs-sv2v
       - --verbose
       - files.txt
-      - -DCOCOTB_SIM
+      - -DCOCOTB_SIM=1
+      # FOO="${VARIABLE:-default}"
+      - --define=NUM_M=32
+      - --define=NUM_DECODER_UNITS=16
 
 
 targets:

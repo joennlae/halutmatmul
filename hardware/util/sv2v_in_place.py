@@ -84,6 +84,19 @@ def parse_define_if(arg: str) -> Tuple[Pattern[str], str]:
         )
 
 
+def parse_define(arg: str) -> str:
+    splitted = arg.split("=")
+    # check if env var is set
+    os_value = os.environ.get(splitted[0])
+    return_arg = splitted[0]
+    if os_value is not None:
+        return_arg += f"={os_value}"
+    elif len(splitted) > 1:
+        # default value
+        return_arg += f"={splitted[1]}"
+    return return_arg
+
+
 def transform(
     sv2v: str,
     defines: List[str],
@@ -137,6 +150,7 @@ def main() -> int:
         "-D",
         action="append",
         dest="defines",
+        type=parse_define,
         default=[],
         help="Add a preprocessor define.",
     )
