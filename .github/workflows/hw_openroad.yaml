@@ -11,7 +11,7 @@ jobs:
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
     concurrency: vast.ai-hw
-    timeout-minutes: 120 # keep costs in check
+    timeout-minutes: 180 # keep costs in check
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v3

@@ -168,22 +168,22 @@ HW_TEST_COMMANDS = """cd /; mv /venv/ /venv2; source /venv2/bin/activate;
       mkdir -p flow_reports/halut_encoder_4;
       mkdir -p flow_reports/halut_decoder;
       mkdir -p flow_reports/fp_16_32_adder;
-      cp halut_ip_halut_top_0.1/halut_matmul/openroad_asap7-openroad/metrics.html flow_reports/halut_matmul;
-      cp halut_ip_halut_top_0.1/halut_matmul/openroad_asap7-openroad/metrics.json flow_reports/halut_matmul;
-      cp -R halut_ip_halut_top_0.1/halut_matmul/openroad_asap7-openroad/reports/ flow_reports/halut_matmul;
-      cp -R halut_ip_halut_top_0.1/halut_matmul/openroad_asap7-openroad/logs/ flow_reports/halut_matmul;
-      cp halut_ip_halut_top_0.1/halut_encoder_4/openroad_asap7_encoder_4-openroad/metrics.html flow_reports/halut_encoder_4;
-      cp halut_ip_halut_top_0.1/halut_encoder_4/openroad_asap7_encoder_4-openroad/metrics.json flow_reports/halut_encoder_4;
-      cp -R halut_ip_halut_top_0.1/halut_encoder_4/openroad_asap7_encoder_4-openroad/reports/ flow_reports/halut_encoder_4;
-      cp -R halut_ip_halut_top_0.1/halut_encoder_4/openroad_asap7_encoder_4-openroad/logs/ flow_reports/halut_encoder_4;
-      cp halut_ip_halut_top_0.1/halut_decoder/openroad_asap7_decoder-openroad/metrics.html flow_reports/halut_decoder;
-      cp halut_ip_halut_top_0.1/halut_decoder/openroad_asap7_decoder-openroad/metrics.json flow_reports/halut_decoder;
-      cp -R halut_ip_halut_top_0.1/halut_decoder/openroad_asap7_decoder-openroad/reports/ flow_reports/halut_decoder;
-      cp -R halut_ip_halut_top_0.1/halut_decoder/openroad_asap7_decoder-openroad/logs/ flow_reports/halut_decoder;
-      cp halut_ip_halut_top_0.1/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder;
-      cp halut_ip_halut_top_0.1/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder;
-      cp -R halut_ip_halut_top_0.1/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder;
-      cp -R halut_ip_halut_top_0.1/fp_16_32_adder/openroad_asap7_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder;
+      cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports/halut_matmul;
+      cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports/halut_matmul;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports/halut_matmul;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/logs/ flow_reports/halut_matmul;
+      cp halut_ip_halut_top_0.1/openroad_asap7_encoder_4-openroad/metrics.html flow_reports/halut_encoder_4;
+      cp halut_ip_halut_top_0.1/openroad_asap7_encoder_4-openroad/metrics.json flow_reports/halut_encoder_4;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_encoder_4-openroad/reports/ flow_reports/halut_encoder_4;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_encoder_4-openroad/logs/ flow_reports/halut_encoder_4;
+      cp halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/metrics.html flow_reports/halut_decoder;
+      cp halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/metrics.json flow_reports/halut_decoder;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/reports/ flow_reports/halut_decoder;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/logs/ flow_reports/halut_decoder;
+      cp halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder;
+      cp halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder;
+      cp -R halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder;
       tar -cvf report.tar.gz flow_reports
       cp report.tar.gz /report.tar.gz
 """
