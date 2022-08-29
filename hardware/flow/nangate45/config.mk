@@ -16,6 +16,9 @@ export ADDER_MAP_FILE :=
 # export DIE_AREA    = 0 0 2000 2000
 # export CORE_AREA   = 10 10 1995 1995
 
+
+export CTS_BUF_CELL           = BUF_X32 BUF_X16 BUF_X8 BUF_X4
+
 export ABC_AREA               = 1
 # export RESYNTH_AREA_RECOVER		= 1
 export RESYNTH_TIMING_RECOVER = 1
