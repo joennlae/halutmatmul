@@ -1,5 +1,6 @@
 # pylint: disable=no-value-for-parameter, protected-access
 from math import ceil, log2
+import os
 from random import getrandbits
 import typing
 import numpy as np
@@ -19,15 +20,15 @@ from util.helper_functions import (
     encoding_function,
 )
 
-CLOCK_PERIOD_PS = 1000
+CLOCK_PERIOD_PS = int(os.environ.get("CLK_PERIOD", 1000))
 
 DATA_TYPE_WIDTH = 16
 C = 32
 K = 16
-M = 32
+M = int(os.environ.get("NUM_M", 32))
+DecoderUnits = int(os.environ.get("NUM_DECODER_UNITS", 16))
 
 EncUnits = 4
-DecoderUnits = 16
 DecUnitsX = M // DecoderUnits
 CPerEncUnit = C // EncUnits
 ThreshMemAddrWidth = int(log2(CPerEncUnit * K))
@@ -37,7 +38,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 64  # * 16
+ROWS = 1024  # * 16
 
 
 @cocotb.test()
