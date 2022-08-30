@@ -40,10 +40,11 @@ module halut_decoder #(
   // edit: https://asciiflow.com/#/share/eJyrVspLzE1VssorzcnRUcpJrEwtUrJSqo5RqohRsrI0t9SJUaoEsowszICsktSKEiAnRkmBGPBoyh56opiYPGKdBaKMjQipQjOQQuchWU18aCHpIcbP2M1Hspx8p6M4BIMHC6%2Fk%2BMSUlKL4TBQDpu3C6yigPBZ3k2QtXJcpgTDAKk2eVahm5ZSWIImiI4gP0wriDc3ijY1AYZRahFsdDkOIUDVtV1FqcWlOSXw%2B8QnD0Ax3oIDyCGowQHINapBk44p0Z1tjIx0Fb1tDMx0FX1tDsmIBQwzZZybERDclCR6adtGcghClfhGBG%2BDXglU2RqlWqRYAVumR8A%3D%3D)
   localparam int unsigned LUTAddrWidth = $clog2(C * K);
 
-  logic [ LUTAddrWidth-1:0] raddr;
-  logic [DataTypeWidth-1:0] rdata_o;
+  logic [LUTAddrWidth-1:0] raddr;
+  logic [DataTypeWidth-1:0] rdata_o, rdata_o_q;
 
   logic [32-1:0] result_int_d, result_int_q, result_o_q;
+  logic [CAddrWidth-1:0] caddr_q;
 
   assign raddr = {c_addr_i, k_addr_i};
 
@@ -62,9 +63,9 @@ module halut_decoder #(
   );
 
   fp_16_32_adder fp_adder (
-    .clk_i(!clk_i),
-    .rst_ni(rst_ni),
-    .operand_fp16_i(rdata_o),
+    .clk_i(clk_i),
+    .rst_i(!rst_ni),
+    .operand_fp16_i(rdata_o_q),
     .operand_fp32_i(result_int_q),
     .result_o(result_int_d)
   );
@@ -73,15 +74,19 @@ module halut_decoder #(
     if (!rst_ni) begin
       result_int_q <= 0;
       valid_o <= 0;
+      caddr_q <= 0;
+      rdata_o_q <= 0;
       result_o_q <= 0;
     end else begin
       if (decoder_i) begin
         result_int_q <= result_int_d;
-        if (c_addr_i == CAddrWidth'(C - 1)) begin  // Attention: do net let it stay on address C - 1
+        rdata_o_q <= rdata_o;
+        caddr_q <= c_addr_i;
+        if (caddr_q == CAddrWidth'(C - 1)) begin  // Attention: do net let it stay on address C - 1
           valid_o <= 1'b1;
           result_o_q <= result_int_d;
           result_int_q <= 0;
-        end else if (c_addr_i >= (CAddrWidth)'(DecoderUnits - 1)) begin : valid_for_DecUnit_cycles
+        end else if (caddr_q >= (CAddrWidth)'(DecoderUnits - 1)) begin : valid_for_DecUnit_cycles
           valid_o <= 1'b0;  // applies invalid symbol to work with halut_decoder_x
         end
       end else begin

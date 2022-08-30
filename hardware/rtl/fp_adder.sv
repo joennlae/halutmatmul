@@ -6,7 +6,7 @@ module fp_adder #(
   parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
 ) (
   input logic clk_i,
-  input logic rst_ni,
+  input logic rst_i,
   input logic [C_OP-1:0] operand_a_di,
   input logic [C_OP-1:0] operand_b_di,
   output logic [C_OP-1:0] result_do
@@ -36,8 +36,8 @@ module fp_adder #(
   logic        [          C_OP-1:0] operand_a_dp;
   logic        [          C_OP-1:0] operand_b_dp;
 
-  always_ff @(posedge clk_i, negedge rst_ni) begin
-    if (~rst_ni) begin
+  always_ff @(negedge clk_i or posedge rst_i) begin
+    if (rst_i) begin
       operand_a_dp <= '0;
       operand_b_dp <= '0;
     end else begin

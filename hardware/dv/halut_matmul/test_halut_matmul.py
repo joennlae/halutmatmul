@@ -19,6 +19,8 @@ from util.helper_functions import (
     encoding_function,
 )
 
+CLOCK_PERIOD_PS = 1000
+
 DATA_TYPE_WIDTH = 16
 C = 32
 K = 16
@@ -35,7 +37,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 64
+ROWS = 64  # * 16
 
 
 @cocotb.test()
@@ -52,7 +54,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     result, _ = decoding_2d(lut, encoded)
     print("results", encoded, result)
-    cocotb.start_soon(Clock(dut.clk_i, 1, units="ns").start())
+    cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_PS, units="ps").start())
 
     # Initial values
     dut.a_input_enc_i.value = BinaryValue(
@@ -152,10 +154,10 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     dut.c_addr_enc_o.value.value == lookup_c
                 ), "enc assert wrong c output"
 
-            if not (row == 0 or (row == 1 and c_ < 6)) and c_ >= 6:
-                lookup_m = c_ - 6
+            if not (row == 0 or (row == 1 and c_ < 7)) and c_ >= 7:
+                lookup_m = c_ - 7
                 assert (
-                    DecoderUnits < C - 6
+                    DecoderUnits < C - 7
                 ), "DecoderUnits too high for this logic (and max_fan_out)"
                 if lookup_m in range(DecoderUnits):
                     m_addr_out = dut.m_addr_o.value
@@ -179,7 +181,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     assert dut.valid_o.value == BinaryValue(
                         0, n_bits=DecUnitsX
                     ), "should be invalid"
-                if row == ROWS and c == 6 + DecoderUnits - 6:
+                if row == ROWS and c == 7 + DecoderUnits - 7:
                     dut.encoder_i.value = 0  # turn off
             else:
                 assert dut.valid_o.value == BinaryValue(

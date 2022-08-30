@@ -75,18 +75,18 @@ async def halut_decoder_test(dut) -> None:  # type: ignore[no-untyped-def]
             # dut._log.info(
             #     f"r: {row}, c: {c}, valid_o: {dut.valid_o.value}, \n"
             #     f"res_int: {binary_to_float32(dut.result_int_q.value)}, \n"
-            #     f"res_expected: {result_history[row, c - 1]} \n"
+            #     f"res_expected: {result_history[row, c - 2]} \n"
             #     f"res: {binary_to_float32(dut.result_o.value)}\n"
             # )
-            if row > 0 and c == 1:
+            if row > 0 and c == 2:
                 assert dut.valid_o.value == 1, "output not valid"
                 assert binary_to_float32(dut.result_o.value) == np.float32(
                     result[row - 1]
                 ), "result not correct"
-            if row > 0 and c > 0:
+            if row > 0 and c > 1:
                 assert (
                     binary_to_float32(dut.result_int_q.value)
-                    == result_history[row, c - 1]
+                    == result_history[row, c - 2]
                 ), "res_history not correct"
             dut.c_addr_i.value = int(c)
             dut.k_addr_i.value = int(encoded[row, c])

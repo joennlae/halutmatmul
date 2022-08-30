@@ -85,17 +85,17 @@ async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
             #     f"dec_0_addr: {dut.gen_decoders[0].sub_unit_decoder.raddr.value}\n"
             #     f"dec_1_read: {dut.gen_decoders[1].sub_unit_decoder.rdata_o.value}\n"
             # )
-            if row > 0 and c >= 2:
+            if row > 0 and c >= 3:
                 if c < 2 + DecoderUnits:
-                    dut._log.info(f"c:{c - 2}, r:{row - 1}")
+                    dut._log.info(f"c:{c - 3}, r:{row - 1}")
                     assert dut.valid_o.value == 1, "output not valid"
                     assert binary_to_float32(dut.result_o.value) == np.float32(
-                        result[row - 1, c - 2]  # [N, M]
+                        result[row - 1, c - 3]  # [N, M]
                     ), "result not correct"
-                    assert dut.m_addr_o.value.value == c - 2, " m_addr_o wrong"
-                elif c >= 2 + DecoderUnits:
+                    assert dut.m_addr_o.value.value == c - 3, " m_addr_o wrong"
+                elif c >= 3 + DecoderUnits:
                     assert dut.valid_o.value == 0, "output should be invalid"
-                if row == ROWS and c == 2 + DecoderUnits - 2:
+                if row == ROWS and c == 3 + DecoderUnits - 3:
                     dut.decoder_i.value = 0  # turn of decoder
             else:
                 assert dut.valid_o.value == 0, "output should be invalid"
