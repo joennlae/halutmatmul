@@ -5,10 +5,10 @@ module fp_adder #(
   parameter int unsigned C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
   parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
 ) (
-  input logic clk_i,
-  input logic rst_i,
-  input logic [C_OP-1:0] operand_a_di,
-  input logic [C_OP-1:0] operand_b_di,
+  // input logic clk_i,
+  // input logic rst_i,
+  input  logic [C_OP-1:0] operand_a_di,
+  input  logic [C_OP-1:0] operand_b_di,
   output logic [C_OP-1:0] result_do
 );
 
@@ -33,25 +33,25 @@ module fp_adder #(
   logic        [         C_EXP-1:0] exp_norm_d;
   logic        [          C_MANT:0] mant_norm_d;
 
-  logic        [          C_OP-1:0] operand_a_dp;
-  logic        [          C_OP-1:0] operand_b_dp;
+  // logic        [          C_OP-1:0] operand_a_dp;
+  // logic        [          C_OP-1:0] operand_b_dp;
 
-  always_ff @(negedge clk_i or posedge rst_i) begin
-    if (rst_i) begin
-      operand_a_dp <= '0;
-      operand_b_dp <= '0;
-    end else begin
-      operand_a_dp <= operand_a_di;
-      operand_b_dp <= operand_b_di;
-    end
-  end
+  // always_ff @(negedge clk_i or posedge rst_i) begin
+  //   if (rst_i) begin
+  //     operand_a_dp <= '0;
+  //     operand_b_dp <= '0;
+  //   end else begin
+  //     operand_a_dp <= operand_a_di;
+  //     operand_b_dp <= operand_b_di;
+  //   end
+  // end
 
-  assign sign_a_d = operand_a_dp[C_OP-1];
-  assign sign_b_d = operand_b_dp[C_OP-1];
-  assign exp_a_d  = operand_a_dp[C_OP-2:C_MANT];
-  assign exp_b_d  = operand_b_dp[C_OP-2:C_MANT];
-  assign mant_a_d = {hb_a_d, operand_a_dp[C_MANT-1:0]};
-  assign mant_b_d = {hb_b_d, operand_b_dp[C_MANT-1:0]};
+  assign sign_a_d = operand_a_di[C_OP-1];
+  assign sign_b_d = operand_b_di[C_OP-1];
+  assign exp_a_d  = operand_a_di[C_OP-2:C_MANT];
+  assign exp_b_d  = operand_b_di[C_OP-2:C_MANT];
+  assign mant_a_d = {hb_a_d, operand_a_di[C_MANT-1:0]};
+  assign mant_b_d = {hb_b_d, operand_b_di[C_MANT-1:0]};
 
   assign hb_a_d   = |exp_a_d;  // hidden bit
   assign hb_b_d   = |exp_b_d;  // hidden bit

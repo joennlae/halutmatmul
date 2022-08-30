@@ -3,8 +3,7 @@ from math import log2
 from random import getrandbits
 import numpy as np
 import cocotb
-from cocotb.triggers import RisingEdge
-from cocotb.clock import Clock
+from cocotb.triggers import Timer
 from cocotb.binary import BinaryValue
 from cocotb.types import LogicArray
 
@@ -18,17 +17,10 @@ from util.helper_functions import (
 
 @cocotb.test()
 async def fp_16_32_adder_test(dut) -> None:  # type: ignore[no-untyped-def]
-    cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
 
     # Initial values
     dut.operand_fp16_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
     dut.operand_fp32_i.value = BinaryValue(0, n_bits=32, bigEndian=True)
-
-    # Reset DUT
-    dut.rst_ni.value = 0
-    for _ in range(3):
-        await RisingEdge(dut.clk_i)
-    dut.rst_ni.value = 1
 
     for _ in range(1000):
         random_val_fp16 = np.float16(np.random.random_sample())
@@ -39,11 +31,10 @@ async def fp_16_32_adder_test(dut) -> None:  # type: ignore[no-untyped-def]
         #     f"values: {random_val_fp16}, {random_val_fp32}, "
         #     f"{random_val_bin_fp16}, {random_val_bin_fp32}"
         # )
-        await RisingEdge(dut.clk_i)
+        await Timer(5, units="ps")
         dut.operand_fp16_i.value = random_val_bin_fp16
         dut.operand_fp32_i.value = random_val_bin_fp32
-        await RisingEdge(dut.clk_i)
-        await RisingEdge(dut.clk_i)
+        await Timer(5, units="ps")
         read_out_bin = dut.result_o.value
 
         assert (
@@ -54,17 +45,9 @@ async def fp_16_32_adder_test(dut) -> None:  # type: ignore[no-untyped-def]
 
 @cocotb.test()
 async def fp_16_32_adder_with_fp16_denormals_test(dut) -> None:  # type: ignore[no-untyped-def]
-    cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
-
     # Initial values
     dut.operand_fp16_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
     dut.operand_fp32_i.value = BinaryValue(0, n_bits=32, bigEndian=True)
-
-    # Reset DUT
-    dut.rst_ni.value = 0
-    for _ in range(3):
-        await RisingEdge(dut.clk_i)
-    dut.rst_ni.value = 1
 
     for _ in range(1000):
         denormal_fp16_bin_str = LogicArray(
@@ -77,11 +60,10 @@ async def fp_16_32_adder_with_fp16_denormals_test(dut) -> None:  # type: ignore[
         #     f"values: {random_val_fp16}, {random_val_fp32}, "
         #     f"{random_val_bin_fp16}, {random_val_bin_fp32}"
         # )
-        await RisingEdge(dut.clk_i)
+        await Timer(5, units="ps")
         dut.operand_fp16_i.value = denormal_fp16_bin_str
         dut.operand_fp32_i.value = random_val_bin_fp32
-        await RisingEdge(dut.clk_i)
-        await RisingEdge(dut.clk_i)
+        await Timer(5, units="ps")
         read_out_bin = dut.result_o.value
 
         assert (

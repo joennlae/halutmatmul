@@ -82,9 +82,11 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     # Reset DUT
     dut.rst_ni.value = 0
+    dut.rst_i.value = 1
     for _ in range(6):
         await RisingEdge(dut.clk_i)
     dut.rst_ni.value = 1
+    dut.rst_i.value = 0
 
     # write threshold values
     await RisingEdge(dut.clk_i)

@@ -63,8 +63,6 @@ module halut_decoder #(
   );
 
   fp_16_32_adder fp_adder (
-    .clk_i(clk_i),
-    .rst_i(!rst_ni),
     .operand_fp16_i(rdata_o_q),
     .operand_fp32_i(result_int_q),
     .result_o(result_int_d)
