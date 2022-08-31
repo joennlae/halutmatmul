@@ -253,7 +253,7 @@ if __name__ == "__main__":
         ssh_host, ssh_port = startup(args.image, args.hardware)
         # ssh_host = "ssh4.vast.ai"
         # ssh_port = 11182
-        sleep(10)
+        sleep(60)
         error_code = run_ssh_commands(ssh_host, ssh_port, args.debug, args.hardware)
         cleanup(args.image)
         sys.exit(error_code)
