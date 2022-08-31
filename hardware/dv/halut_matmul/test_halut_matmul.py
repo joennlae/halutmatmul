@@ -21,6 +21,7 @@ from util.helper_functions import (
 )
 
 CLOCK_PERIOD_PS = int(os.environ.get("CLK_PERIOD", 1000))
+print("CLOCK_PERIOD_PS = ", CLOCK_PERIOD_PS)
 
 DATA_TYPE_WIDTH = 16
 C = 32
@@ -38,7 +39,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 1024  # * 16
+ROWS = 64  # * 16
 
 
 @cocotb.test()
@@ -82,11 +83,9 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     # Reset DUT
     dut.rst_ni.value = 0
-    dut.rst_i.value = 1
     for _ in range(6):
         await RisingEdge(dut.clk_i)
     dut.rst_ni.value = 1
-    dut.rst_i.value = 0
 
     # write threshold values
     await RisingEdge(dut.clk_i)
