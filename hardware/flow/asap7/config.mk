@@ -24,7 +24,7 @@ export CTS_BUF_CELL           = BUFx12_ASAP7_75t_R BUFx10_ASAP7_75t_R BUFx8_ASAP
 
 export ABC_AREA               = 1
 # export RESYNTH_AREA_RECOVER		= 1
-export RESYNTH_TIMING_RECOVER = 1
+# export RESYNTH_TIMING_RECOVER = 1
 
 export CORE_UTILIZATION       = 40
 export CORE_ASPECT_RATIO      = 1

@@ -21,7 +21,7 @@ export CTS_BUF_CELL           = BUF_X32 BUF_X16 BUF_X8 BUF_X4
 
 export ABC_AREA               = 1
 # export RESYNTH_AREA_RECOVER		= 1
-export RESYNTH_TIMING_RECOVER = 1
+# export RESYNTH_TIMING_RECOVER = 1
 
 export CORE_UTILIZATION       = 40
 export CORE_ASPECT_RATIO      = 1
