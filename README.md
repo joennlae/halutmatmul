@@ -56,13 +56,13 @@ halut --help
 ### Total Circuit (M=2)
 | halut_matmul         | ASAP7         | NanGate45      |
 | -------------  | ------------- | -------------  |
-| Area [μm^2]    | 8881.5674  | 138203.4844 |
-| Freq [Mhz]     | 333.3 | 166.7 |
-| GE             | 101.526 kGE | 173.187 kGE |
-| Std Cell [#]   | 64826 | 68095 | 
+| Area [μm^2]    | 9080.6279  | 138128.4844 |
+| Freq [Mhz]     | 666.7 | 333.3 |
+| GE             | 103.802 kGE | 173.093 kGE |
+| Std Cell [#]   | 65320 | 68127 | 
 | Voltage [V]    |  0.77         | 1.1             |
-| Util [%]       | 46.2 | 59.0 | 
-| TNS            | 0.0   | -0.12 |
+| Util [%]       | 47.3 | 59.0 | 
+| TNS            | 0.0   | -0.56 |
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/halut_matmul/reports/asap7/halut_matmul/base/final_clocks.webp.png)  | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/nangate45/halut_matmul/base/final_clocks.webp)  |
 | Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/halut_matmul/reports/report-gallery-halut_matmul.html)  | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/reports/report-gallery-halut_matmul.html)  |
 | Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/halut_matmul/metrics.html)  |  [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/metrics.html)  |
@@ -72,12 +72,12 @@ halut --help
 ### Encoder
 | halut_encoder_4         | ASAP7         | NanGate45      |
 | -------------  | ------------- | -------------  |
-| Area [μm^2]    | 4431.9556  | 68073.125 |
-| Freq [Mhz]     | 333.3 | 166.7 |
-| GE             | 50.662 kGE | 85.304 kGE |
-| Std Cell [#]   | 31977 | 33434 | 
+| Area [μm^2]    | 4431.0659  | 68172.3438 |
+| Freq [Mhz]     | 666.7 | 333.3 |
+| GE             | 50.652 kGE | 85.429 kGE |
+| Std Cell [#]   | 31983 | 33453 | 
 | Voltage [V]    |  0.77         | 1.1             |
-| Util [%]       | 46.1 | 59.0 | 
+| Util [%]       | 46.1 | 59.1 | 
 | TNS            | 0.0   | 0.0 |
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/halut_encoder_4/reports/asap7/halut_encoder_4/base/final_clocks.webp.png)  | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/nangate45/halut_encoder_4/base/final_clocks.webp)  |
 | Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/halut_encoder_4/reports/report-gallery-halut_encoder_4.html)  | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_encoder_4/reports/report-gallery-halut_encoder_4.html)  |
@@ -88,13 +88,13 @@ halut --help
 ### Decoder
 | halut_decoder         | ASAP7         | NanGate45      |
 | -------------  | ------------- | -------------  |
-| Area [μm^2]    | 4475.4038  | 69390.0938 |
-| Freq [Mhz]     | 333.3 | 166.7 |
-| GE             | 51.159 kGE | 86.955 kGE |
-| Std Cell [#]   | 33362 | 34480 | 
+| Area [μm^2]    | 4469.7031  | 69252.5703 |
+| Freq [Mhz]     | 666.7 | 333.3 |
+| GE             | 51.093 kGE | 86.782 kGE |
+| Std Cell [#]   | 33368 | 34421 | 
 | Voltage [V]    |  0.77         | 1.1             |
-| Util [%]       | 46.2 | 58.9 | 
-| TNS            | 0.0   | 0.0 |
+| Util [%]       | 46.4 | 59.1 | 
+| TNS            | 0.0   | -2.82 |
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/halut_decoder/reports/asap7/halut_decoder/base/final_clocks.webp.png)  | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/nangate45/halut_decoder/base/final_clocks.webp)  |
 | Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/halut_decoder/reports/report-gallery-halut_decoder.html)  | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/reports/report-gallery-halut_decoder.html)  |
 | Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/halut_decoder/metrics.html)  |  [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/metrics.html)  |
@@ -104,13 +104,13 @@ halut --help
 ### FP16_FP32 adder
 | fp_16_32_adder         | ASAP7         | NanGate45      |
 | -------------  | ------------- | -------------  |
-| Area [μm^2]    | 311.5746  | 3322.606 |
-| Freq [Mhz]     | 333.3 | 166.7 |
-| GE             | 3.561 kGE | 4.163 kGE |
-| Std Cell [#]   | 3003 | 2926 | 
+| Area [μm^2]    | 296.0323  | 2876.79 |
+| Freq [Mhz]     | 666.7 | 333.3 |
+| GE             | 3.383 kGE | 3.604 kGE |
+| Std Cell [#]   | 2936 | 2937 | 
 | Voltage [V]    |  0.77         | 1.1             |
-| Util [%]       | 45.8 | 41.0 | 
-| TNS            | 0.0   | 0.0 |
+| Util [%]       | 47.7 | 39.1 | 
+| TNS            | -782.78   | -0.31 |
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/asap7/fp_16_32_adder/reports/asap7/fp_16_32_adder/base/final_clocks.webp.png)  | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/fp_16_32_adder/reports/nangate45/fp_16_32_adder/base/final_clocks.webp)  |
 | Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/fp_16_32_adder/reports/report-gallery-fp_16_32_adder.html)  | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/fp_16_32_adder/reports/report-gallery-fp_16_32_adder.html)  |
 | Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/asap7/fp_16_32_adder/metrics.html)  |  [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/fp_16_32_adder/metrics.html)  |
