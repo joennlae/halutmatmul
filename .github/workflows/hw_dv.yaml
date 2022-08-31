@@ -21,13 +21,27 @@ jobs:
       run: |
         source /venv/bin/activate
         cd hardware
+        RESULT=0
         fusesoc --cores-root=. run --target=icarus halut:test:scm
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:fp_adder
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:fp_16_to_32_convert
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:fp_16_32_adder
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:fp_16_comparision
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder_4
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder_x
+        RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+        RESULT=$(($RESULT + $?))
+
+        echo "Exit Code: $RESULT"
+        exit $RESULT
