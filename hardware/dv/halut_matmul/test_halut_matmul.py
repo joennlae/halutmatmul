@@ -45,6 +45,7 @@ ROWS = 64  # * 16
 @cocotb.test()
 async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     # generate threshold table
+    # np.random.seed(4419)
     threshold_table = np.random.random((C * K)).astype(np.float16)
     input_a = np.random.random((ROWS, C, TreeDepth)).astype(np.float16)
 

@@ -35,3 +35,10 @@ targets:
     tools:
       cocotb:
         make_args: SIM=icarus
+  questa:
+    <<: *default_target
+    filesets_append:
+      - sv2v
+    tools:
+      cocotb:
+        make_args: SIM=questa
