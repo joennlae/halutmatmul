@@ -1,7 +1,7 @@
 
 module fp_16_comparision (
-  input logic [16-1:0] operand_a_i,
-  input logic [16-1:0] operand_b_i,
+  input logic signed [16-1:0] operand_a_i,
+  input logic signed [16-1:0] operand_b_i,
   output logic comparision_o
 );
   logic sign_a;

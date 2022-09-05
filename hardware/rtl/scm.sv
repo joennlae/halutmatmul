@@ -12,26 +12,23 @@ module scm #(
   input logic rst_ni,
 
   // Read port R1
-  input  logic [TotalAddrWidth-1:0] raddr_a_i,
-  output logic [ DataTypeWidth-1:0] rdata_a_o,
+  input  logic unsigned [TotalAddrWidth-1:0] raddr_a_i,
+  output logic signed   [ DataTypeWidth-1:0] rdata_a_o,
 
   // Write port W1
-  input logic [TotalAddrWidth-1:0] waddr_a_i,
-  input logic [ DataTypeWidth-1:0] wdata_a_i,
-  input logic                      we_a_i
+  input logic unsigned [TotalAddrWidth-1:0] waddr_a_i,
+  input logic signed   [ DataTypeWidth-1:0] wdata_a_i,
+  input logic                               we_a_i
 );
 
   localparam int unsigned UnitAddrWidth = (TotalAddrWidth - SubUnitAddrWidth);
   localparam int unsigned NumSubUnits = 2 ** UnitAddrWidth;
 
-  logic [TotalAddrWidth-1:SubUnitAddrWidth] raddr_int_unit, waddr_int_unit;
-  logic [SubUnitAddrWidth-1:0] raddr_int_sub, waddr_int_sub;
-
-  logic [DataTypeWidth-1:0] wdata_a_q;
-
-  logic [NumSubUnits-1:0] waddr_onehot_unit, raddr_onehot_unit;
-
-  logic [DataTypeWidth-1:0] read_outputs_subunits[NumSubUnits];
+  logic unsigned [TotalAddrWidth-1:SubUnitAddrWidth] raddr_int_unit, waddr_int_unit;
+  logic unsigned [SubUnitAddrWidth-1:0] raddr_int_sub, waddr_int_sub;
+  logic signed [DataTypeWidth-1:0] wdata_a_q;
+  logic unsigned [NumSubUnits-1:0] waddr_onehot_unit, raddr_onehot_unit;
+  logic signed [DataTypeWidth-1:0] read_outputs_subunits[NumSubUnits];
 
   logic clk_int;
   // Global clock gating

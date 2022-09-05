@@ -32,26 +32,21 @@ module halut_matmul #(
   input logic [TotalAddrWidth-1:0] waddr_dec_i [DecUnitsX],
   input logic [ DataTypeWidth-1:0] wdata_dec_i [DecUnitsX],
   input logic                      we_dec_i    [DecUnitsX],
-  // input logic [    CAddrWidth-1:0] c_addr_dec_i[DecUnitsX],
-  // input logic [     TreeDepth-1:0] k_addr_dec_i[DecUnitsX],
-  // input logic decoder_i[DecUnitsX],
 
   output logic [32-1:0] result_o[DecUnitsX],  // FP32 output
   output logic valid_o[DecUnitsX],
   output logic [MAddrWidth-1:0] m_addr_o[DecUnitsX]
 );
-  logic [CAddrWidth-1:0] c_addr_enc_o;
-  logic [TreeDepth-1:0] k_addr_enc_o;
+  logic unsigned [CAddrWidth-1:0] c_addr_enc_o;
+  logic unsigned [TreeDepth-1:0] k_addr_enc_o;
   logic valid_enc_o;
 
   logic decoder_i[DecUnitsX];
-
-  logic [CAddrWidth-1:0] c_addr_int[DecUnitsX];
-  logic [TreeDepth-1:0] k_addr_int[DecUnitsX];
-
-  logic [32-1:0] result_dec_o[DecoderUnits];
+  logic unsigned [CAddrWidth-1:0] c_addr_int[DecUnitsX];
+  logic unsigned [TreeDepth-1:0] k_addr_int[DecUnitsX];
+  logic signed [32-1:0] result_dec_o[DecoderUnits];
   logic valid_dec_o[DecoderUnits];
-  logic [DecAddrWidth-1:0] m_addr_int[DecoderUnits];
+  logic unsigned [DecAddrWidth-1:0] m_addr_int[DecoderUnits];
 
   halut_encoder_4 #(
     .K(K),

@@ -13,17 +13,17 @@ module halut_encoder #(
   input logic clk_i,
   input logic rst_ni,
 
-  input logic [DataTypeWidth-1:0] a_input_i[TreeDepth],
+  input logic signed [DataTypeWidth-1:0] a_input_i[TreeDepth],
 
   // write ports for threshold memory
-  input logic [ThreshMemAddrWidth-1:0] waddr_i,
-  input logic [     DataTypeWidth-1:0] wdata_i,
-  input logic                          we_i,
+  input logic unsigned [ThreshMemAddrWidth-1:0] waddr_i,
+  input logic unsigned [     DataTypeWidth-1:0] wdata_i,
+  input logic                                   we_i,
 
   input logic encoder_i,
 
-  output logic [CAddrWidth-1:0] c_addr_o,
-  output logic [TreeDepth-1:0] k_addr_o,
+  output logic unsigned [CAddrWidth-1:0] c_addr_o,
+  output logic unsigned [TreeDepth-1:0] k_addr_o,
   output logic valid_o
 );
 
@@ -70,7 +70,7 @@ module halut_encoder #(
   //               │
   //      ┌────────┴────────┐
   //      │                 │
-  //      │ c_addr_internal │
+  //      │ c_addr_int │
   //      │►                │
   //      └─────────────────┘
 
@@ -78,18 +78,16 @@ module halut_encoder #(
 
   localparam int unsigned CntWidth = $clog2(TreeDepth);
 
-  logic [ThreshMemAddrWidth-1:0] read_addr_thresh_mem;
-  logic [DataTypeWidth-1:0] data_thresh_mem_o;
-
-  logic [DataTypeWidth-1:0] data_input_comparision;
-
-  logic [CntWidth-1:0] tree_level_cnt;
-
-  logic [TreeDepth-1:0] k_addr, k_addr_o_q;
-  logic [TreeDepth-1:0] prototype_addr_internal;
-  logic [$clog2(CPerEncUnit)-1:0] c_addr_internal;
-  logic [CAddrWidth-1:0] c_addr_o_q;
-  logic [TreeDepth-1:0] input_tree_level_one_hot;
+  logic signed [DataTypeWidth-1:0] data_thresh_mem_o;
+  logic signed [DataTypeWidth-1:0] data_input_comparision;
+  logic unsigned [ThreshMemAddrWidth-1:0] read_addr_thresh_mem;
+  logic unsigned [CntWidth-1:0] tree_level_cnt, tree_level_cnt_n;
+  logic unsigned [TreeDepth-1:0] k_addr, k_addr_o_q, k_addr_int;
+  logic unsigned [TreeDepth-1:0] k_addr_n, k_addr_o_n;
+  logic unsigned [$clog2(CPerEncUnit)-1:0] c_addr_int, c_addr_int_n;
+  logic unsigned [CAddrWidth-1:0] c_addr_o_q, c_addr_o_n;
+  logic unsigned [TreeDepth-1:0] input_tree_level_one_hot;
+  logic valid_o_n;
 
   logic fp_16_comparision_o;
 
@@ -135,37 +133,56 @@ module halut_encoder #(
   always_comb begin : cal_memory_addr
     // needs update when K changes!!
     unique case (tree_level_cnt)
-      2'b01:   prototype_addr_internal = k_addr + 1;
-      2'b10:   prototype_addr_internal = k_addr + 3;
-      2'b11:   prototype_addr_internal = k_addr + 7;
-      default: prototype_addr_internal = k_addr;
+      2'b01:   k_addr_int = k_addr + 1;
+      2'b10:   k_addr_int = k_addr + 3;
+      2'b11:   k_addr_int = k_addr + 7;
+      default: k_addr_int = k_addr;
     endcase
-    read_addr_thresh_mem = {c_addr_internal, prototype_addr_internal};
+    read_addr_thresh_mem = {c_addr_int, k_addr_int};
+  end
+
+  always_comb begin : assign_next_signals
+    if (encoder_i) begin
+      if (tree_level_cnt < (CntWidth)'(TreeDepth - 1)) begin : increment
+        tree_level_cnt_n = tree_level_cnt + 1;
+        k_addr_n = (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
+        valid_o_n = 1'b0;
+        c_addr_int_n = c_addr_int;
+        k_addr_o_n = k_addr_o;
+        c_addr_o_n = c_addr_o;
+      end else begin : encoding_finished
+        tree_level_cnt_n = 2'b0;
+        c_addr_o_n = (CAddrWidth)'(c_addr_o_q + (CAddrWidth)'(EncUnits));
+        c_addr_int_n = c_addr_int + 1;
+        k_addr_o_n = (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
+        k_addr_n = 0;
+        valid_o_n = 1'b1;
+      end
+    end else begin
+      tree_level_cnt_n = 0;
+      c_addr_int_n = 0;
+      k_addr_n = 0;
+      k_addr_o_n = 0;
+      c_addr_o_n = (CAddrWidth)'(EncUnitNumber - EncUnits);
+      valid_o_n = 0;
+    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : all_ffs
     if (!rst_ni) begin
       tree_level_cnt <= 0;
-      c_addr_internal <= 0;
+      c_addr_int <= 0;
       k_addr <= 0;
       k_addr_o_q <= 0;
       c_addr_o_q <= (CAddrWidth)'(EncUnitNumber - EncUnits);
       valid_o <= 0;
     end else begin
-      if (encoder_i) begin
-        if (tree_level_cnt < (CntWidth)'(TreeDepth - 1)) begin : increment
-          tree_level_cnt <= tree_level_cnt + 1;
-          k_addr <= (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
-          valid_o <= 1'b0;
-        end else begin : encoding_finished
-          tree_level_cnt <= 2'b0;
-          c_addr_o_q <= (CAddrWidth)'(c_addr_o_q + (CAddrWidth)'(EncUnits));
-          c_addr_internal <= c_addr_internal + 1;
-          k_addr_o_q <= (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
-          k_addr <= 0;
-          valid_o <= 1'b1;
-        end
-      end
+      tree_level_cnt <= tree_level_cnt_n;
+      c_addr_int <= c_addr_int_n;
+      k_addr <= k_addr_n;
+      k_addr_o_q <= k_addr_o_n;
+      c_addr_o_q <= c_addr_o_n;
+      valid_o <= valid_o_n;
     end
   end
 

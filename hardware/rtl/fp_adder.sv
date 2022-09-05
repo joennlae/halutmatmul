@@ -5,8 +5,6 @@ module fp_adder #(
   parameter int unsigned C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
   parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
 ) (
-  // input logic clk_i,
-  // input logic rst_i,
   input  logic [C_OP-1:0] operand_a_di,
   input  logic [C_OP-1:0] operand_b_di,
   output logic [C_OP-1:0] result_do
@@ -20,31 +18,19 @@ module fp_adder #(
   logic        [          C_MANT:0] mant_a_d;
   logic        [          C_MANT:0] mant_b_d;
 
-  //Hidden Bits
+  // Hidden Bits
   logic                             hb_a_d;
   logic                             hb_b_d;
 
-  //Pre-Normalizer result
+  // Pre-Normalizer result
   logic                             sign_prenorm_d;
   logic signed [ C_EXP_PRENORM-1:0] exp_prenorm_d;
   logic        [C_MANT_PRENORM-1:0] mant_prenorm_d;
 
-  //Post-Normalizer result
+  // Post-Normalizer result
   logic        [         C_EXP-1:0] exp_norm_d;
   logic        [          C_MANT:0] mant_norm_d;
 
-  // logic        [          C_OP-1:0] operand_a_dp;
-  // logic        [          C_OP-1:0] operand_b_dp;
-
-  // always_ff @(negedge clk_i or posedge rst_i) begin
-  //   if (rst_i) begin
-  //     operand_a_dp <= '0;
-  //     operand_b_dp <= '0;
-  //   end else begin
-  //     operand_a_dp <= operand_a_di;
-  //     operand_b_dp <= operand_b_di;
-  //   end
-  // end
 
   assign sign_a_d = operand_a_di[C_OP-1];
   assign sign_b_d = operand_b_di[C_OP-1];

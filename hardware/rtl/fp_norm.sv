@@ -16,16 +16,9 @@ module fp_norm #(
   parameter int unsigned       C_EXP_PRENORM      = fp_defs::C_EXP_PRENORM,
   parameter int unsigned       C_MANT_PRENORM_IND = fp_defs::C_MANT_PRENORM_IND,
   parameter bit          [7:0] C_EXP_ZERO         = fp_defs::C_EXP_ZERO,
-  // parameter C_EXP_INF          = fp_defs::C_EXP_INF,
 
-  // parameter C_RM   = fp_defs::C_RM,
-  // parameter C_CMD  = fp_defs::C_CMD,
   parameter int unsigned C_MANT = fp_defs::C_MANT,
   parameter int unsigned C_EXP  = fp_defs::C_EXP,
-
-  // parameter C_FPU_ADD_CMD = fp_defs::C_FPU_ADD_CMD,
-  // parameter C_FPU_SUB_CMD = fp_defs::C_FPU_SUB_CMD,
-  // parameter C_FPU_MUL_CMD = fp_defs::C_FPU_MUL_CMD,
 
   parameter bit [2:0] C_RM_NEAREST  = fp_defs::C_RM_NEAREST,
   parameter bit [2:0] C_RM_TRUNC    = fp_defs::C_RM_TRUNC,
@@ -38,16 +31,9 @@ module fp_norm #(
   input logic signed [ C_EXP_PRENORM-1:0] Exp_in_DI,
   input logic                             Sign_in_DI,
 
-  // Rounding Mode
-  // input logic [C_RM-1:0] RM_SI,
-  // input logic [C_CMD-1:0] OP_SI,
-
   output logic [ C_MANT:0] Mant_res_DO,
   output logic [C_EXP-1:0] Exp_res_DO
 
-  // output logic Rounded_SO,
-  // output logic Exp_OF_SO,
-  // output logic Exp_UF_SO
 );
 
   /////////////////////////////////////////////////////////////////////////////

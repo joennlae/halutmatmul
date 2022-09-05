@@ -33,10 +33,10 @@ module halut_decoder_x #(
   logic [32-1:0] result_int[DecoderUnits];
   logic valid_int[DecoderUnits];
 
-  logic [DecAddrWidth-1:0] m_addr_cnt;
-  logic [32-1:0] result_o_q;
-  logic valid_o_q;
-  logic [DecAddrWidth-1:0] m_addr_o_q;
+  logic [DecAddrWidth-1:0] m_addr_cnt, m_addr_cnt_n;
+  logic [32-1:0] result_o_q, result_o_n;
+  logic valid_o_q, valid_o_n;
+  logic [DecAddrWidth-1:0] m_addr_o_q, m_addr_o_n;
 
   prim_onehot_enc #(
     .OneHotWidth(DecoderUnits)
@@ -57,7 +57,6 @@ module halut_decoder_x #(
       .rst_ni(rst_ni),
       .waddr_i(waddr_i),
       .wdata_i(wdata_i),
-      // .we_i(1'b1),
       .we_i(decoder_we_i_onehot[x]),
       .c_addr_i(c_addr_i),
       .k_addr_i(k_addr_i),
@@ -67,28 +66,40 @@ module halut_decoder_x #(
     );
   end
 
+
+  always_comb begin : set_next_signals
+    if (decoder_i) begin : decoding_activated
+      if (valid_int[m_addr_cnt] == 1'b1) begin : gather_results
+        result_o_n = result_int[m_addr_cnt];
+        m_addr_o_n = m_addr_cnt;
+        m_addr_cnt_n = m_addr_cnt + 1;
+        valid_o_n = 1'b1;
+      end else begin
+        valid_o_n = 1'b0;
+        m_addr_cnt_n = 0;
+        result_o_n = 0;
+        m_addr_o_n = 0;
+      end
+    end else begin
+      valid_o_n = 1'b0;
+      m_addr_cnt_n = 0;
+      result_o_n = 0;
+      m_addr_o_n = 0;
+    end
+  end
+
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : output_logic
     if (!rst_ni) begin
       m_addr_cnt <= 0;
       valid_o_q  <= 0;
-      m_addr_cnt <= 0;
       result_o_q <= 0;
       m_addr_o_q <= 0;
     end else begin
-      if (decoder_i) begin : decoding_activated
-        if (valid_int[m_addr_cnt] == 1'b1) begin : gather_results
-          result_o_q <= result_int[m_addr_cnt];
-          m_addr_o_q <= m_addr_cnt;
-          valid_o_q  <= 1'b1;
-          m_addr_cnt <= m_addr_cnt + 1;
-        end else begin
-          valid_o_q  <= 1'b0;
-          m_addr_cnt <= 0;
-        end
-      end else begin : deactivate_decoding
-        valid_o_q  <= 1'b0;
-        m_addr_cnt <= 0;
-      end
+      result_o_q <= result_o_n;
+      m_addr_o_q <= m_addr_o_n;
+      valid_o_q  <= valid_o_n;
+      m_addr_cnt <= m_addr_cnt_n;
     end
   end
 

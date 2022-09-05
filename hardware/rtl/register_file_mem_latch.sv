@@ -21,32 +21,28 @@ module register_file_mem_latch #(
   input logic clk_i,
 
   // Read port R1
-  input  logic [AddrWidth-1:0] raddr_a_i,
-  output logic [DataWidth-1:0] rdata_a_o,
+  input  logic unsigned [AddrWidth-1:0] raddr_a_i,
+  output logic signed   [DataWidth-1:0] rdata_a_o,
 
   // Write port W1
-  input logic [AddrWidth-1:0] waddr_a_i,
-  input logic [DataWidth-1:0] wdata_a_i,
-  input logic                 we_a_i
+  input logic unsigned [AddrWidth-1:0] waddr_a_i,
+  input logic signed   [DataWidth-1:0] wdata_a_i,
+  input logic                          we_a_i
 );
 
   // localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
   localparam int unsigned NumWords = 2 ** AddrWidth;
 
-  logic                 clk_int;
-  logic [DataWidth-1:0] mem            [NumWords];
-
-  logic [ NumWords-1:0] waddr_onehot_a;
-
-  logic [ NumWords-1:0] mem_clocks;
+  logic                          clk_int;
+  logic signed   [DataWidth-1:0] mem            [NumWords];
+  logic unsigned [ NumWords-1:0] waddr_onehot_a;
+  logic          [ NumWords-1:0] mem_clocks;
 
   // internal addresses
-  logic [AddrWidth-1:0] raddr_a_int, waddr_a_int;
+  logic unsigned [AddrWidth-1:0] raddr_a_int, waddr_a_int;
 
   assign raddr_a_int = raddr_a_i[AddrWidth-1:0];
   assign waddr_a_int = waddr_a_i[AddrWidth-1:0];
-
-  // assign clk_int = clk_i;
 
   //////////
   // READ //

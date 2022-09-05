@@ -41,10 +41,12 @@ module halut_decoder #(
   localparam int unsigned LUTAddrWidth = $clog2(C * K);
 
   logic [LUTAddrWidth-1:0] raddr;
-  logic [DataTypeWidth-1:0] rdata_o, rdata_o_q;
+  logic [DataTypeWidth-1:0] rdata_o, rdata_o_q, rdata_o_n;
 
-  logic [32-1:0] result_int_d, result_int_q, result_o_q;
-  logic [CAddrWidth-1:0] caddr_q;
+  logic [32-1:0] result_int_d, result_int_q, result_o_q, result_o_n, result_int_n;
+  logic [CAddrWidth-1:0] caddr_q, caddr_n;
+
+  logic valid_o_n;
 
   assign raddr = {c_addr_i, k_addr_i};
 
@@ -68,6 +70,37 @@ module halut_decoder #(
     .result_o(result_int_d)
   );
 
+  always_comb begin : assign_next_valid_signal
+    if (!decoder_i) begin
+      valid_o_n = 1'b0;
+    end else if (caddr_q == CAddrWidth'(C - 1)) begin
+      valid_o_n = 1'b1;
+    end else if (caddr_q >= (CAddrWidth)'(DecoderUnits - 1)) begin : valid_for_DecUnit_cycles
+      valid_o_n = 1'b0;
+    end else begin
+      valid_o_n = valid_o;
+    end
+  end
+
+  always_comb begin : assing_next_signals
+    if (decoder_i) begin
+      rdata_o_n = rdata_o;
+      caddr_n   = c_addr_i;
+      if (caddr_q == CAddrWidth'(C - 1)) begin  // Attention: do net let it stay on address C - 1
+        result_int_n = 0;
+        result_o_n   = result_int_d;
+      end else begin
+        result_int_n = result_int_d;
+        result_o_n   = result_o;
+      end
+    end else begin
+      rdata_o_n = 0;
+      caddr_n = 0;
+      result_int_n = 0;
+      result_o_n = 0;
+    end
+  end
+
   always_ff @(posedge clk_i or negedge rst_ni) begin : result_ffs
     if (!rst_ni) begin
       result_int_q <= 0;
@@ -76,20 +109,11 @@ module halut_decoder #(
       rdata_o_q <= 0;
       result_o_q <= 0;
     end else begin
-      if (decoder_i) begin
-        result_int_q <= result_int_d;
-        rdata_o_q <= rdata_o;
-        caddr_q <= c_addr_i;
-        if (caddr_q == CAddrWidth'(C - 1)) begin  // Attention: do net let it stay on address C - 1
-          valid_o <= 1'b1;
-          result_o_q <= result_int_d;
-          result_int_q <= 0;
-        end else if (caddr_q >= (CAddrWidth)'(DecoderUnits - 1)) begin : valid_for_DecUnit_cycles
-          valid_o <= 1'b0;  // applies invalid symbol to work with halut_decoder_x
-        end
-      end else begin
-        valid_o <= 1'b0;
-      end
+      result_int_q <= result_int_n;
+      rdata_o_q <= rdata_o_n;
+      result_o_q <= result_o_n;
+      caddr_q <= caddr_n;
+      valid_o <= valid_o_n;
     end
   end
 
