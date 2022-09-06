@@ -87,6 +87,8 @@ module halut_encoder #(
   logic unsigned [$clog2(CPerEncUnit)-1:0] c_addr_int, c_addr_int_n;
   logic unsigned [CAddrWidth-1:0] c_addr_o_q, c_addr_o_n;
   logic unsigned [TreeDepth-1:0] input_tree_level_one_hot;
+  logic signed [DataTypeWidth-1:0] a_input_q[TreeDepth];
+  logic signed [DataTypeWidth-1:0] a_input_n[TreeDepth];
   logic valid_o_n;
 
   logic fp_16_comparision_o;
@@ -104,7 +106,7 @@ module halut_encoder #(
     .Inputs(TreeDepth)
   ) input_mux (
     .clk_i (clk_i),
-    .in_i  (a_input_i),
+    .in_i  (a_input_q),
     .rst_ni(rst_ni),
     .sel_i (input_tree_level_one_hot),
     .out_o (data_input_comparision)
@@ -150,6 +152,7 @@ module halut_encoder #(
         c_addr_int_n = c_addr_int;
         k_addr_o_n = k_addr_o;
         c_addr_o_n = c_addr_o;
+        a_input_n = a_input_i;
       end else begin : encoding_finished
         tree_level_cnt_n = 2'b0;
         c_addr_o_n = (CAddrWidth)'(c_addr_o_q + (CAddrWidth)'(EncUnits));
@@ -157,6 +160,7 @@ module halut_encoder #(
         k_addr_o_n = (k_addr << 1) + (TreeDepth)'(fp_16_comparision_o);
         k_addr_n = 0;
         valid_o_n = 1'b1;
+        a_input_n = a_input_i;
       end
     end else begin
       tree_level_cnt_n = 0;
@@ -165,6 +169,7 @@ module halut_encoder #(
       k_addr_o_n = 0;
       c_addr_o_n = (CAddrWidth)'(EncUnitNumber - EncUnits);
       valid_o_n = 0;
+      a_input_n = a_input_i;
     end
   end
 
@@ -176,6 +181,7 @@ module halut_encoder #(
       k_addr_o_q <= 0;
       c_addr_o_q <= (CAddrWidth)'(EncUnitNumber - EncUnits);
       valid_o <= 0;
+      a_input_q <= {0, 0, 0, 0};
     end else begin
       tree_level_cnt <= tree_level_cnt_n;
       c_addr_int <= c_addr_int_n;
@@ -183,6 +189,7 @@ module halut_encoder #(
       k_addr_o_q <= k_addr_o_n;
       c_addr_o_q <= c_addr_o_n;
       valid_o <= valid_o_n;
+      a_input_q <= a_input_n;
     end
   end
 

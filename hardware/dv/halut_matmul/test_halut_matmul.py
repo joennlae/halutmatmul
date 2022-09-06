@@ -128,15 +128,25 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     idx_encoder_input_base = np.arange(TreeDepth) * TreeDepth
     idx_encoder_input_top = np.arange(TreeDepth) * TreeDepth + TreeDepth
 
+    current_encoder_input[
+        idx_encoder_input_base[0 % 4] : idx_encoder_input_top[0 % 4]
+    ] = input_a[0, 0]
     dut.encoder_i.value = 1
+    dut.a_input_enc_i.value = convert_fp16_array(current_encoder_input)
     await RisingEdge(dut.clk_i)
     for row in range(input_a.shape[0] + 1):
         for c_ in range(input_a.shape[1]):
             if row < ROWS:
                 dut.encoder_i.value = 1
                 current_encoder_input[
-                    idx_encoder_input_base[c_ % 4] : idx_encoder_input_top[c_ % 4]
-                ] = input_a[row, c_]
+                    idx_encoder_input_base[(c_ + 1) % 4] : idx_encoder_input_top[
+                        (c_ + 1) % 4
+                    ]
+                ] = input_a[
+                    (row + (1 if (c_ + 1) == input_a.shape[1] else 0))
+                    % input_a.shape[0],
+                    (c_ + 1) % input_a.shape[1],
+                ]
                 dut.a_input_enc_i.value = convert_fp16_array(current_encoder_input)
 
             await RisingEdge(dut.clk_i)

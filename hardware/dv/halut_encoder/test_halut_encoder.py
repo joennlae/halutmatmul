@@ -33,7 +33,7 @@ ROWS = 1
 @cocotb.test()
 async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
     # generate threshold table
-    np.random.seed(4419)
+    # np.random.seed(4419)
     threshold_table = np.random.random((CPerEncUnit * K)).astype(np.float16)
     input_a = np.random.random((ROWS, CPerEncUnit, 4)).astype(np.float16)
 
@@ -68,12 +68,11 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     await Timer(CLOCK_PERIOD_PS / 2, "ps")
     dut.we_i.value = 0
-
+    dut.a_input_i.value = convert_fp16_array(input_a[0, 0])
     await RisingEdge(dut.clk_i)
     for row in range(input_a.shape[0]):
         for c_ in range(input_a.shape[1]):
             await Timer(CLOCK_PERIOD_PS / 2, "ps")
-            dut.a_input_i.value = convert_fp16_array(input_a[row, c_])
             dut.encoder_i.value = 1
             await RisingEdge(dut.clk_i)
             # do asserts
@@ -96,12 +95,12 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
                 ), "c value wrong"
             dut._log.info(f"c_out: {dut.c_addr_o.value.value}")
             # logging
-            # dut._log.info(
-            #     f"(0) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 0]}\n"
-            #     f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
-            #     f"thresh_mem_hist: {thres_mem_hist[row, c_, 0]}\n"
-            #     f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
-            # )
+            dut._log.info(
+                f"(0) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 0]}\n"
+                f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
+                f"thresh_mem_hist: {thres_mem_hist[row, c_, 0]}\n"
+                f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
+            )
             # history asserts
             assert dut.k_addr.value.value == kaddr_hist[row, c_, 0], "(0) k_addr wrong"
             assert (
@@ -109,36 +108,45 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
                 == thres_mem_hist[row, c_, 0]
             ), "(0) thres_mem wrong"
             await RisingEdge(dut.clk_i)
-            # dut._log.info(
-            #     f"(1) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 1]}\n"
-            #     f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
-            #     f"thresh_mem_hist: {thres_mem_hist[row, c_, 1]}\n"
-            #     f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
-            # )
+            dut._log.info(
+                f"(1) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 1]}\n"
+                f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
+                f"thresh_mem_hist: {thres_mem_hist[row, c_, 1]}\n"
+                f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
+            )
             assert dut.k_addr.value.value == kaddr_hist[row, c_, 1], "(1) k_addr wrong"
             assert (
                 binary_to_float16(dut.data_thresh_mem_o.value)
                 == thres_mem_hist[row, c_, 1]
             ), "(1) thres_mem wrong"
             await RisingEdge(dut.clk_i)
-            # dut._log.info(
-            #     f"(2) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 2]}\n"
-            #     f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
-            #     f"thresh_mem_hist: {thres_mem_hist[row, c_, 2]}\n"
-            #     f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
-            # )
+            dut._log.info(
+                f"(2) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 2]}\n"
+                f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
+                f"thresh_mem_hist: {thres_mem_hist[row, c_, 2]}\n"
+                f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
+            )
             assert dut.k_addr.value.value == kaddr_hist[row, c_, 2], "(2) k_addr wrong"
             assert (
                 binary_to_float16(dut.data_thresh_mem_o.value)
                 == thres_mem_hist[row, c_, 2]
             ), "(2) thres_mem wrong"
+
+            # calculate next
+            dut.a_input_i.value = convert_fp16_array(
+                input_a[
+                    (row + (1 if (c_ + 1) == input_a.shape[1] else 0))
+                    % input_a.shape[0],
+                    (c_ + 1) % input_a.shape[1],
+                ]
+            )
             await RisingEdge(dut.clk_i)
-            # dut._log.info(
-            #     f"(3) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 3]}\n"
-            #     f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
-            #     f"thresh_mem_hist: {thres_mem_hist[row, c_, 3]}\n"
-            #     f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
-            # )
+            dut._log.info(
+                f"(3) k_addr: {dut.k_addr.value.value}, kaddr_hist: {kaddr_hist[row, c_, 3]}\n"
+                f"    thresh_mem: {binary_to_float16(dut.data_thresh_mem_o.value)}, "
+                f"thresh_mem_hist: {thres_mem_hist[row, c_, 3]}\n"
+                f"    read_addr_thresh_mem: {dut.read_addr_thresh_mem.value.value}"
+            )
             assert dut.k_addr.value.value == kaddr_hist[row, c_, 3], "(3) k_addr wrong"
             assert (
                 binary_to_float16(dut.data_thresh_mem_o.value)
