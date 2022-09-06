@@ -87,7 +87,7 @@ link_design
 echo "Read VCD activity annotation file from RTL simulation."
 # -strip_path $ptpx_strip_path
 # set time in ns
-read_vcd -rtl $ptpx_vcd -zero_delay -time {8362 -1}
+read_vcd -rtl $ptpx_vcd -time {5462.5 -1}
 
 read_sdc -echo $ptpx_sdc
 
