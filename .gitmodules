@@ -7,3 +7,6 @@
 [submodule "src/python/results"]
 	path = src/python/results
 	url = https://github.com/joennlae/halutdata
+[submodule "hardware/pdks/freepdk-45nm"]
+	path = hardware/pdks/freepdk-45nm
+	url = https://github.com/joennlae/freepdk-45nm.git
