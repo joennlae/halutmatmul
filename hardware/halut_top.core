@@ -89,6 +89,14 @@ targets:
           - "-Wall"
       veriblelint:
 
+  format:
+    <<: *default_target
+    default_tool: veribleformat
+    tools:
+      veribleformat:
+        verible_format_args:
+          - "--inplace"
+
   openroad_base: &openroad_target
     <<: *default_target
     filesets:
