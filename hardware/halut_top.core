@@ -88,13 +88,6 @@ targets:
         verilator_options:
           - "-Wall"
       veriblelint:
-  format:
-    <<: *default_target
-    default_tool: veribleformat
-    tools:
-      veribleformat:
-        verible_format_args:
-          - "--inplace"
 
   openroad_base: &openroad_target
     <<: *default_target
@@ -165,3 +158,11 @@ targets:
   openroad_nangate45_fp_16_32_adder:
     <<: *openroad_nangate45
     toplevel: fp_16_32_adder
+
+  openroad_asap7_encoder: 
+    <<: *openroad_asap7
+    toplevel: halut_encoder
+
+  openroad_nangate45_encoder:
+    <<: *openroad_nangate45
+    toplevel: halut_encoder
