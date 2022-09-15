@@ -17,7 +17,8 @@ export ADDER_MAP_FILE :=
 # export DONT_USE_CELLS          += SDF* ICG* DFFH*
 # export DONT_USE_CELLS        = ASYNC_DFFH*
 
-export CTS_BUF_CELL           = BUFx12_ASAP7_75t_R BUFx10_ASAP7_75t_R BUFx8_ASAP7_75t_R BUFx4_ASAP7_75t_R BUFx2_ASAP7_75t_R
+# export CTS_BUF_CELL           = BUFx12_ASAP7_75t_R BUFx10_ASAP7_75t_R BUFx8_ASAP7_75t_R BUFx4_ASAP7_75t_R BUFx2_ASAP7_75t_R
+# export CTS_BUF_CELL           = BUFx12_ASAP7_75t_L BUFx10_ASAP7_75t_L BUFx8_ASAP7_75t_L BUFx4_ASAP7_75t_L BUFx2_ASAP7_75t_L
 # export CTS_CLUSTER_DIAMETER = 15
 # export CTS_CLUSTER_SIZE = 80
 # export CTS_BUF_DISTANCE        = 60
@@ -32,6 +33,7 @@ export CORE_MARGIN            = 2
 export PLACE_DENSITY          ?= 0.60
 
 # export HAS_IO_CONSTRAINTS = 1 # fix error [ERROR GPL-0305] RePlAce diverged at newStepLength.
-
-# export CORNER									= TC
+# export ASAP7_USESLVT					= 1
+# export ASAP7_USELVT						= 1
+export CORNER									= TC
 export DFF_LIB_FILE           = $($(CORNER)_DFF_LIB_FILE)
