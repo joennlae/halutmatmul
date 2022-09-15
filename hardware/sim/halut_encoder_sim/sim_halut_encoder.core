@@ -1,0 +1,40 @@
+CAPI=2:
+name: "halut:sim:halut_encoder:0.1"
+description: "Test for halut_encoder"
+
+filesets:
+  files_test:
+    depend:
+      - halut:test:util
+    files:
+      - 6_final_asap7.v : { file_type: systemVerilogSource }
+      - stdcells_r.v : { file_type: systemVerilogSource }
+      # - iocells.v : { file_type: systemVerilogSource }
+      # - prim.v : { file_type: systemVerilogSource }
+      - Makefile : { file_type: Makefile}
+      - sim_halut_encoder.py : { file_type: Cocotb }
+
+parameters:
+  COCOTB_SIM: # use to dump vcd file
+    datatype: bool
+    paramtype: vlogdefine
+    default: true
+
+targets:
+  default: &default_target
+    filesets:
+      - files_test
+    toplevel: scm
+    parameters:
+      - COCOTB_SIM=true
+    default_tool: cocotb
+  icarus:
+    <<: *default_target
+    tools:
+      cocotb:
+        make_args: SIM=icarus
+  questa:
+    <<: *default_target
+    tools:
+      cocotb:
+        make_args: SIM=questa
