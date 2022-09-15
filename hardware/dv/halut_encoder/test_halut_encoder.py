@@ -1,5 +1,6 @@
 # pylint: disable=no-value-for-parameter, protected-access
 from math import log2
+import os
 from random import getrandbits
 import typing
 import numpy as np
@@ -17,7 +18,7 @@ from util.helper_functions import (
 )
 
 DATA_TYPE_WIDTH = 16
-C = 32
+C = int(os.environ.get("NUM_C", 32))
 K = 16
 
 CLOCK_PERIOD_PS = 3000
@@ -45,9 +46,9 @@ async def halut_encoder_test(dut) -> None:  # type: ignore[no-untyped-def]
     cocotb.start_soon(Clock(dut.clk_i, 3.0, units="ns").start())
 
     # Initial values
-    dut.a_input_i.value = BinaryValue(0, n_bits=4 * 16, bigEndian=True)
-    dut.waddr_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
-    dut.wdata_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.a_input_i.value = BinaryValue(0, n_bits=4 * DATA_TYPE_WIDTH, bigEndian=True)
+    dut.waddr_i.value = BinaryValue(0, n_bits=ThreshMemAddrWidth, bigEndian=True)
+    dut.wdata_i.value = BinaryValue(0, n_bits=DATA_TYPE_WIDTH, bigEndian=True)
     dut.we_i.value = 0
     dut.encoder_i.value = 0
 

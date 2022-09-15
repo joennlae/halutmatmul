@@ -42,6 +42,10 @@ jobs:
         RESULT=$(($RESULT + $?))
         fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
         RESULT=$(($RESULT + $?))
+        NUM_C=16 NUM_DECODER_UNITS=8 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+        RESULT=$(($RESULT + $?))
+        NUM_C=64 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+        RESULT=$(($RESULT + $?))
 
         echo "Exit Code: $RESULT"
         exit $RESULT

@@ -74,7 +74,7 @@ module halut_matmul #(
     halut_decoder_x #(
       .DecoderUnits(DecoderUnits),
       .K(K),
-      .C(32),
+      .C(C),
       .DataTypeWidth(DataTypeWidth)
     ) decoder (
       .clk_i(clk_i),

@@ -11,8 +11,12 @@ package halut_pkg;
   `define NUM_DECODER_UNITS 16
 `endif
 
+`ifndef NUM_C
+  `define NUM_C 32
+`endif
+
   localparam integer unsigned K = 16;
-  localparam integer unsigned C = 32;
+  localparam integer unsigned C = `NUM_C;
   localparam integer unsigned M = `NUM_M;
   localparam integer unsigned DataTypeWidth = 16;
   localparam integer unsigned DecoderUnits = `NUM_DECODER_UNITS;

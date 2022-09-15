@@ -38,6 +38,7 @@ scripts:
       # FOO="${VARIABLE:-default}"
       - --define=NUM_M=32
       - --define=NUM_DECODER_UNITS=16
+      - --define=NUM_C=32
 
 
 targets:

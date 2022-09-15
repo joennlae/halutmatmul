@@ -1,8 +1,8 @@
 module halut_decoder #(
-  parameter int unsigned K = 16,
-  parameter int unsigned C = 32,
-  parameter int unsigned DataTypeWidth = 16,
-  parameter int unsigned DecoderUnits = 16,
+  parameter int unsigned K = halut_pkg::K,
+  parameter int unsigned C = halut_pkg::C,
+  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+  parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
   // defaults
   parameter int unsigned TotalAddrWidth = $clog2(C * K),
   parameter int unsigned CAddrWidth = $clog2(C),

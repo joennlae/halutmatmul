@@ -1,5 +1,6 @@
 # pylint: disable=no-value-for-parameter, protected-access
 from math import log2
+import os
 from random import getrandbits
 import typing
 import numpy as np
@@ -15,7 +16,7 @@ from util.helper_functions import (
 )
 
 DATA_TYPE_WIDTH = 16
-C = 32
+C = int(os.environ.get("NUM_C", 32))
 K = 16
 ROWS = 64
 

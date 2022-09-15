@@ -1,5 +1,6 @@
 # pylint: disable=no-value-for-parameter, protected-access
 from math import log2
+import os
 from random import getrandbits
 import typing
 import numpy as np
@@ -16,11 +17,11 @@ from util.helper_functions import (
 )
 
 DATA_TYPE_WIDTH = 16
-C = 32
+C = int(os.environ.get("NUM_C", 32))
 K = 16
 ROWS = 64
 
-DecoderUnits = 16
+DecoderUnits = int(os.environ.get("NUM_DECODER_UNITS", 16))
 TotalAddrWidth = int(log2(C * K))
 DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
@@ -40,7 +41,7 @@ async def halut_decoder_x_test(dut) -> None:  # type: ignore[no-untyped-def]
 
     # Initial values
     dut.waddr_i.value = BinaryValue(0, n_bits=TotalAddrWidth, bigEndian=True)
-    dut.wdata_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.wdata_i.value = BinaryValue(0, n_bits=DATA_TYPE_WIDTH, bigEndian=True)
     dut.m_addr_i.value = BinaryValue(0, n_bits=DecAddrWidth, bigEndian=True)
     dut.we_i.value = 0
     dut.decoder_i.value = 0

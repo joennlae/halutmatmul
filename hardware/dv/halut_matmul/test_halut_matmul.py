@@ -24,7 +24,7 @@ CLOCK_PERIOD_PS = int(os.environ.get("CLK_PERIOD", 1000))
 print("CLOCK_PERIOD_PS = ", CLOCK_PERIOD_PS)
 
 DATA_TYPE_WIDTH = 16
-C = 32
+C = int(os.environ.get("NUM_C", 32))
 K = 16
 M = int(os.environ.get("NUM_M", 32))
 DecoderUnits = int(os.environ.get("NUM_DECODER_UNITS", 16))
@@ -39,7 +39,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 64  # * 16
+ROWS = 16  # * 16
 
 
 @cocotb.test()
@@ -64,7 +64,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
         0, n_bits=EncUnits * TreeDepth * DATA_TYPE_WIDTH, bigEndian=True
     )
     dut.waddr_enc_i.value = BinaryValue(
-        0, n_bits=EncUnits * DATA_TYPE_WIDTH, bigEndian=True
+        0, n_bits=EncUnits * ThreshMemAddrWidth, bigEndian=True
     )
     dut.wdata_enc_i.value = BinaryValue(
         0, n_bits=EncUnits * DATA_TYPE_WIDTH, bigEndian=True
@@ -72,15 +72,15 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     dut.we_enc_i.value = BinaryValue(0, n_bits=EncUnits, bigEndian=True)
     dut.encoder_i.value = 0
     dut.waddr_dec_i.value = BinaryValue(
-        0, n_bits=DecoderUnits * TotalAddrWidth, bigEndian=True
+        0, n_bits=DecUnitsX * TotalAddrWidth, bigEndian=True
     )
     dut.wdata_dec_i.value = BinaryValue(
-        0, n_bits=DecoderUnits * DATA_TYPE_WIDTH, bigEndian=True
+        0, n_bits=DecUnitsX * DATA_TYPE_WIDTH, bigEndian=True
     )
     dut.m_addr_dec_i.value = BinaryValue(
-        0, n_bits=DecoderUnits * DecAddrWidth, bigEndian=True
+        0, n_bits=DecUnitsX * DecAddrWidth, bigEndian=True
     )
-    dut.we_dec_i.value = BinaryValue(0, n_bits=DecoderUnits, bigEndian=True)
+    dut.we_dec_i.value = BinaryValue(0, n_bits=DecUnitsX, bigEndian=True)
 
     # Reset DUT
     dut.rst_ni.value = 0

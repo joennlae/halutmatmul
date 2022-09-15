@@ -12,3 +12,4 @@ maddness/assets
 *.pth
 
 build/
+*.v
