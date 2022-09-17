@@ -1,0 +1,16 @@
+CAPI=2:
+name: "halut:pdk:gf22:0.1"
+description: "gf22 files"
+
+filesets:
+  files_gf22:
+    files:
+      - gf22/stdcells_SL.v : { file_type: systemVerilogSource }
+      - gf22/stdcells_L.v : { file_type: systemVerilogSource }
+      - gf22/prim.v : { file_type: systemVerilogSource }
+      - gf22/iocells.v : { file_type: systemVerilogSource }
+
+targets:
+  default:
+    filesets:
+      - files_gf22
