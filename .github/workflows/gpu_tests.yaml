@@ -37,6 +37,7 @@ jobs:
     name: Cleanup check
     needs: gpu_tests
     runs-on: ubuntu-latest
+    concurrency: vast.ai-gpu
     if: always()
     steps:
       - uses: actions/checkout@v2

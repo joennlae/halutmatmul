@@ -157,6 +157,7 @@ jobs:
     name: Cleanup check
     needs: asap7
     runs-on: ubuntu-latest
+    concurrency: vast.ai-hw
     if: always()
     steps:
       - uses: actions/checkout@v2
