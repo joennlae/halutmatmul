@@ -24,7 +24,7 @@ CLOCK_PERIOD_PS = int(os.environ.get("CLK_PERIOD", 1000))
 print("CLOCK_PERIOD_PS = ", CLOCK_PERIOD_PS)
 
 DATA_TYPE_WIDTH = 16
-C = 32
+C = int(os.environ.get("NUM_C", 32))
 K = 16
 M = int(os.environ.get("NUM_M", 32))
 DecoderUnits = int(os.environ.get("NUM_DECODER_UNITS", 16))
@@ -39,7 +39,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 64  # * 16
+ROWS = 256  # * 16
 
 
 @cocotb.test()

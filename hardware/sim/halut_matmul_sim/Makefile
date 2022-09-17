@@ -8,6 +8,7 @@ SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
 VERILOG_SOURCES += $(shell cat "files.txt")
+VSIM_ARGS=-t 1ps
 
 ifeq ($(SIM),questa)
 COMPILE_ARGS += "+nospecify"

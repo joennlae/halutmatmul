@@ -13,7 +13,6 @@ filesets:
 
   files_asap7:
     depend:
-      - halut:sim:util
       - halut:pdk:asap7
 
   files_gf22:
@@ -22,7 +21,6 @@ filesets:
 
   files_nangate45:
     depend:
-      - halut:sim:util
       - halut:pdk:nangate45
 
 
@@ -54,3 +52,7 @@ targets:
     <<: *questa_target
     filesets_append:
       - files_asap7
+  gf22:
+    <<: *questa_target
+    filesets_append:
+      - files_gf22
