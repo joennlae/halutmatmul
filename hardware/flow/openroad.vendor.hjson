@@ -3,8 +3,8 @@
     target_dir: "OpenROAD",
 
     upstream: {
-        url: "https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git"
-        rev: "master"
+        url: "https://github.com/joennlae/OpenROAD-flow-scripts.git"
+        rev: "asap7-update-and-flow-fixes"
     }
 
     patch_dir: "patches/OpenROAD"

@@ -8,7 +8,7 @@
 {
   upstream:
   {
-    url: https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
-    rev: 082e40a2513eed0775dac6197f13aa5cf111f710
+    url: https://github.com/joennlae/OpenROAD-flow-scripts.git
+    rev: 479238af8ec0fab26210d569fe0eedfde82037d2
   }
 }
