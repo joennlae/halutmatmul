@@ -53,9 +53,9 @@ async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
     cocotb.start_soon(Clock(dut.clk_i, 10, units="ns").start())
 
     # Initial values
-    dut.raddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
-    dut.waddr_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
-    dut.wdata_a_i.value = BinaryValue(0, n_bits=16, bigEndian=True)
+    dut.raddr_a_i.value = BinaryValue(0, n_bits=TOTAL_ADDR_WIDTH, bigEndian=True)
+    dut.waddr_a_i.value = BinaryValue(0, n_bits=TOTAL_ADDR_WIDTH, bigEndian=True)
+    dut.wdata_a_i.value = BinaryValue(0, n_bits=DATA_TYPE_WIDTH, bigEndian=True)
     dut.we_a_i.value = 0
 
     # Reset DUT
