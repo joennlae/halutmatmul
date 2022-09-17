@@ -87,7 +87,9 @@ link_design
 echo "Read VCD activity annotation file from RTL simulation."
 # -strip_path $ptpx_strip_path
 # set time in ns
-read_vcd -rtl $ptpx_vcd -time {5462.5 -1}
+set start_value   [expr {$::env(START_TIME_NS)}]
+set end_value     [expr {$::env(END_TIME_NS)}]
+read_vcd -rtl $ptpx_vcd -time [list $start_value $end_value]
 
 read_sdc -echo $ptpx_sdc
 

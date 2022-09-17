@@ -5,3 +5,5 @@ inputs/
 
 *.log
 *.txt
+
+reports*

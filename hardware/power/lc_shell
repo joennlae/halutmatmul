@@ -1,0 +1,3 @@
+#!/bin/bash
+
+synopsys-2022.03-kgf lc_shell "$@"
