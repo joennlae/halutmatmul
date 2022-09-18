@@ -1,7 +1,7 @@
 name: halutmatmul
 channels:
   - intel
-  - pytorch-nightly
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -19,11 +19,11 @@ dependencies:
   - joblib
   - scipy
   - scikit-learn=1.1
-  - torchvision=0.14
-  - pytorch=1.13
+  - torchvision=0.13
+  - pytorch=1.12
   - torchinfo
   # kws
-  - torchaudio=0.13
+  - torchaudio=0.12
   - pysoundfile
   # gpu stuff
   - cudatoolkit=11.3
