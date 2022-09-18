@@ -20,7 +20,7 @@ jobs:
         python-version: 3.7
     - name: Lint with pylint
       run: |
-        $CONDA/bin/conda install -c conda-forge pylint=2.14
+        $CONDA/bin/conda install -c conda-forge pylint=2.15.2
         $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/* hardware/dv/**/*.py
 
   python_typechecking:
