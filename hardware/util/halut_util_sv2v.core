@@ -39,6 +39,8 @@ scripts:
       - --define=NUM_M=32
       - --define=NUM_DECODER_UNITS=16
       - --define=NUM_C=32
+      - --define=ASAP7_USELVT=ONLY_SET_WHEN_OS_SET
+      - --define=ASAP7_USESLVT=ONLY_SET_WHEN_OS_SET
 
 
 targets:

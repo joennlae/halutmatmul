@@ -31,24 +31,6 @@ def run_command(cmd: str, print_all: bool = True) -> None:
             print(decoded, end="")
 
 
-# TODO left
-# MATRIX
-# C=[16,32,64]
-# FREQ=[1600, 1700] ASAP7 | FREQ=[1700, 1800]
-# Vth=[L, SL]
-# 8_4, 32_16
-
-C = [32, 16, 64]
-size_option = ["8_4"]
-vth = ["L", "SL"]
-clk_period_asap7 = [1500, 1600]
-clk_period_gf22 = [1700, 1800]
-# only TT at the moment
-
-MFLOWGEN_PATH = "/usr/scratch2/pisoc8/janniss/mflowgen_build/mflowgen-iis"
-github_repo_url = "git@github.com:joennlae/mflowgen-iis.git"
-
-
 def clone_git_repo(repo_url: str, clone_dir: str, rev: str = "main") -> str:
     print("Cloning upstream repository %s @ %s", repo_url, rev)
 
@@ -74,15 +56,33 @@ def clone_git_repo(repo_url: str, clone_dir: str, rev: str = "main") -> str:
     return rev
 
 
+# TODO left
+# MATRIX
+# C=[16,32,64]
+# FREQ=[1600, 1700] ASAP7 | FREQ=[1700, 1800]
+# Vth=[L, SL]
+# 8_4, 32_16
+
+C = [32]  # , 16, 64]
+size_option = ["8_4"]
+vth = ["L", "SL"]
+clk_period_asap7 = [1500, 1600]
+clk_period_gf22_sl = [1700, 1800]
+clk_period_gf22_l = [1900, 2000]
+# only TT at the moment
+
+MFLOWGEN_PATH = "/usr/scratch2/pisoc8/janniss/mflowgen_build/mflowgen-iis"
+github_repo_url = "git@github.com:joennlae/mflowgen-iis.git"
+
 # pylint: disable=too-many-nested-blocks, use-maxsplit-arg, unused-variable
-def make_designs(tech: str = "asap7") -> None:
+def make_designs(tech: str = "asap7", add_on: str = "") -> None:
     if tech == "asap7":
         clk_period = clk_period_asap7
         output_folder = BASE_PATH + "/"  # + "/designs/"
         prefix = "7"
         check_path = "openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v"
     elif tech == "gf22":
-        clk_period = clk_period_gf22
+        clk_period = clk_period_gf22_sl
         output_folder = BASE_PATH + "/"  # MFLOWGEN_PATH + "/outputs/"
         prefix = "22"
         check_path = "6-cadence-innovus-place-route/results/halut_matmul.vcs.v"
@@ -93,11 +93,13 @@ def make_designs(tech: str = "asap7") -> None:
             for s in size_option:
                 decoders = s.split("_")[0]
                 decoders_per_subunit = s.split("_")[1]
+                if tech == "gf22" and C_ > 16 and v == "L":
+                    clk_period = clk_period_gf22_l
                 for clk in clk_period:
                     # check if design exists
                     folder_name = (
                         f"{prefix}_{decoders}_{decoders_per_subunit}"
-                        f"_{C_}_{clk}_{'TT'}_{v}"
+                        f"_{C_}_{clk}_{'TT'}_{add_on}{v}"
                     )
                     output_path = output_folder + folder_name
                     print(
@@ -169,7 +171,11 @@ def make_designs(tech: str = "asap7") -> None:
 
 
 design_folders = [
-    ["gf22", "/scratch2/janniss/outputs/22_8_4_32_1700_TT_SL"],
+    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1700_TT_L"],
+    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1700_TT_SL"],
+    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1800_TT_L"],
+    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1800_TT_SL"],
+    # without custom clk_gate
     ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_L"],
     ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_SL"],
     ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_L"],
@@ -178,6 +184,11 @@ design_folders = [
     ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1500_TT_SL"],
     ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1600_TT_L"],
     ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1600_TT_SL"],
+    # clkgated
+    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_clkgat_L"],
+    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_clkgat_SL"],
+    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_clkgat_L"],
+    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_clkgat_SL"],
 ]
 clean_sim_path = BASE_PATH + "/clean_sim/"
 
@@ -495,6 +506,14 @@ if __name__ == "__main__":
         type=str,
     )
 
+    parser.add_argument(
+        "--addon",
+        "-a",
+        default="",
+        help="set addon for name",
+        type=str,
+    )
+
     args = parser.parse_args()
 
     print(args)
@@ -512,7 +531,7 @@ if __name__ == "__main__":
         if args.tech == "":
             make_designs()
         else:
-            make_designs(tech=args.tech)
+            make_designs(tech=args.tech, add_on=args.addon)
 
     if args.cleanup:
         cleanup()

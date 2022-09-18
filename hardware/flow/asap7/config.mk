@@ -37,3 +37,5 @@ export PLACE_DENSITY          ?= 0.60
 # export ASAP7_USELVT						= 1
 export CORNER									= TC
 export DFF_LIB_FILE           = $($(CORNER)_DFF_LIB_FILE)
+
+export OPENROAD_CLKGATE				= 1

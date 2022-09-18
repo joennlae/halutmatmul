@@ -93,6 +93,8 @@ def parse_define(arg: str) -> str:
         return_arg += f"={os_value}"
     elif len(splitted) > 1:
         # default value
+        if splitted[1] == "ONLY_SET_WHEN_OS_SET":
+            return ""
         return_arg += f"={splitted[1]}"
     return return_arg
 

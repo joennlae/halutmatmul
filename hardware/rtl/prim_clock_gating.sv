@@ -11,6 +11,26 @@ module prim_clock_gating (
   output clk_o
 );
 
+`ifdef ASAP7_USELVT
+
+  ICGx1_ASAP7_75t_L latch (
+    .CLK (clk_i),
+    .ENA (en_i),
+    .SE  (test_en_i),
+    .GCLK(clk_o)
+  );
+
+`elsif ASAP7_USESLVT
+
+  ICGx1_ASAP7_75t_SL latch (
+    .CLK (clk_i),
+    .ENA (en_i),
+    .SE  (test_en_i),
+    .GCLK(clk_o)
+  );
+
+`else
+
   reg en_latch;
 
   always_latch begin
@@ -19,5 +39,7 @@ module prim_clock_gating (
     end
   end
   assign clk_o = en_latch & clk_i;
+
+`endif
 
 endmodule
