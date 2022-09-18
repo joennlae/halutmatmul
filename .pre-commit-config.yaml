@@ -1,7 +1,7 @@
 repos:
 # inspiration https://rednafi.github.io/digressions/python/2020/04/06/python-precommit.html
 - repo: https://github.com/PyCQA/pylint
-  rev: v2.14.0
+  rev: v2.15.2
   hooks:
     - id: pylint
       types: [python]

@@ -14,6 +14,7 @@ def download_weights(path: str, is_ci: bool = False) -> None:
     url = "https://github.com/joennlae/PyTorch_CIFAR10/raw/ver2022/resnet50.pt"
 
     # Streaming, so we can iterate over the response.
+    # pylint: disable=missing-timeout
     r = requests.get(url, stream=True)
 
     # Total size in Mebibyte
