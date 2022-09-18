@@ -160,14 +160,11 @@ HW_TEST_COMMANDS = """cd /; mv /venv/ /venv2; source /venv2/bin/activate;
       echo "ERROR CODE: $?";
       fusesoc --cores-root=. run --target=openroad_asap7_decoder halut:ip:halut_top;
       echo "ERROR CODE: $?";
-      PLACE_DENSITY=0.65 fusesoc --cores-root=. run --target=openroad_asap7_fp_16_32_adder halut:ip:halut_top;
-      echo "ERROR CODE: $?";
       cd build;
       mkdir flow_reports;
       mkdir -p flow_reports/halut_matmul;
       mkdir -p flow_reports/halut_encoder_4;
       mkdir -p flow_reports/halut_decoder;
-      mkdir -p flow_reports/fp_16_32_adder;
       cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.html flow_reports/halut_matmul;
       cp halut_ip_halut_top_0.1/openroad_asap7-openroad/metrics.json flow_reports/halut_matmul;
       cp -R halut_ip_halut_top_0.1/openroad_asap7-openroad/reports/ flow_reports/halut_matmul;
@@ -180,10 +177,6 @@ HW_TEST_COMMANDS = """cd /; mv /venv/ /venv2; source /venv2/bin/activate;
       cp halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/metrics.json flow_reports/halut_decoder;
       cp -R halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/reports/ flow_reports/halut_decoder;
       cp -R halut_ip_halut_top_0.1/openroad_asap7_decoder-openroad/logs/ flow_reports/halut_decoder;
-      cp halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder;
-      cp halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder;
-      cp -R halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder;
-      cp -R halut_ip_halut_top_0.1/openroad_asap7_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder;
       tar -cvf report.tar.gz flow_reports
       cp report.tar.gz /report.tar.gz
 """

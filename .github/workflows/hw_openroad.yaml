@@ -91,7 +91,6 @@ jobs:
         NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
         fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
         fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
-        fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
     - name: Copy & save reports
       run: |
         cd hardware/build
@@ -112,10 +111,6 @@ jobs:
         cp halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/metrics.json flow_reports/halut_decoder
         cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/reports/ flow_reports/halut_decoder
         cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/logs/ flow_reports/halut_decoder
-        cp halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/metrics.html flow_reports/fp_16_32_adder
-        cp halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/metrics.json flow_reports/fp_16_32_adder
-        cp -R halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/reports/ flow_reports/fp_16_32_adder
-        cp -R halut_ip_halut_top_0.1/openroad_nangate45_fp_16_32_adder-openroad/logs/ flow_reports/fp_16_32_adder
         tar -cvf report.tar.gz flow_reports
         mkdir backup
         cp report.tar.gz backup/report.tar.gz
