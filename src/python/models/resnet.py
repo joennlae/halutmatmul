@@ -66,6 +66,55 @@ def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> HalutConv2d:
     return HalutConv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
+class BasicBlock(nn.Module):
+    expansion: int = 1
+
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        super().__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError("BasicBlock only supports groups=1 and base_width=64")
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
 class Bottleneck(nn.Module):
     # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
     # while original implementation places the stride at the first 1x1 convolution(self.conv1)
@@ -125,7 +174,7 @@ class ResNet(nn.Module):
     # pylint: disable=unused-argument
     def __init__(
         self,
-        block: Type[Bottleneck],
+        block: Union[Type[Bottleneck], Type[BasicBlock]],
         layers: List[int],
         num_classes: int = 1000,
         zero_init_residual: bool = False,
@@ -202,7 +251,7 @@ class ResNet(nn.Module):
 
     def _make_layer(
         self,
-        block: Type[Bottleneck],
+        block: Union[Type[Bottleneck], Type[BasicBlock]],
         planes: int,
         blocks: int,
         stride: int = 1,
@@ -272,7 +321,7 @@ class ResNet(nn.Module):
 
 
 def _resnet(
-    block: Type[Bottleneck],
+    block: Union[Type[Bottleneck], Type[BasicBlock]],
     layers: List[int],
     weights: Union[Optional[WeightsEnum], OrderedDict],
     # pylint: disable=W0613
@@ -293,6 +342,45 @@ _COMMON_META = {
     "categories": _IMAGENET_CATEGORIES,
     "interpolation": InterpolationMode.BILINEAR,
 }
+
+
+# pylint: disable=line-too-long
+class ResNet18_Weights(WeightsEnum):
+    IMAGENET1K_V1 = Weights(
+        url="https://download.pytorch.org/models/resnet18-f37072fd.pth",
+        transforms=partial(ImageClassification, crop_size=224),
+        meta={
+            **_COMMON_META,
+            "num_params": 11689512,
+            "recipe": "https://github.com/pytorch/vision/tree/main/references/classification#resnet",
+            "_metrics": {
+                "ImageNet-1K": {
+                    "acc@1": 69.758,
+                    "acc@5": 89.078,
+                }
+            },
+        },
+    )
+    DEFAULT = IMAGENET1K_V1
+
+
+class ResNet34_Weights(WeightsEnum):
+    IMAGENET1K_V1 = Weights(
+        url="https://download.pytorch.org/models/resnet34-b627a593.pth",
+        transforms=partial(ImageClassification, crop_size=224),
+        meta={
+            **_COMMON_META,
+            "num_params": 21797672,
+            "recipe": "https://github.com/pytorch/vision/tree/main/references/classification#resnet",
+            "_metrics": {
+                "ImageNet-1K": {
+                    "acc@1": 73.314,
+                    "acc@5": 91.420,
+                }
+            },
+        },
+    )
+    DEFAULT = IMAGENET1K_V1
 
 
 class ResNet50_Weights(WeightsEnum):
@@ -324,6 +412,32 @@ class ResNet50_Weights(WeightsEnum):
         },
     )
     DEFAULT = IMAGENET1K_V2
+
+
+def resnet18(
+    *, weights: Optional[ResNet18_Weights] = None, progress: bool = True, **kwargs: Any
+) -> ResNet:
+    r"""ResNet-18 model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
+    Args:
+        weights (ResNet50_Weights, optional): The pretrained weights for the model
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    # weights = ResNet50_Weights.verify(weights)
+    return _resnet(BasicBlock, [2, 2, 2, 2], weights, progress, **kwargs)
+
+
+def resnet34(
+    *, weights: Optional[ResNet34_Weights] = None, progress: bool = True, **kwargs: Any
+) -> ResNet:
+    r"""ResNet-34 model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
+    Args:
+        weights (ResNet50_Weights, optional): The pretrained weights for the model
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    # weights = ResNet50_Weights.verify(weights)
+    return _resnet(BasicBlock, [3, 4, 6, 3], weights, progress, **kwargs)
 
 
 def resnet50(
