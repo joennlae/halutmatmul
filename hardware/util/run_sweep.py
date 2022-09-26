@@ -12,7 +12,7 @@ import tempfile
 from typing import Any, List
 
 # BASE_PATH = "/scratch2/janniss/outputs"
-BASE_PATH = "/usr/scratch2/pisoc8/janniss/outputs"
+BASE_PATH = "/usr/scratch2/vilan2/janniss/outputs"
 GIT_BASE_PATH = "/home/msc22f5/Documents/halutmatmul"
 
 
@@ -63,12 +63,13 @@ def clone_git_repo(repo_url: str, clone_dir: str, rev: str = "main") -> str:
 # Vth=[L, SL]
 # 8_4, 32_16
 
-C = [32]  # , 16, 64]
+C = [16, 32, 64]
 size_option = ["8_4"]
 vth = ["L", "SL"]
-clk_period_asap7 = [1500, 1600]
+clk_period_asap7_sl = [1400, 1500]
+clk_period_asap7_l = [1500, 1600]
 clk_period_gf22_sl = [1700, 1800]
-clk_period_gf22_l = [1900, 2000]
+clk_period_gf22_l = [2900, 3000]
 # only TT at the moment
 
 MFLOWGEN_PATH = "/usr/scratch2/pisoc8/janniss/mflowgen_build/mflowgen-iis"
@@ -77,7 +78,7 @@ github_repo_url = "git@github.com:joennlae/mflowgen-iis.git"
 # pylint: disable=too-many-nested-blocks, use-maxsplit-arg, unused-variable
 def make_designs(tech: str = "asap7", add_on: str = "") -> None:
     if tech == "asap7":
-        clk_period = clk_period_asap7
+        clk_period = clk_period_asap7_sl
         output_folder = BASE_PATH + "/"  # + "/designs/"
         prefix = "7"
         check_path = "openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v"
@@ -93,8 +94,17 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
             for s in size_option:
                 decoders = s.split("_")[0]
                 decoders_per_subunit = s.split("_")[1]
-                if tech == "gf22" and C_ > 16 and v == "L":
+                if tech == "gf22" and v == "L":
                     clk_period = clk_period_gf22_l
+                elif tech == "gf22" and v == "SL":
+                    clk_period = clk_period_gf22_sl
+                if tech == "asap7" and v == "L":
+                    clk_period = clk_period_asap7_l
+                elif tech == "asap7" and v == "SL":
+                    clk_period = clk_period_asap7_sl
+                if add_on == "ssg_":
+                    clk_period[0] = clk_period[0] + 700
+                    clk_period[1] = clk_period[1] + 700
                 for clk in clk_period:
                     # check if design exists
                     folder_name = (
@@ -170,33 +180,23 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
                             )
 
 
-design_folders = [
-    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1700_TT_L"],
-    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1700_TT_SL"],
-    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1800_TT_L"],
-    ["gf22", "/scratch2/janniss/outputs/22_8_4_16_1800_TT_SL"],
-    # without custom clk_gate
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_SL"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_SL"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1500_TT_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1500_TT_SL"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1600_TT_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_32_1600_TT_SL"],
-    # clkgated
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_clkgat_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1500_TT_clkgat_SL"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_clkgat_L"],
-    ["asap7", "/scratch2/janniss/outputs/7_8_4_16_1600_TT_clkgat_SL"],
-]
 clean_sim_path = BASE_PATH + "/clean_sim/"
 
 
 def prepare_neat_folders_sim() -> None:
-    # shutil.rmtree(clean_sim_path)
-    for des in design_folders:
-        design_name = os.path.basename(os.path.normpath(des[1]))
+    folders = list(os.listdir(BASE_PATH))
+    folders = sorted(folders)
+    folders = list(filter(lambda x: x.startswith(("7_", "22_")), folders))
+
+    for des in folders:
+        design_name = des
+        design_path = BASE_PATH + "/" + design_name
+        if des.startswith("7_"):
+            tech = "asap7"
+        elif des.startswith("22_"):
+            tech = "gf22"
+        else:
+            raise Exception(f"tech not supported: {des}")
         design_clean_path = clean_sim_path + design_name
         if os.path.isdir(design_clean_path):
             print("Already done -> skipping...")
@@ -206,12 +206,20 @@ def prepare_neat_folders_sim() -> None:
         decoders = int(design_name_splitted[1])
         decoders_per_subunit = int(design_name_splitted[2])
         num_c = int(design_name_splitted[3])
-        if des[0] == "asap7":
-            with open(f"{des[1]}/openroad_asap7-openroad/metrics.json") as f:
+        if tech == "asap7":
+            if not os.path.isfile(
+                f"{design_path}/openroad_asap7-openroad/metrics.json"
+            ):
+                print(
+                    f"WARNING: {design_path}/openroad_asap7-openroad/metrics.json doesn't exists"
+                )
+                print("skipping...")
+                continue
+            with open(f"{design_path}/openroad_asap7-openroad/metrics.json") as f:
                 data = json.load(f)
                 clk_period = data[0]["constraints__clocks__details"][0].split(" ")[1]
             with open(
-                f"{des[1]}/openroad_asap7-openroad/logs/asap7/halut_matmul/base/6_report.json"
+                f"{design_path}/openroad_asap7-openroad/logs/asap7/halut_matmul/base/6_report.json"
             ) as f:
                 data = json.load(f)
                 wns = data["finish__timing__setup__ws"]
@@ -219,11 +227,11 @@ def prepare_neat_folders_sim() -> None:
             wns = float(wns)
             # for simulation
             shutil.copy(
-                f"{des[1]}/openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v",
+                f"{design_path}/openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v",
                 f"{design_clean_path}/design_with_buffers.v",
             )
             shutil.copy(
-                f"{des[1]}/openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v",
+                f"{design_path}/openroad_asap7-openroad/results/asap7/halut_matmul/base/6_final.v",
                 f"{design_clean_path}/design.v",
             )
             # remove filler cells
@@ -239,21 +247,21 @@ def prepare_neat_folders_sim() -> None:
                     f'cd {design_clean_path}; grep -v "{cell}" design.v > design_1.v;'
                     f"mv design_1.v design.v"
                 )
-        if des[0] == "gf22":
-            with open(f"{des[1]}/.mflowgen/0-constraints/mflowgen-run") as f:
+        if tech == "gf22":
+            with open(f"{design_path}/.mflowgen/0-constraints/mflowgen-run") as f:
                 infos = re.findall(r"export clock_period=(\d+)", f.read())
                 print(infos)
                 clk_period = float(infos[0])
 
             with open(
-                f"{des[1]}/6-cadence-innovus-place-route/reports/signoff.summary"
+                f"{design_path}/6-cadence-innovus-place-route/reports/signoff.summary"
             ) as f:
                 infos = re.findall(r"(?<=WNS \(ns\):\| ).\d\.\d+", f.read())
                 print(infos)
                 wns = float(infos[0]) * 1000  # to get to ps
 
             shutil.copy(
-                f"{des[1]}/6-cadence-innovus-place-route/outputs/design.vcs.v",
+                f"{design_path}/6-cadence-innovus-place-route/outputs/design.vcs.v",
                 f"{design_clean_path}/design.v",
             )
 
@@ -282,13 +290,6 @@ def run_power() -> None:
     sim_outputs = BASE_PATH + "/simulations/"
     folders = list(os.listdir(sim_outputs))
     folders = sorted(folders)
-    print(folders)
-    # name = folders[0]
-    # print(
-    #     os.path.isdir(BASE_PATH + "/simulations/" + name),
-    #     name,
-    #     BASE_PATH + "/simulations/" + name,
-    # )
 
     for folder in folders:
         folder_name_splitted = folder.split("-")
@@ -415,8 +416,17 @@ def run_power() -> None:
 
 
 def run_simulations() -> None:
-    for des in design_folders:
-        design_name = os.path.basename(os.path.normpath(des[1]))
+    folders = list(os.listdir(clean_sim_path))
+    folders = sorted(folders)
+    print(folders)
+    for des in folders:
+        design_name = des
+        if des.startswith("7_"):
+            sim_target = "asap7"
+        elif des.startswith("22_"):
+            sim_target = "gf22"
+        else:
+            raise Exception(f"sim_target not supported: {des}")
         design_clean_path = clean_sim_path + design_name
         if os.path.isdir(design_clean_path):
             with open(f"{design_clean_path}/sim_info.json") as f:
@@ -431,15 +441,9 @@ def run_simulations() -> None:
             sim_base_clk_period = sim_base_clk_period + (
                 sim_base_clk_period % 2
             )  # make it even (to work with ps sim scale)
-            for offset in [0, 100, 200]:
+            for offset in [0, 200]:
                 sim_clk_period = sim_base_clk_period + offset
                 sim_folder_name = f"{design_name}-{sim_clk_period}"
-                if des[0] == "asap7":
-                    sim_target = "asap7"
-                elif des[0] == "gf22":
-                    sim_target = "gf22"
-                else:
-                    raise Exception(f"sim target not supported: {des[0]}")
 
                 output_path = BASE_PATH + "/simulations/" + sim_folder_name
                 if os.path.isdir(output_path):
