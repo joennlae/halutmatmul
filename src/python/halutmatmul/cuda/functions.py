@@ -187,6 +187,10 @@ def halut_conv2d_gpu(
         kernel_size=kernel_size, dilation=dilation, padding=padding, stride=stride
     )
 
+    if _input.dtype is not torch.float32:
+        print("WARNING: conv2d input is not torch.float32")
+        _input = _input.to(torch.float32)
+
     n_size_per_channel = 0
     if groups == 1:
         unfolded = unfold_ops(_input).transpose(1, 2)
@@ -340,6 +344,9 @@ def halut_linear_gpu(
     L: torch.Tensor,
     H: torch.Tensor,
 ) -> torch.Tensor:
+    if _input.dtype is not torch.float32:
+        print("WARNING: conv2d input is not torch.float32")
+        _input = _input.to(torch.float32)
     input_cupy = cp.asarray(cp.from_dlpack(_input.detach()))
     H_cupy = cp.asarray(cp.from_dlpack(H.detach()))
     L_cupy = cp.asarray(cp.from_dlpack(L.detach()))
