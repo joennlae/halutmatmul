@@ -3,8 +3,7 @@ FROM continuumio/miniconda3:latest AS build
 # archive https://web.archive.org/web/20220426133333/https://pythonspeed.com/articles/conda-docker-image-size/
 
 # install docker on do machines
-# curl -fsSL https://get.docker.com -o get-docker.sh
-# sudo sh get-docker.sh
+# curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
 
 # dockerhub: joennlae/halutmatmul-conda-gpu
 
