@@ -1,4 +1,4 @@
-name: /scratch2/janniss/conda/halutmatmul_gpu
+name: /scratch2/janniss/conda/halutmatmul_gpu_2
 channels:
   - pytorch
   - intel
@@ -7,7 +7,7 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_kmp_llvm
-  - astroid=2.12.9=py39hf3d152e_0
+  - astroid=2.12.10=py39hf3d152e_0
   - attrs=21.4.0=pyhd3eb1b0_0
   - black=22.8.0=py39hf3d152e_0
   - blas=1.0=mkl
@@ -107,7 +107,7 @@ dependencies:
   - psutil=5.8.0=py39h27cfd23_2
   - py=1.11.0=pyh6c4a22f_0
   - pycparser=2.21=pyhd3eb1b0_0
-  - pylint=2.15.2=pyhd8ed1ab_0
+  - pylint=2.15.3=pyhd8ed1ab_0
   - pyopenssl=22.0.0=pyhd3eb1b0_0
   - pyparsing=3.0.4=pyhd3eb1b0_0
   - pysocks=1.7.1=py39h06a4308_0
@@ -118,7 +118,7 @@ dependencies:
   - python=3.9.10=h3b4beac_2
   - python-dateutil=2.8.2=py39_2
   - python_abi=3.9=2_cp39
-  - pytorch=1.12.1=py3.9_cuda11.3_cudnn8.3.2_0
+  - pytorch=1.12.0=py3.9_cuda11.3_cudnn8.3.2_0
   - pytorch-mutex=1.0=cuda
   - pytz=2021.3=pyhd3eb1b0_0
   - pyyaml=6.0=py39h7f8727e_1
@@ -140,9 +140,9 @@ dependencies:
   - toml=0.10.2=pyhd8ed1ab_0
   - tomli=2.0.1=pyhd8ed1ab_0
   - tomlkit=0.11.4=pyha770c72_0
-  - torchaudio=0.12.1=py39_cu113
+  - torchaudio=0.12.0=py39_cu113
   - torchinfo=1.7.0=pyhd8ed1ab_0
-  - torchvision=0.13.1=py39_cu113
+  - torchvision=0.13.0=py39_cu113
   - tornado=6.1=py39h27cfd23_0
   - typing=3.10.0.0=pyhd8ed1ab_0
   - typing-extensions=4.1.1=hd3eb1b0_0
@@ -157,9 +157,9 @@ dependencies:
   - zlib=1.2.11.1=h1e99aa7_5
   - zstd=1.4.5=h3f200d0_0
   - pip:
-    - cupy-cuda112==10.6.0
+    - cupy-cuda11x==11.1.0
     - fastrlock==0.8
     - pytorch-nemo==0.0.8
-    - timm==0.6.7
+    - timm==0.5.4
     - tqdm==4.64.1
-prefix: /scratch2/janniss/conda/halutmatmul_gpu
+prefix: /scratch2/janniss/conda/halutmatmul_gpu_2
