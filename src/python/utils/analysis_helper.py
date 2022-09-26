@@ -7,7 +7,7 @@ from typing import Any, Dict, Literal, OrderedDict
 import pandas as pd
 import torch
 
-available_models = Literal["resnet-50", "levit", "ds-cnn"]
+available_models = Literal["resnet-50", "levit", "ds-cnn", "resnet18"]
 
 
 def sys_info() -> None:
@@ -313,6 +313,52 @@ layers_levit = [
     "head_dist",
 ]
 
+resnet18_layers = [
+    "layer1.0.conv1",
+    "layer1.0.conv2",
+    "layer1.1.conv1",
+    "layer1.1.conv2",
+    "layer2.0.conv1",
+    "layer2.0.conv2",
+    "layer2.0.downsample.0",
+    "layer2.1.conv1",
+    "layer2.1.conv2",
+    "layer3.0.conv1",
+    "layer3.0.conv2",
+    "layer3.0.downsample.0",
+    "layer3.1.conv1",
+    "layer3.1.conv2",
+    "layer4.0.conv1",
+    "layer4.0.conv2",
+    "layer4.0.downsample.0",
+    "layer4.1.conv1",
+    "layer4.1.conv2",
+    "fc",
+]
+
+"""
+layer1.0.conv1   torch.Size([64, 64, 3, 3])
+layer1.0.conv2   torch.Size([64, 64, 3, 3])
+layer1.1.conv1   torch.Size([64, 64, 3, 3])
+layer1.1.conv2   torch.Size([64, 64, 3, 3])
+layer2.0.conv1   torch.Size([128, 64, 3, 3])
+layer2.0.conv2   torch.Size([128, 128, 3, 3])
+layer2.0.downsample.0   torch.Size([128, 64, 1, 1])
+layer2.1.conv1   torch.Size([128, 128, 3, 3])
+layer2.1.conv2   torch.Size([128, 128, 3, 3])
+layer3.0.conv1   torch.Size([256, 128, 3, 3])
+layer3.0.conv2   torch.Size([256, 256, 3, 3])
+layer3.0.downsample.0   torch.Size([256, 128, 1, 1])
+layer3.1.conv1   torch.Size([256, 256, 3, 3])
+layer3.1.conv2   torch.Size([256, 256, 3, 3])
+layer4.0.conv1   torch.Size([512, 256, 3, 3])
+layer4.0.conv2   torch.Size([512, 512, 3, 3])
+layer4.0.downsample.0   torch.Size([512, 256, 1, 1])
+layer4.1.conv1   torch.Size([512, 512, 3, 3])
+layer4.1.conv2   torch.Size([512, 512, 3, 3])
+fc   torch.Size([1000, 512])
+"""
+
 
 def get_layers(name: available_models) -> list[str]:
     if name == "resnet-50":
@@ -321,12 +367,14 @@ def get_layers(name: available_models) -> list[str]:
         return layers_levit
     elif name == "ds-cnn":
         return ds_cnn_layers
+    elif name == "resnet18":
+        return resnet18_layers
     else:
         return Exception("Model name not supported: ", name)
 
 
 def get_input_data_amount(name: available_models, l: str) -> list[int]:
-    if name == "resnet-50":
+    if name in ["resnet-50", "resnet18"]:
         layer_loc = l.split(".", maxsplit=1)[0]
         rows_adapted = []
         if layer_loc in ["layer1"]:
@@ -344,4 +392,4 @@ def get_input_data_amount(name: available_models, l: str) -> list[int]:
         # TODO: think about learning on training set
         return [1]  # all
     else:
-        return Exception("Model name not supported: ", name)
+        raise Exception("Model name not supported: ", name)

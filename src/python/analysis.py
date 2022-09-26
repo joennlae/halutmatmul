@@ -20,7 +20,7 @@ from utils.analysis_helper import (
 
 from models.helper import eval_halut_kws, evaluate_halut_imagenet
 from models.dscnn.main import setup_ds_cnn_eval
-from models.resnet import ResNet50_Weights, resnet50
+from models.resnet import ResNet18_Weights, ResNet50_Weights, resnet18, resnet50
 from models.levit.main import run_levit_analysis  # type: ignore[attr-defined]
 
 from halutmatmul.model import HalutHelper, eval_func_type
@@ -42,6 +42,20 @@ def model_loader(
         )
         model = resnet50(weights=state_dict, progress=True)
         return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
+    elif name == "resnet18":
+        state_dict = ResNet18_Weights.IMAGENET1K_V1.get_state_dict(progress=True)
+        data = torchvision.datasets.ImageNet(
+            root=dataset_path,  # "/scratch/janniss/imagenet/",
+            split="val",
+            transform=ResNet18_Weights.IMAGENET1K_V1.transforms(),
+        )
+        checkpoint = torch.load(
+            "/usr/scratch2/vilan2/janniss/model_checkpoints/checkpoint_100.pth",
+            map_location="cpu",
+        )
+        model = resnet18(weights=state_dict, progress=True)
+        model.load_state_dict(checkpoint["model"])
+        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
     elif name == "levit":
         model, data_loader, state_dict = run_levit_analysis(
             [
@@ -60,7 +74,7 @@ def model_loader(
         print("data", data)
         return model, data, state_dict, eval_halut_kws, 0, 0
     else:
-        return Exception("Model name not supported: ", name)
+        raise Exception("Model name not supported: ", name)
 
 
 def multilayer_analysis(
@@ -221,7 +235,7 @@ def run_test(
                         halut_data_path=halut_data_path,
                         dataset_path=dataset_path,
                         learned_path=learned_path,
-                        model_name=model_name,
+                        model_name=model_name,  # type: ignore[arg-type]
                     )
                     with open(
                         result_base_path

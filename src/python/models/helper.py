@@ -124,37 +124,38 @@ def evaluate_halut_imagenet(
     # switch to evaluation mode
     model.eval()
     n_iter = 0
-    for images, target in metric_logger.log_every(data_loader, 1, header):
-        images = images.to(device, non_blocking=True)
-        target = target.to(device, non_blocking=True)
+    with torch.inference_mode():
+        for images, target in metric_logger.log_every(data_loader, 1, header):
+            images = images.to(device, non_blocking=True)
+            target = target.to(device, non_blocking=True)
 
-        # compute output
-        with torch.cuda.amp.autocast():
-            output = model(images)
-            loss = criterion(output, target)
+            # compute output
+            with torch.cuda.amp.autocast():
+                output = model(images)
+                loss = criterion(output, target)
 
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
-        metric_logger.update(loss=loss.item())
-        metric_logger.meters["acc1"].update(acc1.item(), n=images.shape[0])
-        metric_logger.meters["acc5"].update(acc5.item(), n=images.shape[0])
-        if is_store:
-            if n_iter > iterations:
-                break
-            print(
-                "iteration for storage: ",
-                images.shape,
-                f" {n_iter + 1}/{iterations}",
-            )
-            write_inputs_to_disk(
-                model,
-                batch_size=batch_size,  # naming only, can have less elements in last iter
-                iteration=n_iter,
-                total_iterations=iterations,
-                path=data_path,
-                additional_dict=additional_dict,
-            )
-        n_iter = n_iter + 1
+            metric_logger.update(loss=loss.item())
+            metric_logger.meters["acc1"].update(acc1.item(), n=images.shape[0])
+            metric_logger.meters["acc5"].update(acc5.item(), n=images.shape[0])
+            if is_store:
+                if n_iter > iterations:
+                    break
+                print(
+                    "iteration for storage: ",
+                    images.shape,
+                    f" {n_iter + 1}/{iterations}",
+                )
+                write_inputs_to_disk(
+                    model,
+                    batch_size=batch_size,  # naming only, can have less elements in last iter
+                    iteration=n_iter,
+                    total_iterations=iterations,
+                    path=data_path,
+                    additional_dict=additional_dict,
+                )
+            n_iter = n_iter + 1
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print(
