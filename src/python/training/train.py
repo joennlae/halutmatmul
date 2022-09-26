@@ -6,16 +6,16 @@ import os
 import time
 import warnings
 
-import presets
 import torch
 import torch.utils.data
 import torchvision
-import transforms
-import utils_train
-from sampler import RASampler
 from torch import nn
 from torch.utils.data.dataloader import default_collate
 from torchvision.transforms.functional import InterpolationMode
+
+from training import transforms, utils_train, presets
+from training.sampler import RASampler
+
 
 from models.resnet import resnet18, ResNet18_Weights
 
@@ -71,6 +71,7 @@ def train_one_epoch(
                 # Reset ema buffer to keep copying weights during warmup period
                 model_ema.n_averaged.fill_(0)
 
+        # pylint: disable=unbalanced-tuple-unpacking
         acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
         batch_size = image.shape[0]
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
@@ -91,7 +92,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix="
             target = target.to(device, non_blocking=True)
             output = model(image)
             loss = criterion(output, target)
-
+            # pylint: disable=unbalanced-tuple-unpacking
             acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
             # FIXME need to take into account that the datasets
             # could have been padded in distributed setup
@@ -371,7 +372,9 @@ def main(args):
 
     model_without_ddp = model
     if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[args.gpu], find_unused_parameters=True
+        )
         model_without_ddp = model.module
 
     model_ema = None

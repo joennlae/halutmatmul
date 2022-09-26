@@ -467,7 +467,8 @@ def set_weight_decay(
 
     def _add_params(module, prefix=""):
         for name, p in module.named_parameters(recurse=False):
-            if not p.requires_grad:
+            if not p.requires_grad: # removes parameter from optimizer!!
+                # filter(lambda p: p.requires_grad, model.parameters())
                 continue
             is_custom_key = False
             for key in custom_keys:
