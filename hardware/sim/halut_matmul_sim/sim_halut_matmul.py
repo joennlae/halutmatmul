@@ -39,7 +39,7 @@ DecAddrWidth = int(log2(DecoderUnits))
 CAddrWidth = int(log2(C))
 MAddrWidth = ceil(log2(M))
 
-ROWS = 256  # * 16
+ROWS = 128  # * 16
 
 
 @cocotb.test()
