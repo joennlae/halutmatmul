@@ -89,6 +89,11 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
         check_path = "6-cadence-innovus-place-route/results/halut_matmul.vcs.v"
     else:
         raise Exception(f"tech = {tech} not supported")
+    if add_on == "ssg_":
+        clk_period_asap7_l[0] = clk_period_asap7_l[0] + 600
+        clk_period_asap7_l[1] = clk_period_asap7_l[1] + 600
+        clk_period_asap7_sl[0] = clk_period_asap7_sl[0] + 600
+        clk_period_asap7_sl[1] = clk_period_asap7_sl[1] + 600
     for C_ in C:
         for v in vth:
             for s in size_option:
@@ -102,9 +107,6 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
                     clk_period = clk_period_asap7_l
                 elif tech == "asap7" and v == "SL":
                     clk_period = clk_period_asap7_sl
-                if add_on == "ssg_":
-                    clk_period[0] = clk_period[0] + 700
-                    clk_period[1] = clk_period[1] + 700
                 for clk in clk_period:
                     # check if design exists
                     folder_name = (
@@ -294,13 +296,24 @@ def run_power() -> None:
     for folder in folders:
         folder_name_splitted = folder.split("-")
         design_name = folder_name_splitted[0]
-        # sim_clk_period = int(folder_name_splitted[1])
+        sim_clk_period = int(folder_name_splitted[1])
         infos = design_name.split("_")
         tech = infos[0]
-        # decoders = int(infos[1])
+        decoders = int(infos[1])
         subunits_per_decoders = int(infos[2])
-        # num_c = int(infos[3])
+        desing_clk = int(infos[4])
+        num_c = int(infos[3])
         vth = infos[-1]
+        addon = ""
+        is_nominal_gf22 = False
+        is_ssg_asap7 = False
+        if len(infos) > 7:
+            addon = infos[-2]
+            print("HAS ADDON", addon)
+            if addon == "nominal":
+                is_nominal_gf22 = True
+            elif addon == "ssg":
+                is_ssg_asap7 = True
 
         if tech == "7":
             sim_out_folder_name = "asap7-cocotb"
@@ -343,7 +356,8 @@ def run_power() -> None:
                     )
                     # add libs
                     run_command(
-                        f"ln -s {GIT_BASE_PATH}/hardware/pdks/asap7/stdcells_{vth}.db "
+                        f"ln -s {GIT_BASE_PATH}/hardware/pdks/asap7/stdcells_{vth}"
+                        f"{'_ssg' if is_ssg_asap7 else ''}.db "
                         f"{power_output_folder}/inputs/adk/stdcells.db;"
                     )
 
@@ -361,7 +375,8 @@ def run_power() -> None:
                     )
                     # add libs
                     run_command(
-                        f"ln -s {GIT_BASE_PATH}/hardware/pdks/gf22/stdcells_{vth}.db "
+                        f"ln -s {GIT_BASE_PATH}/hardware/pdks/gf22/stdcells_{vth}"
+                        f"{'_nominal' if is_nominal_gf22 else ''}.db "
                         f"{power_output_folder}/inputs/adk/stdcells.db;"
                     )
                     run_command(
@@ -404,7 +419,7 @@ def run_power() -> None:
                     end_time_ns = finished_writing
                 elif type_ == "execute":
                     start_time_ns = finished_writing
-                    end_time_ns = "-1"  # type: ignore[assignment]
+                    end_time_ns = -1
                 else:
                     raise Exception(f"type {type_} not found")
                 # run command
@@ -413,6 +428,24 @@ def run_power() -> None:
                     f"export END_TIME_NS={end_time_ns}; "
                     f"./pt_shell -f primetime_power.tcl -output_log_file logs/pt.log || exit 1"
                 )
+
+                sim_info = {
+                    "clk_period_design": desing_clk,
+                    "wns": sim_clk_period - desing_clk,
+                    "sim_clk": sim_clk_period,
+                    "decoders": decoders,
+                    "decoders_per_subunit": subunits_per_decoders,
+                    "C": num_c,
+                    "vth": vth,
+                    "addon": addon,
+                    "tech": tech,
+                    "design_name": design_name,
+                    "power_folder": power_output_folder,
+                    "is_nominal_gf22": is_nominal_gf22,
+                    "is_ssg_asap7": is_ssg_asap7,
+                }
+                with open(f"{power_output_folder}/info.json", "w") as outfile:
+                    json.dump(sim_info, outfile, indent=2)
 
 
 def run_simulations() -> None:
