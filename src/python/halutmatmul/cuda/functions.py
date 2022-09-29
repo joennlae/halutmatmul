@@ -315,6 +315,7 @@ def error_cupy(
     actual: torch.Tensor,
     desired: torch.Tensor,
 ) -> np.ndarray:
+    # absolute memory hog but for speed better on GPU
     actual_cupy = cp.asarray(cp.from_dlpack(actual.detach()))
     desired_cupy = cp.asarray(cp.from_dlpack(desired.detach()))
     _min = cp.min(desired_cupy)

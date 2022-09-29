@@ -3,6 +3,7 @@
 # pylint: disable=line-too-long, import-outside-toplevel, unnecessary-lambda-assignment
 import datetime
 import os
+import sys
 import time
 import warnings
 
@@ -13,10 +14,11 @@ from torch import nn
 from torch.utils.data.dataloader import default_collate
 from torchvision.transforms.functional import InterpolationMode
 
+sys.path.append(os.getcwd())
+
+# pylint: disable=wrong-import-position
 from training import transforms, utils_train, presets
 from training.sampler import RASampler
-
-
 from models.resnet import resnet18, ResNet18_Weights
 
 
@@ -80,7 +82,7 @@ def train_one_epoch(
         metric_logger.meters["img/s"].update(batch_size / (time.time() - start_time))
 
 
-def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix=""):
+def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix=""):
     model.eval()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
@@ -156,15 +158,28 @@ def load_data(traindir, valdir, args):
     else:
         auto_augment_policy = getattr(args, "auto_augment", None)
         random_erase_prob = getattr(args, "random_erase", 0.0)
-        dataset = torchvision.datasets.ImageFolder(
-            traindir,
-            presets.ClassificationPresetTrain(
-                crop_size=train_crop_size,
-                interpolation=interpolation,
-                auto_augment_policy=auto_augment_policy,
-                random_erase_prob=random_erase_prob,
-            ),
+        preprocessing = presets.ClassificationPresetTrain(
+            crop_size=train_crop_size,
+            interpolation=interpolation,
+            auto_augment_policy=auto_augment_policy,
+            random_erase_prob=random_erase_prob,
         )
+        if args.cifar100:
+            dataset = torchvision.datasets.CIFAR100(
+                root="/scratch2/janniss/datasets",
+                train=True,
+                transform=preprocessing,
+                download=True,
+            )
+        elif args.cifar10:
+            dataset = torchvision.datasets.CIFAR10(
+                root="/scratch2/janniss/datasets",
+                train=True,
+                transform=preprocessing,
+                download=True,
+            )
+        else:
+            dataset = torchvision.datasets.ImageFolder(traindir, preprocessing)
         if args.cache_dataset:
             print(f"Saving dataset_train to {cache_path}")
             utils_train.mkdir(os.path.dirname(cache_path))
@@ -187,11 +202,25 @@ def load_data(traindir, valdir, args):
                 resize_size=val_resize_size,
                 interpolation=interpolation,
             )
-
-        dataset_test = torchvision.datasets.ImageFolder(
-            valdir,
-            preprocessing,
-        )
+        if args.cifar100:
+            dataset_test = torchvision.datasets.CIFAR100(
+                root="/scratch2/janniss/datasets",
+                train=False,
+                transform=preprocessing,
+                download=True,
+            )
+        elif args.cifar10:
+            dataset_test = torchvision.datasets.CIFAR10(
+                root="/scratch2/janniss/datasets",
+                train=False,
+                transform=preprocessing,
+                download=True,
+            )
+        else:
+            dataset_test = torchvision.datasets.ImageFolder(
+                valdir,
+                preprocessing,
+            )
         if args.cache_dataset:
             print(f"Saving dataset_test to {cache_path}")
             utils_train.mkdir(os.path.dirname(cache_path))
@@ -217,8 +246,13 @@ def main(args):
     if args.output_dir:
         utils_train.mkdir(args.output_dir)
 
-    utils_train.init_distributed_mode(args)
-    print(args)
+    if not hasattr(args, "distributed"):
+        utils_train.init_distributed_mode(args)
+
+    if args.cifar10 or args.cifar100:
+        args.val_resize_size = 32
+        args.val_crop_size = 32
+        args.train_crop_size = 32
 
     device = torch.device(args.device)
 
@@ -266,11 +300,24 @@ def main(args):
 
     print("Creating model")
     if args.model == "resnet18":
-        state_dict = ResNet18_Weights.IMAGENET1K_V1.get_state_dict(progress=True)
-        model = resnet18(weights=state_dict, progress=True)
-    # model = torchvision.models.get_model(
-    #     args.model, weights=args.weights, num_classes=num_classes
-    # )
+        if args.cifar100:
+            model = resnet18(
+                progress=True, **{"is_cifar": True, "num_classes": num_classes}
+            )
+        elif args.cifar10:
+            model = resnet18(
+                progress=True, **{"is_cifar": True, "num_classes": num_classes}
+            )
+        else:
+            model = resnet18(progress=True)
+    else:
+        model = torchvision.models.get_model(
+            args.model, weights=args.weights, num_classes=num_classes
+        )
+    if args.resume:
+        checkpoint = torch.load(args.resume, map_location="cpu")
+        # load to update halut deactivated layers
+        model.load_state_dict(checkpoint["model"])
     model.to(device)
 
     if args.distributed and args.sync_bn:
@@ -392,6 +439,7 @@ def main(args):
             model_without_ddp, device=device, decay=1.0 - alpha
         )
 
+    halut_modules = None
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
         model_without_ddp.load_state_dict(checkpoint["model"])
@@ -403,6 +451,9 @@ def main(args):
             model_ema.load_state_dict(checkpoint["model_ema"])
         if scaler:
             scaler.load_state_dict(checkpoint["scaler"])
+        halut_modules = (
+            checkpoint["halut_modules"] if "halut_modules" in checkpoint else None
+        )
 
     if args.test_only:
         # We disable the cudnn benchmarking because it can noticeably affect the accuracy
@@ -446,6 +497,8 @@ def main(args):
                 "epoch": epoch,
                 "args": args,
             }
+            if halut_modules is not None:
+                checkpoint["halut_modules"] = halut_modules
             if model_ema:
                 checkpoint["model_ema"] = model_ema.state_dict()
             if scaler:
@@ -591,7 +644,7 @@ def get_args_parser(add_help=True):
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
     parser.add_argument(
         "--output-dir",
-        default="/scratch2/janniss/model_checkpoints",
+        default="/scratch2/janniss/model_checkpoints/cifar100",
         type=str,
         help="path to save outputs",
     )
@@ -712,6 +765,18 @@ def get_args_parser(add_help=True):
     )
     parser.add_argument(
         "--weights", default=None, type=str, help="the weights enum name to load"
+    )
+
+    parser.add_argument(
+        "--cifar100",
+        action="store_true",
+        help="Uses CIFAR100 dataset",
+    )
+
+    parser.add_argument(
+        "--cifar10",
+        action="store_true",
+        help="Uses CIFAR10 dataset",
     )
 
     return parser

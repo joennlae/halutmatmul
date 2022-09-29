@@ -12,6 +12,9 @@ from halutmatmul.modules import HalutConv2d, HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
 
+MAX_ROWS_FOR_SUBSAMPLING = 1024 * 256
+RUN_ALL_SUBSAMPLING = 4419 * 4419
+
 # pylint: disable=W0212
 def write_inputs_to_disk(
     model: torch.nn.Module,
@@ -20,6 +23,8 @@ def write_inputs_to_disk(
     total_iterations: int,
     path: str = ".data/",
     additional_dict: Optional[dict[str, int]] = None,
+    total_rows_store: int = MAX_ROWS_FOR_SUBSAMPLING,
+    run_subsampling: bool = False,
 ) -> None:
     def store(module: torch.nn.Module, prefix: str = "") -> None:
         if (
@@ -34,19 +39,46 @@ def write_inputs_to_disk(
                     module, "input_storage_b"
                 )
                 if hasattr(module, "input_storage_a"):
-                    print(
-                        "store inputs for module",
-                        prefix + module._get_name(),
-                        module.input_storage_a.shape,
-                        module.input_storage_a.shape[0]  # type: ignore[index]
-                        * module.input_storage_a.shape[1]  # type: ignore[index]
-                        * 4
-                        / (1024 * 1024 * 1024),
-                        " GB",
-                    )
-                    np_array_a = (
-                        module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
-                    )
+                    if run_subsampling:  # run subsampling
+                        rows_to_store_during_current_iter = (
+                            total_rows_store // total_iterations
+                        )
+                        rows = module.input_storage_a.shape[0]  # type: ignore[index]
+                        rows = min(rows_to_store_during_current_iter, rows)
+                        # subsampling
+                        idx = np.arange(rows)
+                        np.random.shuffle(idx)
+                        np_array_a = (
+                            module.input_storage_a[idx[:total_rows_store]]  # type: ignore[index]
+                            .detach()
+                            .cpu()
+                            .numpy()
+                        )
+                        print(
+                            "[SUBSAMPLED] store inputs for module",
+                            prefix + module._get_name(),
+                            np_array_a.shape,
+                            np_array_a.shape[0]
+                            * np_array_a.shape[1]
+                            * 4
+                            / (1024 * 1024 * 1024),
+                            " GB",
+                        )
+                    else:
+                        print(
+                            "store inputs for module",
+                            prefix + module._get_name(),
+                            module.input_storage_a.shape,
+                            module.input_storage_a.shape[0]  # type: ignore[index]
+                            * module.input_storage_a.shape[1]  # type: ignore[index]
+                            * 4
+                            / (1024 * 1024 * 1024),
+                            " GB",
+                        )
+                        np_array_a = (
+                            module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
+                        )
+
                     np.save(
                         path
                         + "/"
@@ -121,6 +153,10 @@ def evaluate_halut_imagenet(
     metric_logger = models.levit.utils.MetricLogger(delimiter="  ")  # type: ignore[attr-defined]
     header = "Test:"
 
+    run_subsampling = False
+    if iterations == RUN_ALL_SUBSAMPLING:
+        run_subsampling = True
+        iterations = len(data_loader)
     # switch to evaluation mode
     model.eval()
     n_iter = 0
@@ -154,10 +190,13 @@ def evaluate_halut_imagenet(
                     total_iterations=iterations,
                     path=data_path,
                     additional_dict=additional_dict,
+                    run_subsampling=run_subsampling,
                 )
             n_iter = n_iter + 1
+
     # gather the stats from all processes
-    metric_logger.synchronize_between_processes()
+    # FIXME: only supporting non distributed envs for training of halut
+    # metric_logger.synchronize_between_processes()
     print(
         "* Acc@1 {top1.global_avg:.3f} Acc@5 {top5.global_avg:.3f} "
         "loss {losses.global_avg:.3f}".format(

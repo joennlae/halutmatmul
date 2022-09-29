@@ -1,4 +1,5 @@
 # pylint: disable=import-outside-toplevel
+import sys
 from typing import Any, Optional, OrderedDict, Union
 from timeit import default_timer as timer
 import numpy as np
@@ -142,7 +143,7 @@ class HalutLinear(Linear):
                     dtype=object,
                 )
                 self.halut = HalutMatmul().from_numpy(store_array)
-                # set require_grad = False to freeze layers
+                # set requires_grad = False to freeze layers
                 self.weight.requires_grad = False
                 if self.bias is not None:
                     self.bias.requires_grad = False
@@ -336,13 +337,6 @@ def halut_conv2d_cpu(
             )  # halut does not need to be passed
             input_a[g] += input_a_temp
             input_b[g] += input_b_temp
-            print(
-                "SHAPESSSS",
-                input_a.shape,
-                input_a_temp.shape,
-                input_b.shape,
-                input_b_temp.shape,
-            )
         return (
             input_a.reshape((-1, input_a.shape[2])),
             input_b.reshape((input_b.shape[1], -1)),
@@ -532,7 +526,7 @@ class HalutConv2d(_ConvNd):
                     dtype=object,
                 )
                 self.halut = HalutMatmul().from_numpy(store_array)
-                # set require_grad = False to freeze layers
+                # set requires_grad = False to freeze layers
                 self.weight.requires_grad = False
                 if self.bias is not None:
                     self.bias.requires_grad = False
@@ -650,6 +644,11 @@ class HalutConv2d(_ConvNd):
             else:
                 self.input_storage_a = torch.cat(
                     (self.input_storage_a, input_a.cpu().detach()), 0  # type: ignore[arg-type]
+                )
+                print(
+                    f"new storage size: "
+                    f"{sys.getsizeof(self.input_storage_a.storage())/ (1024 * 1024 * 1024)} GB"
+                    f"size: {self.input_storage_a.size}"
                 )
 
     def _conv_forward(

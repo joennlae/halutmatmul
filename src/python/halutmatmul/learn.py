@@ -52,10 +52,12 @@ def learn_halut(
     files_to_load = 1
     if batch_size != 0:
         files_to_load = ceil(r / batch_size)
+        if r == -1:
+            files_to_load = iterations
     rows_per_batch = a_numpy.shape[0]
     total_rows = rows_per_batch
     if batch_size != 0:
-        total_rows = ceil(rows_per_batch * r / batch_size)
+        total_rows = ceil(rows_per_batch * files_to_load)
 
     save_path = (
         store_path
@@ -70,6 +72,9 @@ def learn_halut(
         print("would use too much ram!!")
         # return
     for i in range(1, files_to_load):
+        print(
+            f"loading file {data_path}/{l}_{batch_size}_{i}_{iterations}{END_STORE_A}"
+        )
         a_part = np.load(
             data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
         )

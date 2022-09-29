@@ -9,7 +9,11 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from models.resnet import END_STORE_A, END_STORE_B
-from models.helper import evaluate_halut_imagenet, get_and_print_layers_to_use_halut
+from models.helper import (
+    RUN_ALL_SUBSAMPLING,
+    evaluate_halut_imagenet,
+    get_and_print_layers_to_use_halut,
+)
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
 from halutmatmul.modules import ErrorTuple
@@ -81,6 +85,7 @@ class HalutHelper:
         model: torch.nn.Module,
         state_dict: "OrderedDict[str, torch.Tensor]",
         dataset: Dataset[T_co],
+        dataset_train: Dataset[T_co] = None,
         data_path: str = DATA_PATH,
         batch_size_store: int = DEFAULT_BATCH_SIZE_OFFLINE,
         batch_size_inference: int = DEFAULT_BATCH_SIZE_INFERENCE,
@@ -93,6 +98,7 @@ class HalutHelper:
     ) -> None:
         self.model = model
         self.dataset = dataset
+        self.dataset_train = dataset_train
         self.batch_size_store = batch_size_store
         self.batch_size_inference = batch_size_inference
         self.state_dict_base = state_dict
@@ -179,7 +185,7 @@ class HalutHelper:
         self.model.eval()
 
         self.eval_function(
-            self.dataset,
+            self.dataset if self.dataset_train is None else self.dataset_train,
             self.model,
             self.device,
             True,
@@ -215,12 +221,18 @@ class HalutHelper:
                 self.data_path, k, "input", rows=args[hm.HalutModuleConfig.ROWS]
             )
             # TODO: doesn't check if enough data is stored
+            print(f"paths {paths}")
             if len(paths) != 2:
                 dict_to_store[k] = 1
-                if self.batch_size_store != 0:
-                    dict_to_store[k] = ceil(
-                        args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
-                    )
+                if args[hm.HalutModuleConfig.ROWS] == -1:
+                    dict_to_store[k] = RUN_ALL_SUBSAMPLING
+                    # just needs to be bigger than in input_images / batch_size
+                    # used for subsampling
+                else:
+                    if self.batch_size_store != 0:
+                        dict_to_store[k] = ceil(
+                            args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
+                        )
         self.store_inputs(dict_to_store)
         print(dict_to_learn, dict_to_store)
         learn_halut_multi_core_dict(

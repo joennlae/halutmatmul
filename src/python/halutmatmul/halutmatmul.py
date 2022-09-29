@@ -374,7 +374,6 @@ class HalutMatmul:
         # called with B.T
         B = np.atleast_2d(B)
         luts = np.zeros((B.shape[0], self.C, self.K))
-        print("SHAPES", self.prototypes.shape, luts.shape, B.shape)
         for i, q in enumerate(B):
             luts[i] = maddness_lut(q, self.prototypes)
         if self.quantize_lut:
