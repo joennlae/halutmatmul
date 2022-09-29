@@ -328,6 +328,7 @@ def run_power() -> None:
         ):
             for type_ in ["write", "execute"]:
                 power_output_folder = f"{BASE_PATH}/power/{folder}-{type_}"
+                print(power_output_folder)
                 if os.path.exists(power_output_folder):
                     print("already done -> skipping ...")
                     continue
@@ -408,8 +409,15 @@ def run_power() -> None:
                     subunit_str = (
                         f"{subunits_per_decoders - 1}\/{subunits_per_decoders}"
                     )
+                    regex_str = ""
+                    # needs fixed lookback (python)
+                    for i in range(1, 4):
+                        if i > 1:
+                            regex_str += "|"
+                        regex_str += r"(?<=finished writing " + subunit_str \
+                          + r"\n\#\s{" + f"{'2'}" + r"})\d+.?\d+"
                     infos = re.findall(
-                        r"(?<=finished writing " + subunit_str + r"\n\#\s{3})\d+.?\d+",
+                        regex_str,
                         f.read(),
                     )
                     print(infos)
