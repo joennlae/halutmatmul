@@ -415,7 +415,7 @@ def run_power() -> None:
                         if i > 1:
                             regex_str += "|"
                         regex_str += r"(?<=finished writing " + subunit_str \
-                          + r"\n\#\s{" + f"{'2'}" + r"})\d+.?\d+"
+                          + r"\n\#\s{" + f"{str(i)}" + r"})\d+.?\d+"
                     infos = re.findall(
                         regex_str,
                         f.read(),
