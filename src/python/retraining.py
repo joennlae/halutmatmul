@@ -251,13 +251,13 @@ if __name__ == "__main__":
         "-halutdata",
         type=str,
         help="halut data path",
-        default=DEFAULT_FOLDER + "/halut/resnet18-cifar100",
+        default=DEFAULT_FOLDER + "/halut/resnet18-cifar10",
     )
     parser.add_argument(
         "-learned",
         type=str,
         help="halut learned path",
-        default=DEFAULT_FOLDER + "/halut/resnet18-cifar100/learned",
+        default=DEFAULT_FOLDER + "/halut/resnet18-cifar10/learned",
     )
     parser.add_argument("-C", type=int, help="C", default=64)
     parser.add_argument("-modelname", type=str, help="model name", default="resnet18")
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            "/usr/scratch2/sassauna3/janniss/model_checkpoints/cifar100/retrained_checkpoint.pth"
+            "/usr/scratch2/sassauna3/janniss/model_checkpoints/cifar10/retrained_checkpoint.pth"
         ),
     )
     # distributed training parameters
