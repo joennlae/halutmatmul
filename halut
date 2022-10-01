@@ -16,31 +16,31 @@ declare -r app_name="halut"
 declare -r version="0.1"
 
 _die() {
-  # Prefix die message with "cross mark (U+274C)", often displayed as a red x.
-  printf "❌  "
-  "${@}" 1>&2
-  exit 1
+    # Prefix die message with "cross mark (U+274C)", often displayed as a red x.
+    printf "❌  "
+    "${@}" 1>&2
+    exit 1
 }
 
 die() {
-  _die echo "${@}"
+    _die echo "${@}"
 }
 
 
 check_env() {
-  default_name="halutmatmul"
-
-  if [ -z ${REPO_BASE_PATH+x} ]; then
-    echo "[ERROR] Halutmatmul env is not activated ❌"
-    echo "[INFO] activate with source halut.env"
-    exit 1
-  else
-    echo "[INFO] Halutmatmul env is activated ✅"
-  fi
+    default_name="halutmatmul"
+    
+    if [ -z ${REPO_BASE_PATH+x} ]; then
+        echo "[ERROR] Halutmatmul env is not activated ❌"
+        echo "[INFO] activate with source halut.env"
+        exit 1
+    else
+        echo "[INFO] Halutmatmul env is activated ✅"
+    fi
 }
 
 _print_help() {
-  check_env
+    check_env
   cat <<HEREDOC
 template-generator - Template generator CLI
 Usage: ${app_name} [command] [arguments]
@@ -61,14 +61,14 @@ version() {
 }
 
 compare_conda_env() {
-  default_name="halutmatmul"
-
-  if [[ $CONDA_DEFAULT_ENV == *"halutmatmul"* ]]; then
-    echo "[INFO] Conda env is activated ✅"
-  else
-    echo "[ERROR] Activate conda env halutmatmul ❌, ($CONDA_DEFAULT_ENV)"
-    exit 1
-  fi
+    default_name="halutmatmul"
+    
+    if [[ $CONDA_DEFAULT_ENV == *"halutmatmul"* ]]; then
+        echo "[INFO] Conda env is activated ✅"
+    else
+        echo "[ERROR] Activate conda env halutmatmul ❌, ($CONDA_DEFAULT_ENV)"
+        exit 1
+    fi
 }
 
 lint_python() {
@@ -95,7 +95,7 @@ test_python() {
 lint_hw() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
-    pylint --rcfile=.pylintrc hardware/util/* hardware/dv/**/*.py
+    pylint --rcfile=.pylintrc hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
     echo "[DONE] lint python with pylint"
     echo "[INFO] check types with mypy"
     mypy hardware/util hardware/dv/**/*.py
@@ -130,95 +130,95 @@ _HW_LINT=0
 _ENV_OPTION=0
 
 _require_argument() {
-  local _option="${1:-}"
-  local _argument="${2:-}"
-
-  if [[ -z "${_argument}" ]] || [[ "${_argument}" =~ ^- ]]
-  then
-    _die printf "Option requires a argument: %s\n" "${_option}"
-  fi
+    local _option="${1:-}"
+    local _argument="${2:-}"
+    
+    if [[ -z "${_argument}" ]] || [[ "${_argument}" =~ ^- ]]
+    then
+        _die printf "Option requires a argument: %s\n" "${_option}"
+    fi
 }
 
 
 while [ ${#} -gt 0 ]
 do
-  __option="${1:-}"
-  __maybe_param="${2:-}"
-  __maybe_param2="${3:-}"
-  __maybe_param3="${4:-}"
-  __maybe_param4="${5:-}"
-  __maybe_param5="${6:-}"
-  __maybe_param6="${7:-}"
-  # echo "${__option}"
-  # echo "${__maybe_param}"
-  # echo "${__maybe_param2}"
-  case "${__option}" in
-    -h|--help)
-      _PRINT_OPTION=1
-      ;;
-    -v|--version)
-      _VERSION_OPTION=1;
-      ;;
-    l|lint)
-      _LINT_OPTION=1;
-      _LINT_ARG="${__maybe_param}";
-      ;;
-    t|test)
-      _TEST_OPTION=1;
-      # _require_argument "${__option}" "${__maybe_param}"
-      _TEST_ARG="${__maybe_param}";
-      ;;
-    hw|hardware)
-      _HW_OPTION=1;
-      _require_argument "${__option}" "${__maybe_param}"
-      case "${__maybe_param}" in
+    __option="${1:-}"
+    __maybe_param="${2:-}"
+    __maybe_param2="${3:-}"
+    __maybe_param3="${4:-}"
+    __maybe_param4="${5:-}"
+    __maybe_param5="${6:-}"
+    __maybe_param6="${7:-}"
+    # echo "${__option}"
+    # echo "${__maybe_param}"
+    # echo "${__maybe_param2}"
+    case "${__option}" in
+        -h|--help)
+            _PRINT_OPTION=1
+        ;;
+        -v|--version)
+            _VERSION_OPTION=1;
+        ;;
         l|lint)
-          _HW_LINT=1;
-          ;;
+            _LINT_OPTION=1;
+            _LINT_ARG="${__maybe_param}";
+        ;;
+        t|test)
+            _TEST_OPTION=1;
+            # _require_argument "${__option}" "${__maybe_param}"
+            _TEST_ARG="${__maybe_param}";
+        ;;
+        hw|hardware)
+            _HW_OPTION=1;
+            _require_argument "${__option}" "${__maybe_param}"
+            case "${__maybe_param}" in
+                l|lint)
+                    _HW_LINT=1;
+                ;;
+                --endopts)
+                    break
+                ;;
+                -*)
+                    _die printf "Unexpected hw option: %s\n" "${__maybe_param}"
+                ;;
+            esac
+            shift
+        ;;
+        e|env)
+            _ENV_OPTION=1;
+        ;;
         --endopts)
-          break
-          ;;
-        -*)
-          _die printf "Unexpected hw option: %s\n" "${__maybe_param}"
-          ;;
-      esac
-      shift
-      ;;
-    e|env)
-      _ENV_OPTION=1;
-      ;;
-    --endopts)
-      break
-      ;;
-    # -*)
-    #   _die printf "Unexpected option: %s\n" "${__option}"
-    #   ;;
-  esac
-  shift
+            break
+        ;;
+        # -*)
+        #   _die printf "Unexpected option: %s\n" "${__option}"
+        #   ;;
+    esac
+    shift
 done
 
 
 _main() {
-  if ((_PRINT_OPTION))
-  then
-    _print_help
-  elif ((_VERSION_OPTION)); then
-    version
-  elif ((_LINT_OPTION)); then
-    lint_python
-  elif ((_TEST_OPTION)); then
-    test_python "$_TEST_ARG"
-  elif ((_ENV_OPTION)); then
-    check_env
-  elif ((_HW_OPTION)); then
-    if ((_HW_LINT)); then
-      lint_hw
+    if ((_PRINT_OPTION))
+    then
+        _print_help
+        elif ((_VERSION_OPTION)); then
+        version
+        elif ((_LINT_OPTION)); then
+        lint_python
+        elif ((_TEST_OPTION)); then
+        test_python "$_TEST_ARG"
+        elif ((_ENV_OPTION)); then
+        check_env
+        elif ((_HW_OPTION)); then
+        if ((_HW_LINT)); then
+            lint_hw
+        else
+            _print_help
+        fi
     else
-      _print_help
+        _print_help
     fi
-  else
-    _print_help
-  fi
 }
 
 _main "${@:-}"
