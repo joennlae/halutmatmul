@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 from sys import prefix
 import tempfile
-from typing import Any, List
+from typing import Any, Dict, List
 
 # BASE_PATH = "/scratch2/janniss/outputs"
 BASE_PATH = "/usr/scratch2/vilan2/janniss/outputs"
@@ -414,8 +414,13 @@ def run_power() -> None:
                     for i in range(1, 4):
                         if i > 1:
                             regex_str += "|"
-                        regex_str += r"(?<=finished writing " + subunit_str \
-                          + r"\n\#\s{" + f"{str(i)}" + r"})\d+.?\d+"
+                        regex_str += (
+                            r"(?<=finished writing "
+                            + subunit_str
+                            + r"\n\#\s{"
+                            + f"{str(i)}"
+                            + r"})\d+.?\d+"
+                        )
                     infos = re.findall(
                         regex_str,
                         f.read(),
@@ -503,6 +508,129 @@ def run_simulations() -> None:
                 )
 
 
+def extract_data() -> None:
+    # pylint: disable=import-outside-toplevel
+    import pandas as pd
+
+    power_base_folder = f"{BASE_PATH}/power/"
+    folders = list(os.listdir(power_base_folder))
+    folders = sorted(folders)
+    all_data = []
+    for des in folders:
+        design_name = des
+        if des.startswith("7_"):
+            tech = "asap7"
+        elif des.startswith("22_"):
+            tech = "gf22"
+        else:
+            raise Exception(f"sim_target not supported: {des}")
+        design_folder = power_base_folder + des
+        row: Dict[str, Any] = dict([])
+        with open(f"{design_folder}/info.json") as f:
+            data = json.load(f)
+            # row |= data python3.9
+            row = {**row, **data}
+
+        row["power_type"] = des.split("-")[-1]  # write, execute
+        # read in power data
+        with open(f"{design_folder}/reports/halut_matmul.power.rpt") as f:
+            infos = re.findall(r"(\d+\.\d+(e-\d{2})?)(?=\s+\()", f.read())
+            row["power_clock_network"] = infos[0][0]
+            row["power_register"] = infos[1][0]
+            row["power_combinational"] = infos[2][0]
+
+            row["power_net_switching"] = infos[7][0]
+            row["power_cell_internal"] = infos[8][0]
+            row["power_cell_leakage"] = infos[9][0]
+            row["power_total"] = infos[10][0]
+
+        if tech == "gf22":
+            with open(f"{design_folder}/reports/halut_matmul.power.hier.rpt") as f:
+                hier_data = f.read()
+                # (\d\.\d+(e-\d{2}))
+                subunits = [
+                    r"lut\s.+",
+                    r"fp_adder\s.+",
+                    r"encoder\s.+",
+                    r"gen_encoder_units_0__encoder_unit\s.+",
+                    r"gen_decoders_3__sub_unit_decoder\s.+",
+                ]
+                subunit_name = ["lut", "fp_adder", "encoder_4", "encoder", "decoder"]
+                for idx, sub in enumerate(subunits):
+                    subunit_info = re.findall(sub, hier_data)
+                    power_data = re.findall(r"(\d\.\d+(e-\d{2})*)", subunit_info[0])
+                    row[f"power_{subunit_name[idx]}_int_power"] = float(
+                        power_data[0][0]
+                    )
+                    row[f"power_{subunit_name[idx]}_switch_power"] = float(
+                        power_data[1][0]
+                    )
+                    row[f"power_{subunit_name[idx]}_leak_power"] = float(
+                        power_data[2][0]
+                    )
+                    row[f"power_{subunit_name[idx]}_total_power"] = float(
+                        power_data[6][0]
+                    )
+
+        # area
+        raw_design_name = design_name.split("-")[0]
+        if tech == "asap7":
+            with open(
+                f"{BASE_PATH}/{raw_design_name}/openroad_asap7-openroad/metrics.json"
+            ) as f:
+                data = json.load(f)
+                instance_count = data[0]["finish__design__instance__count"]
+                area = data[0]["finish__design__instance__area"]
+                utilization = data[0]["finish__design__instance__utilization"]
+                row["instance_count"] = int(instance_count)
+                row["area"] = float(area)
+                row["utilization"] = float(utilization)
+        elif tech == "gf22":
+            with open(
+                f"{BASE_PATH}/{raw_design_name}/6-cadence-innovus-place-route/"
+                f"reports/signoff.area.rpt"
+            ) as f:
+                area_info_readin = f.read()
+                subunits = [
+                    r"halut_matmul\s+.+",
+                    r"gen_decoderX_units_0__decoder/gen_decoders_0__sub_unit_decoder/lut\s+.+",
+                    r"gen_decoderX_units_0__decoder/gen_decoders_0__sub_unit_decoder/fp_adder\s+.+",
+                    r"encoder\s+.+",
+                    r"encoder/gen_encoder_units_0__encoder_unit\s+.+",
+                    r"gen_decoderX_units_0__decoder/gen_decoders_0__sub_unit_decoder\s+.+",
+                ]
+                subunit_name = [
+                    "halut_matmul",
+                    "lut",
+                    "fp_adder",
+                    "encoder_4",
+                    "encoder",
+                    "decoder",
+                ]
+                for idx, sub in enumerate(subunits):
+                    subunit_info = re.findall(sub, area_info_readin)
+                    area_info = re.findall(r"(\d+\.\d+(e-\d{2})*)", subunit_info[0])
+                    instance_count = re.findall(r"(?<=\s)\d+(?=\s)", subunit_info[0])[0]
+                    if idx == 0:
+                        row["instance_count"] = int(instance_count)
+                        row["area"] = float(area_info[0][0])
+                    else:
+                        row[f"area_{subunit_name[idx]}"] = float(area_info[0][0])
+                        row[f"instance_count_{subunit_name[idx]}"] = int(instance_count)
+            with open(
+                f"{BASE_PATH}/{raw_design_name}/6-cadence-innovus-place-route/"
+                f"reports/signoff.summary"
+            ) as f:
+                summary = f.read()
+                signoff_info = re.findall(r"(\d+\.\d+(e-\d{2})*)(?=\%)", summary)
+                row["utilization"] = float(signoff_info[0][0]) / 100
+        print(design_name)
+        all_data.append(row)
+    df = pd.DataFrame(all_data)
+    print(df)
+    df.to_csv("power_data.csv")
+
+
 def cleanup() -> None:
     folders = list(os.listdir(BASE_PATH))
     folders = sorted(folders)
@@ -543,6 +671,7 @@ if __name__ == "__main__":
     parser.add_argument("--runsim", "-rs", action="store_true", help="run_sim")
 
     parser.add_argument("--cleanup", "-c", action="store_true", help="cleanup")
+    parser.add_argument("--data", "-d", action="store_true", help="gather data")
     parser.add_argument(
         "--tech",
         "-t",
@@ -580,3 +709,6 @@ if __name__ == "__main__":
 
     if args.cleanup:
         cleanup()
+
+    if args.data:
+        extract_data()
