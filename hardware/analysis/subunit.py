@@ -136,7 +136,7 @@ data_frame = (
     .reset_index()
 )
 data_frame = data_frame.sort_values(["C", "tech", "vdd"], ascending=[True, False, True])
-data_frame = data_frame[data_frame["power_type"] == "write"]
+data_frame = data_frame[data_frame["power_type"] == "execute"]
 
 for proportion in D_to_C:
     data_frame["macs_per_cycle_1_" + str(proportion)] = (
@@ -166,7 +166,7 @@ data_frame = data_frame.sort_values(
 data_frame = data_frame[
     (data_frame["technology"] == "GF22FDX")
     & (data_frame["vth"] == "L")
-    & (data_frame["C"] == 16)
+    & (data_frame["C"] == 32)
     & (data_frame["vdd"] == 0.65)
 ]
 print("TEST", data_frame)

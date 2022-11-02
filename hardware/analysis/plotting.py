@@ -173,6 +173,8 @@ data_frame = data_frame.sort_values(
     ["C", "decoders", "vth"], ascending=[True, True, True]
 )
 print(data_frame.head(10))
+
+data_frame = data_frame[data_frame["C"] == 32]
 print("TEST")
 df_table = data_frame[
     [
@@ -186,10 +188,10 @@ df_table = data_frame[
         "C",
         "freq_mhz",
         "area_mm2",
-        f"Area Efficiency 1:8",
-        f"Area Efficiency 1:16",
-        f"Area Efficiency 1:32",
-        f"Area Efficiency 1:64",
+        # f"Area Efficiency 1:8",
+        # f"Area Efficiency 1:16",
+        # f"Area Efficiency 1:32",
+        # f"Area Efficiency 1:64",
         f"Energy Efficiency 1:8",
         f"Energy Efficiency 1:16",
         f"Energy Efficiency 1:32",
@@ -201,14 +203,14 @@ df_table = data_frame[
         "power_switching_percentage",
         "power_leakage_percentage",
         "power_internal_percentage",
-        "power_clock_percentage",
-        "power_register_percentage",
-        "power_comb_percentage",
+        # "power_clock_percentage",
+        # "power_register_percentage",
+        # "power_comb_percentage",
     ]
 ].copy()
 
 # pylint: disable=using-constant-test
-if False:
+if True:
     gf22_to_scale = df_table[
         (df_table["technology"] == "GF22FDX") & (df_table["vdd"] == 0.65)
     ].copy()
@@ -224,9 +226,9 @@ if False:
     deepscaled["power_switching_percentage"] = 0
     deepscaled["power_leakage_percentage"] = 0
     deepscaled["power_internal_percentage"] = 0
-    deepscaled["power_clock_percentage"] = 0
-    deepscaled["power_register_percentage"] = 0
-    deepscaled["power_comb_percentage"] = 0
+    # deepscaled["power_clock_percentage"] = 0
+    # deepscaled["power_register_percentage"] = 0
+    # deepscaled["power_comb_percentage"] = 0
 
     Cs_used = [8, 16, 32, 64]
     throughput = [8, 16, 32, 64]
@@ -236,9 +238,9 @@ if False:
         deepscaled[f"Energy Efficiency 1:{c_}"] = (
             deepscaled[f"Energy Efficiency 1:{c_}"] * 1.17 * 2.286
         )
-        deepscaled[f"Area Efficiency 1:{c_}"] = (
-            deepscaled[f"Area Efficiency 1:{c_}"] * 20 * 1.17
-        )
+        # deepscaled[f"Area Efficiency 1:{c_}"] = (
+        #     deepscaled[f"Area Efficiency 1:{c_}"] * 20 * 1.17
+        # )
         deepscaled[f"gmacs_per_s_1_{c_}"] = deepscaled[f"gmacs_per_s_1_{c_}"] * 1.17
 
     df_table = pd.concat([df_table, deepscaled])
@@ -261,10 +263,10 @@ cidx = pd.MultiIndex.from_arrays(
             "C",
             "Freq",
             "Area",
-            "Area Eff. [TMAC/s mm2]",
-            "Area Eff. [TMAC/s mm2]",
-            "Area Eff. [TMAC/s mm2]",
-            "Area Eff. [TMAC/s mm2]",
+            # "Area Eff. [TMAC/s mm2]",
+            # "Area Eff. [TMAC/s mm2]",
+            # "Area Eff. [TMAC/s mm2]",
+            # "Area Eff. [TMAC/s mm2]",
             "Energy Eff. [TMAC/s W]",
             "Energy Eff. [TMAC/s W]",
             "Energy Eff. [TMAC/s W]",
@@ -276,9 +278,9 @@ cidx = pd.MultiIndex.from_arrays(
             "Power [%]",
             "Power [%]",
             "Power [%]",
-            "Power Parts [%]",
-            "Power Parts [%]",
-            "Power Parts [%]",
+            # "Power Parts [%]",
+            # "Power Parts [%]",
+            # "Power Parts [%]",
         ],
         [
             "",
@@ -291,10 +293,10 @@ cidx = pd.MultiIndex.from_arrays(
             "",
             "",
             "",
-            f"[C:D]",
-            f"[C:D]",
-            f"[C:D]",
-            f"[C:D]",
+            # f"[C:D]",
+            # f"[C:D]",
+            # f"[C:D]",
+            # f"[C:D]",
             f"[C:D]",
             f"[C:D]",
             f"[C:D]",
@@ -306,9 +308,9 @@ cidx = pd.MultiIndex.from_arrays(
             "Dynamic",
             "Static",
             "Static",
-            "",
-            "",
-            "",
+            # "",
+            # "",
+            # "",
         ],
         [
             "",
@@ -321,10 +323,10 @@ cidx = pd.MultiIndex.from_arrays(
             "",
             "[Mhz]",
             "[mm2]",
-            "1:8",
-            "1:16",
-            "1:32",
-            "1:64",
+            # "1:8",
+            # "1:16",
+            # "1:32",
+            # "1:64",
             "1:8",
             "1:16",
             "1:32",
@@ -336,9 +338,9 @@ cidx = pd.MultiIndex.from_arrays(
             "Switching",
             "Leaking",
             "Internal",
-            "Clock",
-            "Register",
-            "Comb",
+            # "Clock",
+            # "Register",
+            # "Comb",
         ],
     ]
 )
@@ -354,13 +356,9 @@ styler.format(subset="Freq", precision=0).format(
 ).format(
     subset="Area", precision=3
 ).format(
-    subset="Area Eff. [TMAC/s mm2]", precision=2
-).format(
     subset="Throughput [GMAC/s]", precision=0
 ).format(
     precision=1, subset="Power [%]"
-).format(
-    precision=1, subset="Power Parts [%]"
 ).format_index(
     escape="latex", axis=1
 ).format_index(
@@ -368,9 +366,6 @@ styler.format(subset="Freq", precision=0).format(
 ).hide(
     level=0, axis=0
 )
-# .format(
-#    subset="Power [mW]", precision=1
-# )
 
 # styler.background_gradient(
 #     axis=None,
@@ -397,18 +392,18 @@ styler.background_gradient(
     subset=["Power [%]"],
 )
 
-styler.background_gradient(
-    axis=None,
-    cmap="Blues",
-    vmax=200,
-    subset=["Power Parts [%]"],
-)
-styler.background_gradient(
-    axis=None,
-    cmap="Reds",
-    vmax=30,
-    subset=["Area Eff. [TMAC/s mm2]"],
-)
+# styler.background_gradient(
+#     axis=None,
+#     cmap="Blues",
+#     vmax=200,
+#     subset=["Power Parts [%]"],
+# )
+# styler.background_gradient(
+#     axis=None,
+#     cmap="Reds",
+#     vmax=30,
+#     subset=["Area Eff. [TMAC/s mm2]"],
+# )
 
 styler.to_latex(
     f"table_tt.tex",
