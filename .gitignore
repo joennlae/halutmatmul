@@ -13,3 +13,4 @@ maddness/assets
 
 build/
 *.v
+src/python/.datasets
