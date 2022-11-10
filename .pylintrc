@@ -44,7 +44,9 @@ disable=import-error,
         no-else-return,
         no-else-raise,
         unspecified-encoding,
-        broad-except
+        broad-except,
+        redefined-builtin,
+        trailing-newlines
 
 [REPORTS]
 
