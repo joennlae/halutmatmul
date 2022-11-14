@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 C = 32
 K = 16
@@ -23,3 +24,10 @@ results = np.tensordot(prototypes, W, axes=(2, 0))
 results = results.transpose(2, 0, 1)
 print(results.shape)
 print(np.allclose(results, lut))
+
+prop = torch.from_numpy(prototypes)
+weights = torch.from_numpy(W)
+torch_res = torch.tensordot(prop, weights, dims=([2], [0])).permute((2, 0, 1))
+print(torch_res.shape)
+torch_numpy_res = torch_res.detach().numpy()
+print(np.allclose(torch_numpy_res, lut))
