@@ -166,14 +166,14 @@ def load_data(traindir, valdir, args):
         )
         if args.cifar100:
             dataset = torchvision.datasets.CIFAR100(
-                root="/scratch2/janniss/datasets",
+                root="/scratch/janniss/datasets",
                 train=True,
                 transform=preprocessing,
                 download=True,
             )
         elif args.cifar10:
             dataset = torchvision.datasets.CIFAR10(
-                root="/scratch2/janniss/datasets",
+                root="/scratch/janniss/datasets",
                 train=True,
                 transform=preprocessing,
                 download=True,
@@ -204,14 +204,14 @@ def load_data(traindir, valdir, args):
             )
         if args.cifar100:
             dataset_test = torchvision.datasets.CIFAR100(
-                root="/scratch2/janniss/datasets",
+                root="/scratch/janniss/datasets",
                 train=False,
                 transform=preprocessing,
                 download=True,
             )
         elif args.cifar10:
             dataset_test = torchvision.datasets.CIFAR10(
-                root="/scratch2/janniss/datasets",
+                root="/scratch/janniss/datasets",
                 train=False,
                 transform=preprocessing,
                 download=True,
@@ -644,7 +644,7 @@ def get_args_parser(add_help=True):
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
     parser.add_argument(
         "--output-dir",
-        default="/scratch2/janniss/model_checkpoints/cifar100",
+        default="/scratch2/janniss/model_checkpoints/cifar10",
         type=str,
         help="path to save outputs",
     )
