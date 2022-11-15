@@ -290,7 +290,7 @@ class HalutHelper:
                 {
                     k + ".halut_active": torch.ones(1, dtype=torch.bool),
                     k
-                    + ".hash_buckets_or_prototypes": torch.from_numpy(
+                    + ".hash_function_thresholds": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(
                             np.float32
                         )
@@ -315,6 +315,12 @@ class HalutHelper:
                     k + ".report_error": torch.ones(1, dtype=torch.bool)
                     if self.report_error
                     else torch.zeros(1, dtype=torch.bool),
+                    k
+                    + ".prototypes": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(
+                            np.float32
+                        )
+                    ),
                 }
             )
         self.stats["halut_layers"] = json.dumps(self.halut_modules)

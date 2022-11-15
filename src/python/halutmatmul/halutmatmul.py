@@ -317,8 +317,8 @@ class HalutMatmul:
         self.optimized = bool(config[HalutConfig.RUN_OPTIMIZED])
         self.quantize_lut = bool(config[HalutConfig.QUANTIZE_LUT])
 
-        if self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
-            self.prototypes = numpy_array[HalutOfflineStorage.PROTOTYPES]
+        # if self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
+        self.prototypes = numpy_array[HalutOfflineStorage.PROTOTYPES]
         # assert self.splits_lists and self.luts.shape[1]
         _, C, K = self.luts.shape
         self.C = C
