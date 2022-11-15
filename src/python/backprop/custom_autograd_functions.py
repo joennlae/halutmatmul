@@ -1,6 +1,7 @@
 # pylint: disable=abstract-method, arguments-differ
-from typing import Optional
+from typing import Optional, Any
 import torch
+import numpy as np
 from torch.functional import Tensor
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
@@ -15,12 +16,12 @@ class LinearFunction(torch.autograd.Function):
     @staticmethod
     # bias is an optional argument
     def forward(
-        ctx,
+        ctx: Any,
         input: Tensor,
         weight: Tensor,
         bias: Optional[Tensor] = None,
         self_module: Optional[HalutLinear] = None,
-    ) -> Tensor:
+    ) -> Any:
         ctx.save_for_backward(input, weight, bias)
         if self_module is None or not self_module.halut_active[0]:
             output = input.mm(weight.t())
@@ -33,7 +34,7 @@ class LinearFunction(torch.autograd.Function):
             raise Exception("self_model is None when halut active!!")
 
         # new lut calculated
-        # TODO: check if weight needs to be transposed
+        # weight is transposed because pytorch stores it transposed
         torch_res = torch.tensordot(
             self_module.prototypes, weight.t(), dims=([2], [0])
         ).permute((2, 0, 1))
@@ -45,7 +46,7 @@ class LinearFunction(torch.autograd.Function):
 
     # This function has only a single output, so it gets only one gradient
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx: Any, grad_output: Tensor) -> Any:
         # This is a pattern that is very convenient - at the top of backward
         # unpack saved_tensors and initialize all gradients w.r.t. inputs to
         # None. Thanks to the fact that additional trailing Nones are
@@ -72,31 +73,67 @@ halutlinear = LinearFunction.apply
 
 
 class Conv2dFunction(torch.autograd.Function):
+    # pylint: disable=line-too-long
+    # source: https://discuss.pytorch.org/t/implementing-a-custom-convolution-using-conv2d-input-and-conv2d-weight/18556/7
+
     @staticmethod
     def forward(
-        cxt, input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1
-    ):
+        cxt: Any,
+        input: Tensor,
+        weight: Tensor,
+        bias: Optional[Tensor] = None,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+        self_module: Optional[HalutLinear] = None,
+    ) -> Tensor:
 
-        cxt.save_for_backward(input, weight, bias)
+        confs = torch.from_numpy(np.array([stride, padding, dilation, groups]))
+        cxt.save_for_backward(input, weight, bias, confs)
 
-        return F.conv2d(input, weight, bias, stride, padding, dilation, groups)
+        if self_module is None:
+            return F.conv2d(
+                input,
+                weight=weight,
+                bias=bias,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                groups=groups,
+            )
+
+        torch_res = torch.tensordot(
+            self_module.prototypes, weight.t(), dims=([2], [0])
+        ).permute((2, 0, 1))
+        self_module.lut = Parameter(
+            torch_res,
+            requires_grad=False,
+        )
+        return self_module.forward(input)
 
     @staticmethod
-    def backward(cxt, grad_output):
-        input, weight, bias = cxt.saved_variables
+    def backward(cxt: Any, grad_output: Tensor) -> tuple[Optional[Tensor], ...]:
+        input, weight, bias, conf = cxt.saved_variables
+        confs = conf.detach().cpu().numpy()
+        stride, padding, dilation, groups = confs[0], confs[1], confs[2], confs[3]
 
         grad_input = grad_weight = grad_bias = None
 
         if cxt.needs_input_grad[0]:
-            grad_input = torch.nn.grad.conv2d_input(input.shape, weight, grad_output)
+            grad_input = torch.nn.grad.conv2d_input(
+                input.shape, weight, grad_output, stride, padding, dilation, groups
+            )
 
         if cxt.needs_input_grad[1]:
-            grad_weight = torch.nn.grad.conv2d_weight(input, weight.shape, grad_output)
+            grad_weight = torch.nn.grad.conv2d_weight(
+                input, weight.shape, grad_output, stride, padding, dilation, groups
+            )
 
         if bias is not None and cxt.needs_input_grad[2]:
             grad_bias = grad_output.sum((0, 2, 3)).squeeze(0)
 
-        return grad_input, grad_weight, grad_bias
+        return grad_input, grad_weight, grad_bias, None, None, None, None
 
 
 halutconv2d = Conv2dFunction.apply
