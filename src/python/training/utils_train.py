@@ -285,6 +285,7 @@ def init_distributed_mode(args):
     args.dist_backend = "nccl"
     print(f"| distributed init (rank {args.rank}): {args.dist_url}", flush=True)
     from datetime import timedelta
+
     delta = timedelta(days=20)
     # set env NCCL_BLOCKING_WAIT=1
     dist.init_process_group(
@@ -471,7 +472,7 @@ def set_weight_decay(
 
     def _add_params(module, prefix=""):
         for name, p in module.named_parameters(recurse=False):
-            if not p.requires_grad: # removes parameter from optimizer!!
+            if not p.requires_grad:  # removes parameter from optimizer!!
                 # filter(lambda p: p.requires_grad, model.parameters())
                 continue
             is_custom_key = False

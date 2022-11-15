@@ -175,40 +175,47 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         model_copy.load_state_dict(checkpoint["model"])
 
         # update optimizer with new parameters
-        custom_keys_weight_decay = []
-        if args_checkpoint.bias_weight_decay is not None:
-            custom_keys_weight_decay.append(("bias", args_checkpoint.bias_weight_decay))
-        parameters = set_weight_decay(
-            model_copy,
-            args_checkpoint.weight_decay,
-            norm_weight_decay=args_checkpoint.norm_weight_decay,
-            custom_keys_weight_decay=custom_keys_weight_decay
-            if len(custom_keys_weight_decay) > 0
-            else None,
-        )
-        opt_name = args_checkpoint.opt.lower()
-        optimizer = torch.optim.SGD(
-            parameters,
-            lr=args_checkpoint.lr,
-            momentum=args_checkpoint.momentum,
-            weight_decay=args_checkpoint.weight_decay,
-            nesterov="nesterov" in opt_name,
-        )
-        # optimizer.load_state_dict(checkpoint["optimizer"])
-        opt_state_dict = optimizer.state_dict()
-        opt_state_dict["param_groups"][0]["weight_decay"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["weight_decay"]
-        opt_state_dict["param_groups"][0]["lr"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["lr"]
-        opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["momentum"]
-        print(opt_state_dict["param_groups"])
-        checkpoint["optimizer"] = opt_state_dict
+        # pylint: disable=using-constant-test
+        if False:
+            custom_keys_weight_decay = []
+            if args_checkpoint.bias_weight_decay is not None:
+                custom_keys_weight_decay.append(
+                    ("bias", args_checkpoint.bias_weight_decay)
+                )
+            parameters = set_weight_decay(
+                model_copy,
+                args_checkpoint.weight_decay,
+                norm_weight_decay=args_checkpoint.norm_weight_decay,
+                custom_keys_weight_decay=custom_keys_weight_decay
+                if len(custom_keys_weight_decay) > 0
+                else None,
+            )
+            opt_name = args_checkpoint.opt.lower()
+            optimizer = torch.optim.SGD(
+                parameters,
+                lr=args_checkpoint.lr,
+                momentum=args_checkpoint.momentum,
+                weight_decay=args_checkpoint.weight_decay,
+                nesterov="nesterov" in opt_name,
+            )
+            # optimizer.load_state_dict(checkpoint["optimizer"])
+            opt_state_dict = optimizer.state_dict()
+            opt_state_dict["param_groups"][0]["weight_decay"] = checkpoint["optimizer"][
+                "param_groups"
+            ][0]["weight_decay"]
+            opt_state_dict["param_groups"][0]["lr"] = checkpoint["optimizer"][
+                "param_groups"
+            ][0]["lr"]
+            opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
+                "param_groups"
+            ][0]["momentum"]
+            print(opt_state_dict["param_groups"])
+            # ACTIVATE REPLACE AND FREEZE TRAINING
+            # optimizer updates
+            # checkpoint["optimizer"] = opt_state_dict
 
         # freeze learning rate by increasing step size
+        # TODO: make learning rate more adaptive
         checkpoint["lr_scheduler"]["step_size"] = 4419
 
         save_on_master(
@@ -265,7 +272,7 @@ if __name__ == "__main__":
         "-resultpath",
         type=str,
         help="result_path",
-        default="./results/data/resnet18-cifar100/",
+        default="./results/data/resnet18-cifar10-e2e/",
     )
     parser.add_argument(
         "-checkpoint",
@@ -273,7 +280,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            "/usr/scratch2/sassauna3/janniss/model_checkpoints/cifar10/retrained_checkpoint.pth"
+            "/usr/scratch2/vilan2/janniss/model_checkpoints/cifar10/retrained_checkpoint.pth"
         ),
     )
     # distributed training parameters
