@@ -16,7 +16,12 @@ from torch.nn.common_types import _size_any_t
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
-from halutmatmul.halutmatmul import EncodingAlgorithm, HalutConfig, HalutMatmul
+from halutmatmul.halutmatmul import (
+    EncodingAlgorithm,
+    HalutConfig,
+    HalutMatmul,
+    HalutOfflineStorage,
+)
 from halutmatmul.functions import (
     calc_newaxes_and_newshape_and_old,
     tensordot,
@@ -51,7 +56,7 @@ class HalutLinear(Linear):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_buckets_or_prototypes = Parameter(
+        self.hash_function_thresholds = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
@@ -64,10 +69,7 @@ class HalutLinear(Linear):
         self.report_error = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        # only for FULL PQ
-        self.prototypes = Parameter(
-            torch.zeros(1, dtype=torch.bool), requires_grad=False
-        )
+        self.prototypes = Parameter(torch.zeros(1), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.halut: Optional[HalutMatmul] = None
@@ -83,16 +85,17 @@ class HalutLinear(Linear):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets_or_prototypes",
+                prefix + "hash_function_thresholds",
                 prefix + "lut",
                 prefix + "halut_config",
+                prefix + "prototypes",
             )
         ):
             if not state_dict[prefix + "halut_active"]:
                 return
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_buckets_or_prototypes = Parameter(
-                state_dict[prefix + "hash_buckets_or_prototypes"]
+            self.hash_function_thresholds = Parameter(
+                state_dict[prefix + "hash_function_thresholds"]
                 .clone()
                 .to(str(self.weight.device)),
                 requires_grad=False,
@@ -101,6 +104,11 @@ class HalutLinear(Linear):
                 state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
                 requires_grad=False,
             )
+            self.prototypes = Parameter(
+                state_dict[prefix + "prototypes"].clone().to(str(self.weight.device)),
+                requires_grad=False,
+            )
+
             print("STATE_DICT", self.weight.device)
             if "cuda" in str(self.weight.device):
                 # pylint: disable=import-outside-toplevel, attribute-defined-outside-init
@@ -123,7 +131,7 @@ class HalutLinear(Linear):
             else:
                 store_array = np.array(
                     [
-                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        state_dict[prefix + "hash_function_thresholds"]
                         .clone()
                         .detach()
                         .cpu()
@@ -134,7 +142,7 @@ class HalutLinear(Linear):
                         .detach()
                         .cpu()
                         .numpy(),
-                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        state_dict[prefix + "prototypes"]
                         .clone()
                         .detach()
                         .cpu()
@@ -144,20 +152,21 @@ class HalutLinear(Linear):
                 )
                 self.halut = HalutMatmul().from_numpy(store_array)
                 # set requires_grad = False to freeze layers
-                self.weight.requires_grad = False
-                if self.bias is not None:
-                    self.bias.requires_grad = False
+                # self.weight.requires_grad = False
+                # if self.bias is not None:
+                #     self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets_or_prototypes",
+                prefix + "hash_function_thresholds",
                 prefix + "lut",
                 prefix + "halut_config",
+                prefix + "prototypes",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets_or_prototypes', '{prefix}lut', "
-                "'{prefix}halut_config' paramters in state_dict"
+                f"not all '{prefix}hash_function_thresholds', '{prefix}lut', "
+                f"'{prefix}halut_config', '{prefix}_prototypes' paramters in state_dict"
             )
 
     def get_error(self) -> np.ndarray:
@@ -214,7 +223,7 @@ class HalutLinear(Linear):
                 self.encode_kernel,
                 self.read_acc_lut_kernel,
                 self.lut,
-                self.hash_buckets_or_prototypes,
+                self.hash_function_thresholds,
             )
         else:
             if self.halut is None:
@@ -247,11 +256,10 @@ class HalutLinear(Linear):
 
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
+        from backprop.custom_autograd_functions import halutlinear
+
         self.check_store_offline(input)
-        if self.halut_active[0]:
-            return self.linear_halut(input)
-        else:
-            return F.linear(input, self.weight, self.bias)
+        return halutlinear(input, self.weight, self.bias)
 
     def extra_repr(self) -> str:
         return "Halut in_features={}, out_features={}, bias={}".format(
@@ -436,7 +444,7 @@ class HalutConv2d(_ConvNd):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_buckets_or_prototypes = Parameter(torch.zeros(1), requires_grad=False)
+        self.hash_function_thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.lut = Parameter(torch.zeros(1), requires_grad=False)
         self.halut_config = Parameter(
             torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
@@ -447,10 +455,7 @@ class HalutConv2d(_ConvNd):
         self.report_error = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        # only for FULL PQ
-        self.prototypes = Parameter(
-            torch.zeros(1, dtype=torch.bool), requires_grad=False
-        )
+        self.prototypes = Parameter(torch.zeros(1), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.halut: Optional[HalutMatmul] = None
@@ -466,22 +471,27 @@ class HalutConv2d(_ConvNd):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets_or_prototypes",
+                prefix + "hash_function_thresholds",
                 prefix + "lut",
                 prefix + "halut_config",
+                prefix + "prototypes",
             )
         ):
             if not state_dict[prefix + "halut_active"]:
                 return
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_buckets_or_prototypes = Parameter(
-                state_dict[prefix + "hash_buckets_or_prototypes"]
+            self.hash_function_thresholds = Parameter(
+                state_dict[prefix + "hash_function_thresholds"]
                 .clone()
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
             self.lut = Parameter(
                 state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
+                requires_grad=False,
+            )
+            self.prototypes = Parameter(
+                state_dict[prefix + "prototypes"].clone().to(str(self.weight.device)),
                 requires_grad=False,
             )
 
@@ -504,9 +514,10 @@ class HalutConv2d(_ConvNd):
                     ),
                 )
             else:
+                # TODO: use HalutOfflineStorage to init
                 store_array = np.array(
                     [
-                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        state_dict[prefix + "hash_function_thresholds"]
                         .clone()
                         .detach()
                         .cpu()
@@ -517,7 +528,7 @@ class HalutConv2d(_ConvNd):
                         .detach()
                         .cpu()
                         .numpy(),
-                        state_dict[prefix + "hash_buckets_or_prototypes"]
+                        state_dict[prefix + "prototypes"]
                         .clone()
                         .detach()
                         .cpu()
@@ -527,20 +538,21 @@ class HalutConv2d(_ConvNd):
                 )
                 self.halut = HalutMatmul().from_numpy(store_array)
                 # set requires_grad = False to freeze layers
-                self.weight.requires_grad = False
-                if self.bias is not None:
-                    self.bias.requires_grad = False
+                # self.weight.requires_grad = False
+                # if self.bias is not None:
+                #     self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_buckets_or_prototypes",
+                prefix + "hash_function_thresholds",
                 prefix + "lut",
                 prefix + "halut_config",
+                prefix + "prototypes",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_buckets_or_prototypes', '{prefix}lut', "
-                "'{prefix}halut_config' paramters in state_dict"
+                f"not all '{prefix}hash_function_thresholds', '{prefix}lut', "
+                f"'{prefix}halut_config', '{prefix}prototypes' paramters in state_dict"
             )
 
     def conv2d(
@@ -571,7 +583,7 @@ class HalutConv2d(_ConvNd):
                 if self.halut_active[0]
                 else None,
                 L=self.lut,
-                H=self.hash_buckets_or_prototypes,
+                H=self.hash_function_thresholds,
                 kernel_size=self.kernel_size,
                 stride=stride,
                 padding=padding,

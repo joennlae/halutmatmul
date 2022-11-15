@@ -85,7 +85,7 @@ def conv2d_helper(
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "hash_buckets_or_prototypes": torch.from_numpy(
+                "hash_function_thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(np.float32)
                     if encoding_algorithm
                     in [
@@ -99,6 +99,9 @@ def conv2d_helper(
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
                 "halut_config": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.CONFIG]
+                ),
+                "prototypes": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(np.float32)
                 ),
             }
         )

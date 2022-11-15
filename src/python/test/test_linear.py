@@ -56,7 +56,7 @@ def linear_helper(
             {
                 "store_input": torch.zeros(1, dtype=torch.bool),
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "hash_buckets_or_prototypes": torch.from_numpy(
+                "hash_function_thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.HASH_TABLES]
                 ),
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
