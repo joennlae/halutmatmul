@@ -166,7 +166,7 @@ class HalutLinear(Linear):
         ):
             raise Exception(
                 f"not all '{prefix}hash_function_thresholds', '{prefix}lut', "
-                f"'{prefix}halut_config', '{prefix}_prototypes' paramters in state_dict"
+                f"'{prefix}halut_config', '{prefix}prototypes' paramters in state_dict"
             )
 
     def get_error(self) -> np.ndarray:
@@ -259,7 +259,7 @@ class HalutLinear(Linear):
         from backprop.custom_autograd_functions import halutlinear  # type: ignore[attr-defined]
 
         self.check_store_offline(input)
-        return halutlinear(input, self.weight, self.bias)
+        return halutlinear(input, self.weight, self.bias, self)
 
     def extra_repr(self) -> str:
         return "Halut in_features={}, out_features={}, bias={}".format(

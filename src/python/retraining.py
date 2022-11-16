@@ -250,6 +250,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
+    MODEL_NAME_EXTENSION = "cifar100"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -258,13 +259,13 @@ if __name__ == "__main__":
         "-halutdata",
         type=str,
         help="halut data path",
-        default=DEFAULT_FOLDER + "/halut/resnet18-cifar10",
+        default=DEFAULT_FOLDER + f"/halut/resnet18-{MODEL_NAME_EXTENSION}",
     )
     parser.add_argument(
         "-learned",
         type=str,
         help="halut learned path",
-        default=DEFAULT_FOLDER + "/halut/resnet18-cifar10/learned",
+        default=DEFAULT_FOLDER + f"/halut/resnet18-{MODEL_NAME_EXTENSION}/learned",
     )
     parser.add_argument("-C", type=int, help="C", default=64)
     parser.add_argument("-modelname", type=str, help="model name", default="resnet18")
@@ -272,7 +273,7 @@ if __name__ == "__main__":
         "-resultpath",
         type=str,
         help="result_path",
-        default="./results/data/resnet18-cifar10-e2e/",
+        default=f"./results/data/resnet18-{MODEL_NAME_EXTENSION}-e2e-true/",
     )
     parser.add_argument(
         "-checkpoint",
@@ -280,7 +281,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            "/usr/scratch2/vilan2/janniss/model_checkpoints/cifar10/retrained_checkpoint.pth"
+            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/retrained_checkpoint.pth"
         ),
     )
     # distributed training parameters
