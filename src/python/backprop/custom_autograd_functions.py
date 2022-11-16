@@ -1,4 +1,5 @@
 # pylint: disable=abstract-method, arguments-differ
+# type: ignore # mypy has issues with something in here
 from typing import Optional, Any
 import torch
 import numpy as np
@@ -6,6 +7,7 @@ from torch.functional import Tensor
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from halutmatmul.modules import HalutLinear
+from halutmatmul.cuda.functions import halut_conv2d_gpu
 
 # torch.autograd.Function
 # source https://pytorch.org/docs/master/notes/extending.html#example
@@ -93,24 +95,34 @@ class Conv2dFunction(torch.autograd.Function):
         cxt.save_for_backward(input, weight, bias, confs)
 
         if self_module is None:
-            return F.conv2d(
+            raise Exception("self_module is None")
+
+        if len(self_module.prototypes.shape) > 1:
+            _, weights_reshaped = halut_conv2d_gpu(
                 input,
-                weight=weight,
-                bias=bias,
+                weight,
+                L=None,
+                H=None,
+                read_acc_lut_kernel=None,
+                encode_kernel=None,
+                kernel_size=self_module.kernel_size,
                 stride=stride,
                 padding=padding,
-                dilation=dilation,
+                bias=bias,
                 groups=groups,
+                return_reshaped_inputs=True,
             )
 
-        torch_res = torch.tensordot(
-            self_module.prototypes, weight.t(), dims=([2], [0])
-        ).permute((2, 0, 1))
-        self_module.lut = Parameter(
-            torch_res,
-            requires_grad=False,
-        )
-        return self_module.forward(input)
+            print("update lut", weights_reshaped.shape, self_module.prototypes.shape)
+            torch_res = torch.tensordot(
+                self_module.prototypes, weights_reshaped, dims=([2], [0])
+            ).permute((2, 0, 1))
+            self_module.lut = Parameter(
+                torch_res,
+                requires_grad=False,
+            )
+        # pylint: disable=protected-access
+        return self_module._conv_forward(input, weight, bias)
 
     @staticmethod
     def backward(cxt: Any, grad_output: Tensor) -> tuple[Optional[Tensor], ...]:
@@ -133,7 +145,7 @@ class Conv2dFunction(torch.autograd.Function):
         if bias is not None and cxt.needs_input_grad[2]:
             grad_bias = grad_output.sum((0, 2, 3)).squeeze(0)
 
-        return grad_input, grad_weight, grad_bias, None, None, None, None
+        return grad_input, grad_weight, grad_bias, None, None, None, None, None
 
 
 halutconv2d = Conv2dFunction.apply

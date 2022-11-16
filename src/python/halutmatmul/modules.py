@@ -733,4 +733,21 @@ class HalutConv2d(_ConvNd):
             )
 
     def forward(self, _input: Tensor) -> Tensor:
-        return self._conv_forward(_input, self.weight, self.bias)
+        # return self._conv_forward(_input, self.weight, self.bias)
+        # pylint: disable=import-outside-toplevel
+        from backprop.custom_autograd_functions import halutconv2d
+
+        stride = self.stride if isinstance(self.stride, int) else self.stride[0]
+        dilation = self.dilation if isinstance(self.dilation, int) else self.dilation[0]
+        padding = self.padding if isinstance(self.padding, int) else self.padding[0]
+
+        return halutconv2d(
+            _input,
+            self.weight,
+            self.bias,
+            stride,
+            padding,
+            dilation,
+            self.groups,
+            self,
+        )
