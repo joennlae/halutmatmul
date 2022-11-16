@@ -1,4 +1,4 @@
-# pylint: disable=abstract-method, arguments-differ
+# pylint: disable=abstract-method, arguments-differ, import-outside-toplevel
 # type: ignore # mypy has issues with something in here
 from typing import Optional, Any
 import torch
@@ -7,7 +7,6 @@ from torch.functional import Tensor
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from halutmatmul.modules import HalutLinear
-from halutmatmul.cuda.functions import halut_conv2d_gpu
 
 # torch.autograd.Function
 # source https://pytorch.org/docs/master/notes/extending.html#example
@@ -37,6 +36,7 @@ class LinearFunction(torch.autograd.Function):
 
         # new lut calculated
         # weight is transposed because pytorch stores it transposed
+        # TODO: CPU takes LUT stored in HalutMatmul object
         torch_res = torch.tensordot(
             self_module.prototypes, weight.t(), dims=([2], [0])
         ).permute((2, 0, 1))
@@ -98,21 +98,44 @@ class Conv2dFunction(torch.autograd.Function):
             raise Exception("self_module is None")
 
         if len(self_module.prototypes.shape) > 1:
-            _, weights_reshaped = halut_conv2d_gpu(
-                input,
-                weight,
-                L=None,
-                H=None,
-                read_acc_lut_kernel=None,
-                encode_kernel=None,
-                kernel_size=self_module.kernel_size,
-                stride=stride,
-                padding=padding,
-                bias=bias,
-                groups=groups,
-                return_reshaped_inputs=True,
-            )
+            if "cuda" in str(input.device):
+                from halutmatmul.cuda.functions import halut_conv2d_gpu
 
+                _, weights_reshaped = halut_conv2d_gpu(
+                    input,
+                    weight,
+                    L=None,
+                    H=None,
+                    read_acc_lut_kernel=None,
+                    encode_kernel=None,
+                    kernel_size=self_module.kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    bias=bias,
+                    groups=groups,
+                    return_reshaped_inputs=True,
+                )
+            else:
+                from halutmatmul.modules import halut_conv2d_cpu
+
+                input_numpy = input.detach().cpu().numpy()
+                weights_numpy = weight.detach().cpu().numpy()
+                bias_numpy = bias.detach().cpu().numpy() if bias is not None else None
+
+                ret_numpy = halut_conv2d_cpu(
+                    input_numpy,
+                    weights_numpy,
+                    self_module.halut,
+                    self_module.kernel_size,
+                    stride,
+                    padding,
+                    groups,
+                    bias_numpy,
+                    return_reshaped_inputs=True,
+                )
+                weights_reshaped = torch.from_numpy(ret_numpy[1]).to(torch.float32)
+
+            # TODO: dont update it on every call do it between epochs
             print("update lut", weights_reshaped.shape, self_module.prototypes.shape)
             torch_res = torch.tensordot(
                 self_module.prototypes, weights_reshaped, dims=([2], [0])
