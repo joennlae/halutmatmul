@@ -1,7 +1,10 @@
 import torch
 
 from torch.autograd import gradcheck
-from backprop.custom_autograd_functions import halutlinear, halutconv2d
+from backprop.custom_autograd_functions import (  # type: ignore[attr-defined]
+    halutlinear,
+    halutconv2d,
+)
 
 # gradcheck takes a tuple of tensors as input, check if your gradient
 # evaluated with these tensors are close enough to numerical
@@ -21,5 +24,6 @@ input_conv = (
     1,
     1,
 )
-test = gradcheck(halutconv2d, input_conv, eps=1e-6, atol=1e-4)
+# if fails: remove one None from backward() in custom_autograd_functions.py
+test = gradcheck(halutconv2d, input_conv, eps=1e-6, atol=1e-4)  # type: ignore[arg-type]
 print(test)

@@ -256,7 +256,7 @@ class HalutLinear(Linear):
 
     # pylint: disable=W0622
     def forward(self, input: Tensor) -> Tensor:
-        from backprop.custom_autograd_functions import halutlinear
+        from backprop.custom_autograd_functions import halutlinear  # type: ignore[attr-defined]
 
         self.check_store_offline(input)
         return halutlinear(input, self.weight, self.bias)
@@ -735,7 +735,7 @@ class HalutConv2d(_ConvNd):
     def forward(self, _input: Tensor) -> Tensor:
         # return self._conv_forward(_input, self.weight, self.bias)
         # pylint: disable=import-outside-toplevel
-        from backprop.custom_autograd_functions import halutconv2d
+        from backprop.custom_autograd_functions import halutconv2d  # type: ignore[attr-defined]
 
         stride = self.stride if isinstance(self.stride, int) else self.stride[0]
         dilation = self.dilation if isinstance(self.dilation, int) else self.dilation[0]
