@@ -216,7 +216,8 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
-        checkpoint["lr_scheduler"]["step_size"] = 4419
+        checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.01
+        checkpoint["lr_scheduler"]["step_size"] = 5
 
         save_on_master(
             checkpoint,
@@ -250,7 +251,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar100"
+    MODEL_NAME_EXTENSION = "cifar10-2"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
