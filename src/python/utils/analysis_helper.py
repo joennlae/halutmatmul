@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 import glob
 import json
 import re
