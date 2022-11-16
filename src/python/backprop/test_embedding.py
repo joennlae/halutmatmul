@@ -70,22 +70,22 @@ embeddings = torch.nn.EmbeddingBag.from_pretrained(
 
 input_torch = torch.from_numpy(input_a).to(torch.float32)
 threshold_table_torch = torch.from_numpy(threshold_table).to(torch.float32)
-encoded_torch = torch.zeros((N, C), dtype=torch.int32)
+encoded_torch = torch.zeros((N, C), dtype=torch.int32).flatten()
 prototype_addr_internal_offset = 2 ** torch.arange(4 + 1) - 1
-caddr_internal_offset = torch.arange(C) * K
+caddr_internal_offset = (torch.arange(C) * K).repeat(N)
 
-for row in range(N):
-    kaddr = encoded_torch[row]
-    prototype_addr_internal = torch.zeros(C, dtype=torch.int64)
-    for tree_level in range(4):
-        thresholds = threshold_table_torch[
-            prototype_addr_internal + caddr_internal_offset
-        ]
-        data_input_comparision = input_torch[row, :, tree_level]
-        comparison_out = data_input_comparision > thresholds
-        kaddr = (kaddr * 2) + comparison_out
-        prototype_addr_internal = kaddr + prototype_addr_internal_offset[tree_level + 1]
-    encoded_torch[row] = kaddr
+kaddr = encoded_torch
+input_torch = input_torch.reshape((-1, 4))
+prototype_addr_internal = torch.zeros(N * C, dtype=torch.int64)
+for tree_level in range(4):
+    thresholds = threshold_table_torch[
+        prototype_addr_internal + caddr_internal_offset
+    ]
+    data_input_comparision = input_torch[:, tree_level]
+    comparison_out = data_input_comparision > thresholds
+    kaddr = (kaddr * 2) + comparison_out
+    prototype_addr_internal = kaddr + prototype_addr_internal_offset[tree_level + 1]
+encoded_torch = kaddr.reshape((N, C))
 
 print(np.allclose(encoded, encoded_torch.numpy()))
 encoded_torch += torch.arange(C) * K
