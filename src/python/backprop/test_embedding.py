@@ -70,6 +70,11 @@ embeddings = torch.nn.EmbeddingBag.from_pretrained(
 
 input_torch = torch.from_numpy(input_a).to(torch.float32)
 threshold_table_torch = torch.from_numpy(threshold_table).to(torch.float32)
+
+threshold_embeddings = torch.nn.Embedding.from_pretrained(
+    threshold_table_torch.flatten().unsqueeze(1)
+)
+
 encoded_torch = torch.zeros((N, C), dtype=torch.int32).flatten()
 prototype_addr_internal_offset = 2 ** torch.arange(4 + 1) - 1
 caddr_internal_offset = (torch.arange(C) * K).repeat(N)
@@ -77,10 +82,11 @@ caddr_internal_offset = (torch.arange(C) * K).repeat(N)
 kaddr = encoded_torch
 input_torch = input_torch.reshape((-1, 4))
 prototype_addr_internal = torch.zeros(N * C, dtype=torch.int64)
+
 for tree_level in range(4):
-    thresholds = threshold_table_torch[
+    thresholds = threshold_embeddings(
         prototype_addr_internal + caddr_internal_offset
-    ]
+    ).squeeze()
     data_input_comparision = input_torch[:, tree_level]
     comparison_out = data_input_comparision > thresholds
     kaddr = (kaddr * 2) + comparison_out
@@ -90,11 +96,8 @@ encoded_torch = kaddr.reshape((N, C))
 print(np.allclose(encoded, encoded_torch.numpy()))
 encoded_torch += torch.arange(C) * K
 encoded += np.arange(C) * K
-print(encoded, encoded.shape, result.shape)
-input = torch.IntTensor(encoded)
-print(input)
-print(embeddings(input))
+input = torch.IntTensor(encoded_torch)
 
 results_embeddings = embeddings(encoded_torch).detach().numpy()
-print(results_embeddings.shape, result.shape)
 print(np.allclose(result, results_embeddings))
+
