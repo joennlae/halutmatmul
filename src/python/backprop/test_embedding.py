@@ -127,7 +127,7 @@ def traverse_tree(
 ) -> torch.Tensor:
     h = S.mm(input) - T.unsqueeze(1)
     b = B.mm(h.relu())
-    return torch.argmax(b)
+    return torch.argmax(b, dim=0)
 
 
 def encode_with_traversal(
@@ -139,15 +139,14 @@ def encode_with_traversal(
 ) -> torch.Tensor:
     thresholds_reshaped = thresholds.reshape((C, -1))
     encoded_result = torch.zeros((input.shape[0], C), dtype=torch.int32)
-    for row in range(input.shape[0]):
-        for c in range(C):
-            encoded_value = traverse_tree(
-                S,
-                B,
-                thresholds_reshaped[c][:15],
-                input[row, c, :].unsqueeze(1),
-            )
-            encoded_result[row, c] = encoded_value
+    for c in range(C):
+        encoded_value = traverse_tree(
+            S,
+            B,
+            thresholds_reshaped[c][:15],
+            input[:, c, :].T,
+        )
+        encoded_result[:, c] = encoded_value
     return encoded_result
 
 
