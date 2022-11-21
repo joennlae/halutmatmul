@@ -83,6 +83,78 @@ kaddr = encoded_torch.to(torch.int32)
 input_torch = input_torch.reshape((-1, 4))
 prototype_addr_internal = torch.zeros(N * C, dtype=torch.int64)
 
+
+def create_selection_matrix() -> torch.Tensor:
+    selection_matrix = torch.zeros((15, 4), dtype=torch.float32)
+    for i in range(15):
+        if i == 0:
+            selection_matrix[0, 0] = 1
+        else:
+            selection_matrix[i, int(np.log2(i + 1))] = 1
+    return selection_matrix
+
+
+def create_bit_matrix() -> torch.Tensor:
+    bit_matrix_numpy = np.array(
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+        ]
+    )
+    bit_matrix = torch.from_numpy(bit_matrix_numpy.T).to(torch.float32)
+    return bit_matrix
+
+
+S = create_selection_matrix()
+B = create_bit_matrix()
+
+
+def traverse_tree(
+    S: torch.Tensor, B: torch.Tensor, T: torch.Tensor, input: torch.Tensor
+) -> torch.Tensor:
+    h = S.mm(input) - T.unsqueeze(1)
+    b = B.mm(h.relu())
+    return torch.argmax(b)
+
+
+def encode_with_traversal(
+    S: torch.Tensor,
+    B: torch.Tensor,
+    thresholds: torch.Tensor,
+    input: torch.Tensor,
+    C: int,
+) -> torch.Tensor:
+    thresholds_reshaped = thresholds.reshape((C, -1))
+    encoded_result = torch.zeros((input.shape[0], C), dtype=torch.int32)
+    for row in range(input.shape[0]):
+        for c in range(C):
+            encoded_value = traverse_tree(
+                S,
+                B,
+                thresholds_reshaped[c][:15],
+                input[row, c, :].unsqueeze(1),
+            )
+            encoded_result[row, c] = encoded_value
+    return encoded_result
+
+
+input_torch_normal = torch.from_numpy(input_a).to(torch.float32)
+encoded_new = encode_with_traversal(S, B, threshold_table_torch, input_torch_normal, C)
+print(encoded_new, encoded_new.shape)
+
 for tree_level in range(4):
     thresholds = threshold_embeddings(
         prototype_addr_internal + caddr_internal_offset
@@ -98,6 +170,7 @@ for tree_level in range(4):
 encoded_torch = kaddr.reshape((N, C))
 
 print(np.allclose(encoded, encoded_torch.numpy()))
+print(torch.allclose(encoded_torch, encoded_new))
 
 encoded_torch += torch.arange(C) * K
 input = torch.IntTensor(encoded_torch)
