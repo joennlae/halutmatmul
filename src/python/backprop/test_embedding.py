@@ -63,25 +63,8 @@ lut = np.random.random((M, C, K)).astype(np.float16)
 
 result, _ = decoding_2d(lut, encoded)
 
-embeddings = torch.nn.EmbeddingBag.from_pretrained(
-    torch.from_numpy(lut.transpose(1, 2, 0).reshape(-1, M)).to(torch.float32),
-    mode="sum",
-)
-
 input_torch = torch.from_numpy(input_a).to(torch.float32)
 threshold_table_torch = torch.from_numpy(threshold_table).to(torch.float32)
-
-threshold_embeddings = torch.nn.Embedding.from_pretrained(
-    threshold_table_torch.flatten().unsqueeze(1)
-)
-
-encoded_torch = torch.zeros((N, C), dtype=torch.float32, requires_grad=True).flatten()
-prototype_addr_internal_offset = 2 ** torch.arange(4 + 1) - 1
-caddr_internal_offset = (torch.arange(C) * K).repeat(N)
-
-kaddr = encoded_torch.to(torch.int32)
-input_torch = input_torch.reshape((-1, 4))
-prototype_addr_internal = torch.zeros(N * C, dtype=torch.int64)
 
 
 def create_selection_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
@@ -163,20 +146,12 @@ def traverse_tree(
     h = S.mm(input) - T.unsqueeze(1)
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, 2**depth))
-    encoding = torch.argmax(b, dim=2)
-    encoding_new = torch.nn.Softmax(dim=2)(b)
-    index = torch.argmax(encoding_new, dim=2, keepdim=True)
-    y_hard = torch.zeros_like(
-        encoding_new, memory_format=torch.legacy_contiguous_format
+    encoding_soft = torch.nn.Softmax(dim=2)(b)
+    index = torch.argmax(encoding_soft, dim=2, keepdim=True)
+    encoding_hard = torch.zeros_like(
+        encoding_soft, memory_format=torch.legacy_contiguous_format
     ).scatter_(2, index, 1.0)
-    # encoding_out = torch.nn.functional.one_hot(encoding_new, num_classes=2**depth)
-    encoding_out = y_hard - encoding_new.detach() + encoding_new
-    print(
-        "encoding:",
-        torch.allclose(encoding, encoding_out.argmax(dim=2)),
-        encoding[0],
-        encoding_out.argmax(dim=2)[0],
-    )
+    encoding_out = encoding_hard - encoding_soft.detach() + encoding_soft
     return encoding_out.to(torch.float32)
 
 
@@ -206,16 +181,11 @@ encoded_new = encode_with_traversal(S, B, threshold_table_torch, input_torch_nor
 
 lut_torch = torch.from_numpy(lut.transpose(0, 1, 2)).to(torch.float32)
 lut_torch.requires_grad = True
-print(lut_torch.shape)
 encoded_new = encoded_new.permute((0, 1, 2))
-# encoded_new.requires_grad = True
-print(encoded_new.shape, lut_torch.shape)
 result_torch = torch.einsum("nij, kij -> nki", [encoded_new, lut_torch])
 result_torch = result_torch.sum(dim=2)
-print(result_torch, result_torch.shape)
 
 loss = result_torch.sigmoid().prod()
-print(loss.grad_fn, result_torch.grad_fn)
 loss.backward()
 
 print("gradient LUT", lut_torch.grad.shape)  # type: ignore[union-attr]
@@ -232,12 +202,29 @@ def getBack(var_grad_fn: Any) -> None:
                 # print("Tensor with grad found:", tensor)
                 print(" - gradient:", tensor.grad.shape)
                 print()
-            except AttributeError as e:
-                print(e)
+            except AttributeError:
                 getBack(n[0])
 
 
 getBack(loss.grad_fn)
+
+print("important test", np.allclose(result, result_torch.detach().numpy()))
+
+# old version
+embeddings = torch.nn.EmbeddingBag.from_pretrained(
+    torch.from_numpy(lut.transpose(1, 2, 0).reshape(-1, M)).to(torch.float32),
+    mode="sum",
+)
+threshold_embeddings = torch.nn.Embedding.from_pretrained(
+    threshold_table_torch.flatten().unsqueeze(1)
+)
+encoded_torch = torch.zeros((N, C), dtype=torch.float32, requires_grad=True).flatten()
+prototype_addr_internal_offset = 2 ** torch.arange(4 + 1) - 1
+caddr_internal_offset = (torch.arange(C) * K).repeat(N)
+
+kaddr = encoded_torch.to(torch.int32)
+input_torch = input_torch.reshape((-1, 4))
+prototype_addr_internal = torch.zeros(N * C, dtype=torch.int64)
 
 for tree_level in range(4):
     thresholds = threshold_embeddings(
@@ -254,7 +241,6 @@ for tree_level in range(4):
 encoded_torch = kaddr.reshape((N, C))
 
 print(np.allclose(encoded, encoded_torch.numpy()))
-# print(torch.allclose(encoded_torch, encoded_new.to(torch.int32)))
 
 encoded_torch += torch.arange(C) * K
 input = torch.IntTensor(encoded_torch)
@@ -262,5 +248,3 @@ input = torch.IntTensor(encoded_torch)
 encoded += np.arange(C) * K
 results_embeddings = embeddings(encoded_torch).detach().numpy()
 print(np.allclose(result, results_embeddings))
-print(result, result_torch, result.shape, result_torch.shape)
-print("important test", np.allclose(result, result_torch.detach().numpy()))
