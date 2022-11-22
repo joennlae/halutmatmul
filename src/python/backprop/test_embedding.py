@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 import torch
 import numpy as np
 
@@ -101,23 +101,41 @@ def create_selection_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
 
 def create_bit_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
     # example when using C = 1
+    offset = 0
     bit_matrix_numpy = np.array(
         [
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
-            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+            [
+                offset,
+                offset,
+                offset,
+                offset,
+                offset,
+                offset,
+                offset,
+                offset,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+            ],
+            [offset, offset, offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, offset, offset, offset, offset, 1, 1, 1, 1],
+            [offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, offset, offset, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, offset, 1, 1],
+            [offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1],
         ]
     )
     bit_matrix_base = torch.from_numpy(bit_matrix_numpy.T).to(torch.float32)
@@ -133,8 +151,6 @@ def create_bit_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
 S = create_selection_matrix(C=C)
 B = create_bit_matrix(C=C)
 
-print(S.shape, B.shape)
-
 
 def traverse_tree(
     S: torch.Tensor,
@@ -147,7 +163,17 @@ def traverse_tree(
     h = S.mm(input) - T.unsqueeze(1)
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, 2**depth))
-    return torch.argmax(b, dim=2).to(torch.int32)
+    encoding = torch.argmax(b, dim=2)
+    # encoding_new = torch.nn.functional.gumbel_softmax(
+    #     b - 35, tau=0.1, hard=True
+    # ).argmax(dim=2, keepdim=True)
+    encoding_new = torch.nn.Softmax(dim=2)(b).argmax(dim=2)
+    encoding_out = torch.nn.functional.one_hot(encoding_new, num_classes=2**depth)
+    print(
+        "encoding:",
+        torch.allclose(encoding, encoding_new),
+    )
+    return encoding_out.to(torch.float32)
 
 
 def encode_with_traversal(
@@ -171,8 +197,44 @@ def encode_with_traversal(
 
 
 input_torch_normal = torch.from_numpy(input_a).to(torch.float32)
+threshold_table_torch.requires_grad = True
 encoded_new = encode_with_traversal(S, B, threshold_table_torch, input_torch_normal, C)
-print(encoded_new, encoded_new.shape, encoded_new.dtype)
+
+lut_torch = torch.from_numpy(lut.transpose(0, 1, 2)).to(torch.float32)
+lut_torch.requires_grad = True
+print(lut_torch.shape)
+encoded_new = encoded_new.permute((0, 1, 2))
+# encoded_new.requires_grad = True
+print(encoded_new.shape, lut_torch.shape)
+result_torch = torch.einsum("nij, kij -> nki", [encoded_new, lut_torch])
+result_torch = result_torch.sum(dim=2)
+print(result_torch, result_torch.shape)
+
+loss = result_torch.sigmoid().prod()
+print(loss.grad_fn, result_torch.grad_fn)
+loss.backward()
+
+print("gradient LUT", lut_torch.grad)
+print("gradient T", threshold_table_torch.grad)
+print("gradient encoded", encoded_new.grad)
+
+
+def getBack(var_grad_fn: Any) -> None:
+    print(var_grad_fn)
+    for n in var_grad_fn.next_functions:
+        if n[0]:
+            try:
+                tensor = getattr(n[0], "variable")
+                print(n[0])
+                # print("Tensor with grad found:", tensor)
+                print(" - gradient:", tensor.grad.shape)
+                print()
+            except AttributeError as e:
+                print(e)
+                getBack(n[0])
+
+
+getBack(loss.grad_fn)
 
 for tree_level in range(4):
     thresholds = threshold_embeddings(
@@ -189,7 +251,7 @@ for tree_level in range(4):
 encoded_torch = kaddr.reshape((N, C))
 
 print(np.allclose(encoded, encoded_torch.numpy()))
-print(torch.allclose(encoded_torch, encoded_new))
+# print(torch.allclose(encoded_torch, encoded_new.to(torch.int32)))
 
 encoded_torch += torch.arange(C) * K
 input = torch.IntTensor(encoded_torch)
@@ -197,4 +259,5 @@ input = torch.IntTensor(encoded_torch)
 encoded += np.arange(C) * K
 results_embeddings = embeddings(encoded_torch).detach().numpy()
 print(np.allclose(result, results_embeddings))
-
+print(result, result_torch, result.shape, result_torch.shape)
+print("important test", np.allclose(result, result_torch.detach().numpy()))
