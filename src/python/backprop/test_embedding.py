@@ -164,14 +164,18 @@ def traverse_tree(
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, 2**depth))
     encoding = torch.argmax(b, dim=2)
-    # encoding_new = torch.nn.functional.gumbel_softmax(
-    #     b - 35, tau=0.1, hard=True
-    # ).argmax(dim=2, keepdim=True)
-    encoding_new = torch.nn.Softmax(dim=2)(b).argmax(dim=2)
-    encoding_out = torch.nn.functional.one_hot(encoding_new, num_classes=2**depth)
+    encoding_new = torch.nn.Softmax(dim=2)(b)
+    index = torch.argmax(encoding_new, dim=2, keepdim=True)
+    y_hard = torch.zeros_like(
+        encoding_new, memory_format=torch.legacy_contiguous_format
+    ).scatter_(2, index, 1.0)
+    # encoding_out = torch.nn.functional.one_hot(encoding_new, num_classes=2**depth)
+    encoding_out = y_hard - encoding_new.detach() + encoding_new
     print(
         "encoding:",
-        torch.allclose(encoding, encoding_new),
+        torch.allclose(encoding, encoding_out.argmax(dim=2)),
+        encoding[0],
+        encoding_out.argmax(dim=2)[0],
     )
     return encoding_out.to(torch.float32)
 
@@ -214,9 +218,8 @@ loss = result_torch.sigmoid().prod()
 print(loss.grad_fn, result_torch.grad_fn)
 loss.backward()
 
-print("gradient LUT", lut_torch.grad)
-print("gradient T", threshold_table_torch.grad)
-print("gradient encoded", encoded_new.grad)
+print("gradient LUT", lut_torch.grad.shape)  # type: ignore[union-attr]
+print("gradient T", threshold_table_torch.grad.shape)  # type: ignore[union-attr]
 
 
 def getBack(var_grad_fn: Any) -> None:
