@@ -188,9 +188,6 @@ result_torch = result_torch.sum(dim=2)
 loss = result_torch.sigmoid().prod()
 loss.backward()
 
-print("gradient LUT", lut_torch.grad.shape)  # type: ignore[union-attr]
-print("gradient T", threshold_table_torch.grad.shape)  # type: ignore[union-attr]
-
 
 def getBack(var_grad_fn: Any) -> None:
     print(var_grad_fn)
