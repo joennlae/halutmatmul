@@ -44,7 +44,7 @@ def write_inputs_to_disk(
                             total_rows_store // total_iterations
                         )
                         rows = module.input_storage_a.shape[0]  # type: ignore[index]
-                        rows = min(rows_to_store_during_current_iter, rows)
+                        rows = min(rows_to_store_during_current_iter, rows)  # type: ignore
                         # subsampling
                         idx = np.arange(rows)
                         np.random.shuffle(idx)
@@ -129,7 +129,7 @@ def get_and_print_layers_to_use_halut(
 
 @torch.no_grad()
 def evaluate_halut_imagenet(
-    dataset: Union[Dataset[T_co], DataLoader],
+    dataset: Union[Dataset[T_co], DataLoader],  # type: ignore
     model: torch.nn.Module,
     device: torch.device,
     is_store: bool = False,
@@ -166,7 +166,7 @@ def evaluate_halut_imagenet(
             target = target.to(device, non_blocking=True)
 
             # compute output
-            with torch.cuda.amp.autocast():
+            with torch.cuda.amp.autocast():  # type: ignore
                 output = model(images)
                 loss = criterion(output, target)
 

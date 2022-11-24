@@ -169,14 +169,14 @@ def calc_newaxes_and_newshape_and_old(
     else:
         axes_a, axes_b = axes  # type: ignore[misc, assignment]
     try:
-        na = len(axes_a)
-        axes_a = list(axes_a)
+        na = len(axes_a)  # type: ignore
+        axes_a = list(axes_a)  # type: ignore
     except TypeError:
         axes_a = [axes_a]  # type: ignore[list-item]
         na = 1
     try:
-        nb = len(axes_b)
-        axes_b = list(axes_b)
+        nb = len(axes_b)  # type: ignore
+        axes_b = list(axes_b)  # type: ignore
     except TypeError:
         axes_b = [axes_b]  # type: ignore[list-item]
         nb = 1
@@ -189,13 +189,13 @@ def calc_newaxes_and_newshape_and_old(
         equal = False
     else:
         for k in range(na):
-            if as_[axes_a[k]] != bs[axes_b[k]]:
+            if as_[axes_a[k]] != bs[axes_b[k]]:  # type: ignore
                 equal = False
                 break
-            if axes_a[k] < 0:
-                axes_a[k] += nda
-            if axes_b[k] < 0:
-                axes_b[k] += ndb
+            if axes_a[k] < 0:  # type: ignore
+                axes_a[k] += nda  # type: ignore
+            if axes_b[k] < 0:  # type: ignore
+                axes_b[k] += ndb  # type: ignore
     if not equal:
         raise ValueError("shape-mismatch for sum")
 
@@ -205,7 +205,7 @@ def calc_newaxes_and_newshape_and_old(
     newaxes_a = notin + axes_a
     N2 = 1
     for axis in axes_a:
-        N2 *= as_[axis]
+        N2 *= as_[axis]  # type: ignore
     newshape_a = (int(np.multiply.reduce([as_[ax] for ax in notin])), N2)
     olda = [as_[axis] for axis in notin]
 
@@ -213,11 +213,11 @@ def calc_newaxes_and_newshape_and_old(
     newaxes_b = axes_b + notin
     N2 = 1
     for axis in axes_b:
-        N2 *= bs[axis]
+        N2 *= bs[axis]  # type: ignore
     newshape_b = (N2, int(np.multiply.reduce([bs[ax] for ax in notin])))
     oldb = [bs[axis] for axis in notin]
 
-    return (newaxes_a, newaxes_b, newshape_a, newshape_b, olda, oldb)
+    return (newaxes_a, newaxes_b, newshape_a, newshape_b, olda, oldb)  # type: ignore
 
 
 def get_str_hash_buckets(buckets: list[MultiSplit]) -> str:

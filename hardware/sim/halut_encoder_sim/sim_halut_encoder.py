@@ -1,4 +1,5 @@
 # pylint: disable=no-value-for-parameter, protected-access
+# type: ignore due to this being copied together later
 from math import log2
 from random import getrandbits
 import typing

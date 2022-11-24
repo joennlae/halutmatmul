@@ -218,7 +218,7 @@ def learn_proto_and_hash_function(
         np.mean(X_orig),
     )
 
-    squared_diff = np.square(X_orig - X_error).mean()
+    squared_diff = np.square(X_orig - X_error).mean()  # type: ignore
     print("Error to Original squared diff", squared_diff)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)

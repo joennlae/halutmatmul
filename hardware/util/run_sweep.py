@@ -129,7 +129,7 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
                         vth_string = "ASAP7_USELVT=1" if v == "L" else "ASAP7_USESLVT=1"
                         # set clock period
                         run_command(
-                            f"sed -i '/set clk_period/c\set clk_period {clk}' "
+                            f"sed -i '/set clk_period/c\set clk_period {clk}' "  # type: ignore
                             f"{GIT_BASE_PATH}/hardware/flow/asap7/constraint.sdc"
                         )
 
@@ -167,7 +167,7 @@ def make_designs(tech: str = "asap7", add_on: str = "") -> None:
                             # update clk_period
                             run_command(
                                 # pylint: disable=line-too-long
-                                f"sed -i \"/    'clock_period'   : /c\    'clock_period'   : {clk},\" "
+                                f"sed -i \"/    'clock_period'   : /c\    'clock_period'   : {clk},\" "  # type: ignore
                                 f" {tmp_path}/designs/halut_matmul/construct-commercial.py"
                             )
 
@@ -283,7 +283,7 @@ def prepare_neat_folders_sim() -> None:
         )
         run_command(
             f"set -x; cd {design_clean_path}; sed "
-            f"'/^module halut_matmul /,/);/!b;/);/a\{dump_vcd_code}'"
+            f"'/^module halut_matmul /,/);/!b;/);/a\{dump_vcd_code}'"  # type: ignore
             f" design.v > design_changed.v; mv design_changed.v design.v"
         )
 
@@ -352,7 +352,7 @@ def run_power() -> None:
                     )
                     # uncomment current_design in sdc
                     run_command(
-                        f"sed -i '/current_design/c\# current_design' "
+                        f"sed -i '/current_design/c\# current_design' "  # type: ignore
                         f"{power_output_folder}/inputs/design.sdc"
                     )
                     # add libs
@@ -407,7 +407,7 @@ def run_power() -> None:
                     f"{sim_outputs}/{folder}/{sim_out_folder_name}/sim_build/sim.log"
                 ) as f:
                     subunit_str = (
-                        f"{subunits_per_decoders - 1}\/{subunits_per_decoders}"
+                      f"{subunits_per_decoders - 1}\/{subunits_per_decoders}"  # type: ignore
                     )
                     regex_str = ""
                     # needs fixed lookback (python)

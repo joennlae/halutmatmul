@@ -79,8 +79,8 @@ def helper_test_module(
 
 
 def error_hist_numpy(actual: np.ndarray, desired: np.ndarray) -> None:
-    _abs = np.abs(actual - desired).ravel()
-    rel = ((np.abs(actual - desired) / desired) * 100).ravel()
+    _abs = np.abs(actual - desired).ravel()  # type: ignore
+    rel = ((np.abs(actual - desired) / desired) * 100).ravel()  # type: ignore
 
     asciihist(_abs, str_tag="Abs  ")
     asciihist(rel, str_tag="Rel %")
@@ -89,7 +89,7 @@ def error_hist_numpy(actual: np.ndarray, desired: np.ndarray) -> None:
 def check_if_error_normal_dist_around_zero(
     actual: np.ndarray, desired: np.ndarray, max_rel_error: float = 0.2
 ) -> None:
-    rel = ((np.abs(actual - desired) / desired) * 100).ravel()
+    rel = ((np.abs(actual - desired) / desired) * 100).ravel()  # type: ignore
     counts, cutoffs = np.histogram(rel, bins=10)
     assert np.argmax(counts) == 0 or np.argmax(counts) == 1  # error peaks around zero
     assert cutoffs[9] < max_rel_error * 100  # check max rel error
@@ -121,7 +121,7 @@ def asciihist(
         # discard values that are outside minmax range
         mn = minmax[0]
         mx = minmax[1]
-        itarray = itarray[itarray >= mn]
+        itarray = itarray[itarray >= mn]  # type: ignore
         itarray = itarray[itarray <= mx]
     if itarray.size:
         total = len(itarray)

@@ -1,6 +1,6 @@
 import torch
 
-from torch.autograd import gradcheck
+from torch.autograd import gradcheck  # type: ignore
 from backprop.custom_autograd_functions import (  # type: ignore[attr-defined]
     halutlinear,
     halutconv2d,

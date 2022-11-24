@@ -1,4 +1,5 @@
 # pylint: disable=no-value-for-parameter, protected-access
+# type: ignore due to this being copied together later
 from math import ceil, log2
 import os
 from random import getrandbits

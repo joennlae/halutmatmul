@@ -19,7 +19,7 @@ def sys_info() -> None:
     )
 
     # ! nvcc --version
-    print("__CUDNN VERSION:", torch.backends.cudnn.version())
+    print("__CUDNN VERSION:", torch.backends.cudnn.version())  # type: ignore
     print("__Number CUDA Devices:", torch.cuda.device_count())
     print("__Devices")
     call(
@@ -371,7 +371,7 @@ def get_layers(name: available_models) -> list[str]:
     elif name == "resnet18":
         return resnet18_layers
     else:
-        return Exception("Model name not supported: ", name)
+        return Exception("Model name not supported: ", name)  # type: ignore
 
 
 def get_input_data_amount(name: available_models, l: str) -> list[int]:

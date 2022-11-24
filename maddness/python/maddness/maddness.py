@@ -228,7 +228,7 @@ def learn_proto_and_hash_function(
         np.mean(X_orig),
     )
 
-    squared_diff = np.square(X_orig - X_error).mean()
+    squared_diff = np.square(X_orig - X_error).mean()  # type: ignore
     print("Error to Original squared diff", squared_diff)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
@@ -411,7 +411,7 @@ class MaddnessMatmul:
         self._set_B(B)
 
     def apply_matmul_e2e(
-        self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None
+        self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None  # type: ignore
     ) -> np.ndarray:
         if A_learn is None:
             self._learn_hash_buckets_and_prototypes(A)
@@ -460,7 +460,7 @@ def matmul(
     A_learn: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     return MaddnessMatmul(C=C, lut_work_const=lut_work_const).apply_matmul_e2e(
-        A, B, A_learn=A_learn
+        A, B, A_learn=A_learn  # type: ignore
     )
 
 

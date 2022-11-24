@@ -30,7 +30,7 @@ def fuse_binary_values(vals: "typing.List[BinaryValue]") -> BinaryValue:
 def float_to_float16_binary(fl: np.float16) -> BinaryValue:
     # pylint: disable=too-many-function-args
     # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
-    return LogicArray(bin(np.float16(fl).view("u2"))[2:].zfill(16)).to_BinaryValue(
+    return LogicArray(bin(np.float16(fl).view("u2"))[2:].zfill(16)).to_BinaryValue(  # type: ignore
         bigEndian=True
     )
 
@@ -63,7 +63,7 @@ def float_to_float32_binary(fl: np.float32) -> BinaryValue:
     # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
     # numpy could control it with ">H" big-endian, "<H" little-endian
     # u4 -> uint32
-    return LogicArray(bin(np.float32(fl).view("u4"))[2:].zfill(32)).to_BinaryValue(
+    return LogicArray(bin(np.float32(fl).view("u4"))[2:].zfill(32)).to_BinaryValue(  # type: ignore
         bigEndian=True
     )
 

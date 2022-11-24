@@ -20,7 +20,7 @@ def sys_info() -> None:
     )
 
     # ! nvcc --version
-    print("__CUDNN VERSION:", torch.backends.cudnn.version())
+    print("__CUDNN VERSION:", torch.backends.cudnn.version())  # type: ignore
     print("__Number CUDA Devices:", torch.cuda.device_count())
     print("__Devices")
     call(

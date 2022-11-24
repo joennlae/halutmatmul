@@ -451,7 +451,7 @@ class AudioProcessor:
         return data_placeholder, labels_placeholder
 
 
-class AudioGenerator(torch.utils.data.Dataset):
+class AudioGenerator(torch.utils.data.Dataset): # type: ignore
     # Returning batches of data (MFCCs) and labels
 
     def __init__(
