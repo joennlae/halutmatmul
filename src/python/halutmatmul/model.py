@@ -321,6 +321,16 @@ class HalutHelper:
                             np.float32
                         )
                     ),
+                    k
+                    + ".thresholds": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.THRESHOLDS].astype(
+                            np.float32
+                        )
+                    ),
+                    k
+                    + ".dims": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.DIMS].astype(np.int32)
+                    ),
                 }
             )
         self.stats["halut_layers"] = json.dumps(self.halut_modules)
