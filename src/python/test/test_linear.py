@@ -63,9 +63,10 @@ def linear_helper(
                 "halut_config": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.CONFIG]
                 ),
-                "prototypes": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.PROTOTYPES]
-                ).to(torch.float32),
+                "thresholds": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.THRESHOLDS]
+                ),
+                "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
             }
         )
     )
