@@ -187,11 +187,11 @@ class HalutLinear(Linear):
             )
             self.lut = Parameter(
                 state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"].clone().to(str(self.weight.device)),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.dims = Parameter(
                 state_dict[prefix + "dims"]
@@ -403,12 +403,11 @@ class HalutConv2d(_ConvNd):
             )
             self.lut = Parameter(
                 state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
-                requires_grad=False,
+                requires_grad=True,
             )
-            print("LUT", self.lut.shape)
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"].clone().to(str(self.weight.device)),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.dims = Parameter(
                 state_dict[prefix + "dims"]
