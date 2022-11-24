@@ -10,8 +10,9 @@ FROM continuumio/miniconda3:latest AS build
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Create the environment:
-COPY environment_lock.yml .
-RUN conda env create --file environment_lock.yml --name halutmatmul_gpu
+COPY environment_gpu.yml .
+RUN conda install mamba -c conda-forge
+RUN mamba env create --file environment_gpu.yml --name halutmatmul_gpu
 
 # Install conda-pack:
 RUN conda install -c conda-forge conda-pack
