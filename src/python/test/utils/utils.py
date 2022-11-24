@@ -1,11 +1,26 @@
 from __future__ import print_function
 import timeit
 import functools
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 import torch
 import numpy as np
 
 from halutmatmul.modules import ErrorTuple, error_numpy
+
+
+def getBack(var_grad_fn: Any, all_shapes: list) -> None:
+    print(var_grad_fn)
+    for n in var_grad_fn.next_functions:
+        if n[0]:
+            try:
+                tensor = getattr(n[0], "variable")
+                print(n[0])
+                # print("Tensor with grad found:", tensor)
+                print(" - gradient:", tensor.grad.shape)
+                all_shapes.append(tensor.grad.shape)
+                print()
+            except AttributeError:
+                getBack(n[0], all_shapes)
 
 
 # inspiration
@@ -20,6 +35,25 @@ def helper_test_module(
 
     out = torch_module(ts_input)
     ret = halutmatmul_module(ts_input)
+
+    # backwards path check
+    loss_torch = out.sum()
+    loss_halut = ret.sum()
+
+    loss_torch.backward()
+    loss_halut.backward()
+
+    all_shapes = []
+    getBack(loss_torch.grad_fn, [])
+    getBack(loss_halut.grad_fn, all_shapes)
+
+    state_dict = halutmatmul_module.state_dict()
+    shapes_normal = []
+    for k, v in state_dict.items():
+        if k in ["lut", "thresholds", "bias"]:
+            shapes_normal.append(v.shape)
+    assert len(shapes_normal) == len(all_shapes)
+    assert shapes_normal == all_shapes[::-1]
 
     print(
         "shapes in, out_pytorch, out_halutmatmul:",
