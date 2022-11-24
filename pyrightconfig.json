@@ -1,0 +1,23 @@
+{
+  "exclude": [
+    "hardware/vendor",
+    "**/build/**",
+    ".github/vast.ai",
+    "maddness/cpp"
+  ],
+  "reportUnboundVariable": false,
+  "executionEnvironments": [
+    {
+      "root": "src/python",
+      "extraPaths": [
+        "maddness/python"
+      ],
+    },
+    {
+      "root": "hardware",
+      "extraPaths": [
+        "hardware/dv/util"
+      ]
+    }
+  ]
+}
