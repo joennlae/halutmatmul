@@ -4,7 +4,7 @@ import torch
 import pytest
 import numpy as np
 
-from halutmatmul.modules import HalutConv2d, halut_conv2d_cpu
+from halutmatmul.modules import HalutConv2d
 import halutmatmul.halutmatmul as hm
 
 
@@ -35,30 +35,6 @@ def conv2d_helper(
     ) * a
     input_test = (torch.rand((batch_size, in_channels, image_x_y, image_x_y)) + b) * a
 
-    learn_numpy = input_learn.detach().cpu().numpy()
-    weights_numpy = weights.detach().cpu().numpy()
-    bias_numpy = bias_weights.detach().cpu().numpy()
-
-    input_a, input_b = halut_conv2d_cpu(
-        learn_numpy,
-        weights_numpy,
-        hm.HalutMatmul(),
-        kernel_size=kernel_size,
-        stride=stride,
-        groups=groups,
-        bias=bias_numpy,
-        return_reshaped_inputs=True,
-    )
-
-    store_array = hm.learn_halut_offline(
-        input_a,
-        input_b,
-        C=C,
-        K=K,
-        lut_work_const=-1,
-        encoding_algorithm=encoding_algorithm,
-    )
-
     torch_module = torch.nn.Conv2d(
         in_channels,
         out_channels,
@@ -76,6 +52,18 @@ def conv2d_helper(
         bias=bias,
         groups=groups,
     )
+    input_a = halutmatmul_module.transform_input(input_learn)
+    input_b = halutmatmul_module.transform_weight(weights)
+
+    store_array = hm.learn_halut_offline(
+        input_a.detach().cpu().numpy(),
+        input_b.detach().cpu().numpy(),
+        C=C,
+        K=K,
+        lut_work_const=-1,
+        encoding_algorithm=encoding_algorithm,
+    )
+
     state_dict = OrderedDict({"weight": weights})
     if bias:
         state_dict = OrderedDict(state_dict | OrderedDict({"bias": bias_weights}))
@@ -100,9 +88,10 @@ def conv2d_helper(
                 "halut_config": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.CONFIG]
                 ),
-                "prototypes": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(np.float32)
+                "thresholds": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
+                "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
             }
         )
     )
@@ -124,29 +113,19 @@ def conv2d_helper(
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, "
-    "kernel_size, bias, C, K, a, b, encoding_algorithm, groups",
+    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, groups",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, e, g)
-        for in_channels in [64]
-        for out_channels in [64]
-        for image_x_y in [7]
-        for kernel_size in [1, 3]
-        for bias in [False]  # True, False
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, g)
+        for in_channels in [64, 32]
+        for out_channels in [64, 32]
+        for image_x_y in [7, 14]
+        for kernel_size in [1, 3, 5]
+        for bias in [True, False]  # True, False
         for C in [16, 32, 64]
         for a in [9.0]
         for b in [-0.35]
-        for e in [
-            hm.EncodingAlgorithm.FOUR_DIM_HASH,
-            hm.EncodingAlgorithm.DECISION_TREE,
-            hm.EncodingAlgorithm.FULL_PQ,
-        ]
-        for K in (
-            [16]  # [8, 16, 32]
-            if e == hm.EncodingAlgorithm.FOUR_DIM_HASH
-            else [8, 16, 24]  # [4, 8, 12, 16, 24, 32, 64]
-        )
-        for g in [1, 2]
+        for K in [16]  # [8, 16, 32]
+        for g in [1]  # only supporting one group for now
     ],
 )
 def test_conv2d_module(
@@ -159,7 +138,6 @@ def test_conv2d_module(
     K: int,
     a: float,
     b: float,
-    encoding_algorithm: int,
     groups: int,
 ) -> None:
     batch_size = 32
@@ -181,5 +159,4 @@ def test_conv2d_module(
         K=K,
         a=a,
         b=b,
-        encoding_algorithm=encoding_algorithm,
     )
