@@ -1,4 +1,4 @@
-name: MyPy
+name: Pyright - Typechecking
 # https://autobencoder.com/2020-08-24-conda-actions/
 on: [push]
 
@@ -19,5 +19,4 @@ jobs:
     - name: Check types with mypy
       run: |
         source /venv/bin/activate
-        pip install types-requests types-setuptools
-        mypy --config-file .mypy.ini --pretty 
+        pyright
