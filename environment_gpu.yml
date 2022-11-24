@@ -11,7 +11,6 @@ dependencies:
   - pylint
   - pytest
   - pre-commit
-  - mypy=0.942
   - pytest-xdist
   # algo dependencies
   - numpy=1.21.2
@@ -32,8 +31,11 @@ dependencies:
   - pandas
   - seaborn
   - matplotlib
+  # for CI
+  - pyright
   - pip:
     - cupy_cuda11x
     - pytorch-nemo
     - timm==0.5.4
+    - cocotb # needed for pyright
 prefix: /home/msc22f5/.conda/envs/halutmatmul

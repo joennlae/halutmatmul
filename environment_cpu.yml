@@ -1,7 +1,7 @@
 name: halutmatmul
 channels:
   - intel
-  - pytorch-nightly
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -15,7 +15,6 @@ dependencies:
   - scikit-learn=1.1
   - pytest
   - pre-commit
-  - mypy=0.942
   - pytest-xdist
   - torchvision=0.14
   - pytorch=1.13
@@ -30,6 +29,8 @@ dependencies:
   - pandas
   - seaborn
   - matplotlib
+  # typing
+  - pyright
   - pip:
     - cupy-cuda112
     - pytorch-nemo
