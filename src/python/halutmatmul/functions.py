@@ -1,4 +1,5 @@
 # pylint: disable=C0413, E1133
+# heavily inspired from https://github.com/dblalock/bolt
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union, Any, Optional, List, Literal
 
@@ -226,23 +227,33 @@ def get_str_hash_buckets(buckets: list[MultiSplit]) -> str:
     return ret_str
 
 
-def split_lists_to_numpy(buckets: list[list[MultiSplit]]) -> np.ndarray:
+def split_lists_to_numpy(
+    buckets: list[list[MultiSplit]],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     length = 0
     for c in buckets:
         for v in c:
             length = v.vals.shape[0] if v.vals.shape[0] > length else length
     i = k = 0
     ret_array = np.zeros((len(buckets), len(buckets[0]), length + 3), dtype=np.float32)
+    thresholds = []
+    dims = []
+    # very ugly but I inherited that structure from the original code
+    # which can be founder here:
+    # https://github.com/dblalock/bolt
     for c in buckets:
         k = 0
         for v in c:
             ret_array[i, k, 0 : pow(2, k)] = v.vals
+            for t in v.vals:
+                thresholds.append(t)
             ret_array[i, k, length] = v.dim
+            dims.append(v.dim)
             ret_array[i, k, length + 1] = v.scaleby
             ret_array[i, k, length + 2] = v.offset
             k += 1
         i += 1
-    return ret_array
+    return ret_array, np.array(thresholds, dtype=np.float32), np.array(dims)
 
 
 def numpy_to_split_list(numpy_array: np.ndarray) -> list[list[MultiSplit]]:

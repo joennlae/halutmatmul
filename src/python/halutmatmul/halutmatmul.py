@@ -32,7 +32,9 @@ class HalutOfflineStorage:
     LUT = 1
     CONFIG = 2
     PROTOTYPES = 3
-    MAX = 4
+    THRESHOLDS = 4
+    DIMS = 5
+    MAX = 6
 
 
 class HalutConfig:
@@ -147,6 +149,8 @@ class HalutMatmul:
         self.prototypes: np.ndarray = np.array([])
         self.luts: np.ndarray = np.array([])
         self.optimized = run_optimized
+        self.thresholds: np.ndarray = np.array([])
+        self.dims: np.ndarray = np.array([])
 
         self.encoding_function = ENCODING_FUNCTIONS[self.encoding_algorithm]
         self.learning_function = LEARNING_FUNCTIONS[self.encoding_algorithm]
@@ -237,9 +241,13 @@ class HalutMatmul:
             return_split_list_or_decison_trees,
             self.prototypes,
             report_array,
+            self.thresholds,
+            self.dims,
         ) = self.learning_function(
             A, self.C, self.K, lut_work_const=self.lut_work_const
         )  # type: ignore[operator]
+        print("THRESHOLDS: ", self.thresholds, self.thresholds.shape)
+        print("DIMS: ", self.dims, self.dims.shape)
         if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
             self.splits_lists = return_split_list_or_decison_trees
         elif self.encoding_algorithm in [
@@ -290,6 +298,8 @@ class HalutMatmul:
                     dtype=np.float32,
                 ),
                 self.prototypes.astype(np.float32),
+                self.thresholds.astype(np.float32),
+                self.dims.astype(np.float32),
             ],
             dtype=object,
         )

@@ -196,7 +196,7 @@ def init_and_learn_hash_function(
 
 def learn_proto_and_hash_function(
     X: np.ndarray, C: int, K: int, lut_work_const: int = -1
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     _, D = X.shape
 
     used_perm_algo = "start"  # or end
@@ -222,7 +222,7 @@ def learn_proto_and_hash_function(
     print("Error to Original squared diff", squared_diff)
     # optimize prototypes discriminatively conditioned on assignments
     # applying g(A) [N, C] with values from 0-K (50000, 16)
-    all_splits_np = split_lists_to_numpy(all_splits)
+    all_splits_np, thresholds, dims = split_lists_to_numpy(all_splits)
     print(all_splits_np.shape, all_splits_np.dtype, X.shape, X.dtype)
     A_enc = halut_encode_opt(X, all_splits_np)
 
@@ -263,7 +263,7 @@ def learn_proto_and_hash_function(
             ram_usage / (1024 * 1024),
         ]
     )
-    return all_splits_np, all_prototypes, report_array
+    return all_splits_np, all_prototypes, report_array, thresholds, dims
 
 
 def maddness_lut(q: np.ndarray, all_prototypes: np.ndarray) -> np.ndarray:
