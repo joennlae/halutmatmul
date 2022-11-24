@@ -347,7 +347,7 @@ class HalutMatmul:
         self._check_if_learned()
 
     def apply_matmul_e2e(
-        self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None
+        self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None  # type: ignore
     ) -> np.ndarray:
         if A_learn is None:
             self.learn_hash_buckets_and_prototypes(A)

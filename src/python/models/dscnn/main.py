@@ -39,7 +39,7 @@ def run_kws_main() -> None:
         device = torch.device("cuda:" + str(cuda_id))
     else:
         device = torch.device("cpu")
-    print(torch.version.__version__)
+    print(torch.version.__version__) # type: ignore
     print(device)
 
     # Parameter generation

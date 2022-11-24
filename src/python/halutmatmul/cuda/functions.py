@@ -25,7 +25,7 @@ def run_encode_kernel(
     rows_per_block = 64 // (C // 16)
     blocks = N // rows_per_block + (1 if N % rows_per_block else 0)
     block_dim = (rows_per_block, C)
-    encoded = cp.zeros((N, C), dtype=cp.int32)
+    encoded = cp.zeros((N, C), dtype=cp.int32)  # type: ignore
     cupy_A = cp.ascontiguousarray(cp.from_dlpack(A.detach()))
     cupy_hash_info = cp.ascontiguousarray(cp.from_dlpack(hash_info.detach()))
     kernel(
@@ -34,7 +34,7 @@ def run_encode_kernel(
         (cupy_A, cupy_hash_info, encoded, N, D, N * D),
         # shared_mem=4 * (8 + 3) * C * 4,
     )
-    torch_A = torch.from_dlpack(encoded)
+    torch_A = torch.from_dlpack(encoded)  # type: ignore
     return torch_A
 
 
@@ -69,7 +69,7 @@ def run_read_acc_lut_kernel(
     blocks_x = N // rows_per_block + (1 if N % rows_per_block else 0)
     blocks_y = M // split_factor + (1 if M % split_factor else 0)
     grid_dim = (blocks_x, blocks_y)
-    result = cp.zeros((N, M), dtype=cp.float32)
+    result = cp.zeros((N, M), dtype=cp.float32)  # type: ignore
     cupy_A_enc = cp.ascontiguousarray(cp.from_dlpack(A_enc.detach()))
     cupy_lut = cp.ascontiguousarray(cp.from_dlpack(lut.detach()))
 
@@ -81,7 +81,7 @@ def run_read_acc_lut_kernel(
         (cupy_lut, cupy_A_enc, result, N, M),
         # shared_mem=4 * (8 + 3) * C * 4,
     )
-    torch_res = torch.from_dlpack(result)
+    torch_res = torch.from_dlpack(result)  # type: ignore
     return torch_res
 
 
@@ -105,7 +105,7 @@ def halutmatmul_gpu(
         L=cupy_L,
         H=cupyheight,
     )
-    torch_res = torch.from_dlpack(result)
+    torch_res = torch.from_dlpack(result)  # type: ignore
     return torch_res
 
 
@@ -117,8 +117,8 @@ def halut_encode_pq_tensor_interface(
     A, H, encoded, N, D, _ = args
     C = encoded.shape[1]
     encoded_result = halut_encode_pq_tensor(
-        torch.reshape(torch.from_dlpack(A), (N, -1)),
-        torch.reshape(torch.from_dlpack(H), (C, -1, D)),
+        torch.reshape(torch.from_dlpack(A), (N, -1)),  # type: ignore
+        torch.reshape(torch.from_dlpack(H), (C, -1, D)),  # type: ignore
     )
     cp.copyto(encoded, cp.from_dlpack(encoded_result.detach()))
 
@@ -140,7 +140,7 @@ def halutmatmul_gpu_cupy(
     rows_per_block_encode = 64 // ((C // 16) if C >= 16 else 1)
     blocks = N // rows_per_block_encode + (1 if N % rows_per_block_encode else 0)
     block_dim_encode = (rows_per_block_encode, C)
-    encoded = cp.zeros((N, C), dtype=cp.int32)
+    encoded = cp.zeros((N, C), dtype=cp.int32)  # type: ignore
     encode_kernel(
         (blocks,),
         block_dim_encode,
@@ -156,7 +156,7 @@ def halutmatmul_gpu_cupy(
     blocks_x = N // rows_per_block_ral + (1 if N % rows_per_block_ral else 0)
     blocks_y = M // split_factor + (1 if M % split_factor else 0)
     grid_dim = (blocks_x, blocks_y)
-    result = cp.zeros((N, M), dtype=cp.float32)
+    result = cp.zeros((N, M), dtype=cp.float32)  # type: ignore
 
     used_shared_mem = rows_per_block_ral * C * 4 + C * K * split_factor * 4
     assert used_shared_mem <= SHARED_MEM_PER_BLOCK
@@ -260,7 +260,7 @@ def halut_conv2d_gpu(
             ret = ret_all
 
     batch_size = _input.size(0)
-    result_tensor = torch.from_dlpack(ret)
+    result_tensor = torch.from_dlpack(ret)  # type: ignore
     result_tensor = torch.reshape(
         result_tensor, (batch_size, -1, result_tensor.size(1))
     ).transpose(1, 2)
@@ -358,5 +358,5 @@ def halut_linear_gpu(
         L=L_cupy,
         H=H_cupy,
     )
-    result_tensor = torch.from_dlpack(ret)
+    result_tensor = torch.from_dlpack(ret)  # type: ignore
     return result_tensor

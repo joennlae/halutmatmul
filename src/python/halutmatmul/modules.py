@@ -245,7 +245,7 @@ class HalutLinear(Linear):
                         .detach()
                         .reshape((-1, _input.shape[-1])),  # type: ignore[arg-type]
                     ),
-                    0,
+                    0,  # type: ignore
                 )
 
     def forward(self, _input: Tensor) -> Tensor:
@@ -273,10 +273,10 @@ class HalutLinear(Linear):
                 from halutmatmul.cuda.functions import error_cupy
 
                 res_error = error_cupy(output_clone, torch_ret)
-                self.errors.append((_input.shape[0], res_error))
+                self.errors.append((_input.shape[0], res_error))  # type: ignore
             else:
                 res_error = error_numpy(output_clone, torch_ret)
-                self.errors.append((_input.shape[0], res_error))
+                self.errors.append((_input.shape[0], res_error))  # type: ignore
 
         return output
 
@@ -558,10 +558,10 @@ class HalutConv2d(_ConvNd):
                     from halutmatmul.cuda.functions import error_cupy
 
                     res_error = error_cupy(ret_compare_tensor, torch_ret)
-                    self.errors.append((_input.shape[0], res_error))
+                    self.errors.append((_input.shape[0], res_error))  # type: ignore
                 else:
                     res_error = error_numpy(ret_compare_tensor, torch_ret)
-                    self.errors.append((_input.shape[0], res_error))
+                    self.errors.append((_input.shape[0], res_error))  # type: ignore
             return output
         else:
             if self.padding_mode != "zeros":

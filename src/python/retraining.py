@@ -38,7 +38,7 @@ def load_model(
     dataset, dataset_test, train_sampler, test_sampler = load_data(
         train_dir, val_dir, args
     )
-    data_loader = torch.utils.data.DataLoader(
+    data_loader = torch.utils.data.DataLoader(  # type: ignore
         dataset,
         batch_size=args.batch_size,  # needs to be lower to work due to error calculations
         sampler=train_sampler,
@@ -46,7 +46,7 @@ def load_model(
         pin_memory=True,
         collate_fn=None,
     )
-    data_loader_test = torch.utils.data.DataLoader(
+    data_loader_test = torch.utils.data.DataLoader(  # type: ignore
         dataset_test,
         batch_size=args.batch_size,  # needs to be lower to work due to error calculations
         sampler=test_sampler,
@@ -305,39 +305,38 @@ if __name__ == "__main__":
     else:
         return_values = [None, None, None]
     torch.cuda.set_device(args.gpu)
-    torch.distributed.broadcast_object_list(return_values, src=0)
+    torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
     TRAIN_EPOCHS = 25
     args_checkpoint = return_values[0]
     idx = return_values[1]
     total = return_values[2]
     # carry over rank, world_size, gpu backend
-    args_checkpoint.rank = args.rank
-    args_checkpoint.world_size = args.world_size
-    args_checkpoint.gpu = args.gpu
-    args_checkpoint.distributed = args.distributed
-    args_checkpoint.dist_backend = args.dist_backend
-    args_checkpoint.workers = 0
-    for i in range(idx, total):
-        args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS
-        args_checkpoint.resume = (
-            f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"
+    args_checkpoint.rank = args.rank  # type: ignore
+    args_checkpoint.world_size = args.world_size  # type: ignore
+    args_checkpoint.gpu = args.gpu  # type: ignore
+    args_checkpoint.distributed = args.distributed  # type: ignore
+    args_checkpoint.dist_backend = args.dist_backend  # type: ignore
+    args_checkpoint.workers = 0  # type: ignore
+    for i in range(idx, total):  # type: ignore
+        args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS  # type: ignore
+        args_checkpoint.resume = (  # type: ignore
+            f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"  # type: ignore
         )
-        torch.distributed.barrier()
+        torch.distributed.barrier()  # type: ignore
         # sys_info()
         torch.cuda.empty_cache()
         torch.cuda.set_device(args.gpu)
-        torch.distributed.barrier()
+        torch.distributed.barrier()  # type: ignore
         # sys_info()
         main(args_checkpoint)
-        torch.distributed.barrier()
-        args.checkpoint = (
-            f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"
-        )
+        torch.distributed.barrier()  # type: ignore
+        # pylint: disable=line-too-long
+        args.checkpoint = f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"  # type: ignore
         if args.rank == 0:
             shutil.copy(
-                os.path.join(args_checkpoint.output_dir, "checkpoint.pth"),
+                os.path.join(args_checkpoint.output_dir, "checkpoint.pth"),  # type: ignore
                 args.checkpoint,
             )
             _, idx, total = run_retraining(args, test_only=True)
             _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
-        torch.distributed.barrier()
+        torch.distributed.barrier()  # type: ignore

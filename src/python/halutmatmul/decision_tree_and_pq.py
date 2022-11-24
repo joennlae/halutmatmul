@@ -238,8 +238,8 @@ def learn_decision_tree(
         print("L1 error: ", l1_error)
 
     # Rebase
-    for i in range(bincount_pred.shape[0]):
-        if bincount_pred[i] > 0:
+    for i in range(bincount_pred.shape[0]):  # type: ignore
+        if bincount_pred[i] > 0:  # type: ignore
             prediction_where = prediction == i
             select_rows = X[prediction_where]
             new_centroid = np.mean(select_rows, axis=0)

@@ -85,7 +85,7 @@ class HalutHelper:
         model: torch.nn.Module,
         state_dict: "OrderedDict[str, torch.Tensor]",
         dataset: Dataset[T_co],
-        dataset_train: Dataset[T_co] = None,
+        dataset_train: Optional[Dataset[T_co]] = None,
         data_path: str = DATA_PATH,
         batch_size_store: int = DEFAULT_BATCH_SIZE_OFFLINE,
         batch_size_inference: int = DEFAULT_BATCH_SIZE_INFERENCE,

@@ -40,8 +40,8 @@ def model_loader(
             split="val",
             transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
         )
-        model = resnet50(weights=state_dict, progress=True)
-        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
+        model = resnet50(weights=state_dict, progress=True)  # type: ignore
+        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  # type: ignore
     elif name == "resnet18":
         state_dict = ResNet18_Weights.IMAGENET1K_V1.get_state_dict(progress=True)
         data = torchvision.datasets.ImageNet(
@@ -53,11 +53,11 @@ def model_loader(
             "/usr/scratch2/vilan2/janniss/model_checkpoints/checkpoint_100.pth",
             map_location="cpu",
         )
-        model = resnet18(weights=state_dict, progress=True)
+        model = resnet18(weights=state_dict, progress=True)  # type: ignore
         model.load_state_dict(checkpoint["model"])
-        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  #
+        return model, data, state_dict, evaluate_halut_imagenet, 256, 128  # type: ignore
     elif name == "levit":
-        model, data_loader, state_dict = run_levit_analysis(
+        model, data_loader, state_dict = run_levit_analysis(  # type: ignore
             [
                 "--analysis",
                 "True",
@@ -68,7 +68,7 @@ def model_loader(
                 "/scratch/ml_datasets/ILSVRC2012/",
             ]
         )
-        return model, data_loader, state_dict, evaluate_halut_imagenet, 256, 128
+        return model, data_loader, state_dict, evaluate_halut_imagenet, 256, 128  # type: ignore
     elif name == "ds-cnn":
         model, data, state_dict = setup_ds_cnn_eval()  # type: ignore[assignment]
         print("data", data)

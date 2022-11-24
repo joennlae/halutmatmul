@@ -1,6 +1,6 @@
 from test.test_halut import test_learn_offline
 from test.test_linear import test_linear_module
-from models.dscnn.main import run_kws_main
+from test.test_conv2d import test_conv2d_module
 from models.levit.main import run_levit  # type: ignore[attr-defined]
 from halutmatmul.halutmatmul import EncodingAlgorithm
 
@@ -18,4 +18,5 @@ if __name__ == "__main__":
     # run_kws_main()
     # run_levit()
     # test_cifar10_inference()
-    test_linear_module(512, 128, 32, 1.0, 0.0, False, 8)
+    # test_linear_module(512, 128, 32, 1.0, 0.0, False, 8)
+    test_conv2d_module(64, 64, 7, 3, False, 16, 16, 9.0, -0.35, 1)
