@@ -1,5 +1,6 @@
 # pylint: disable=import-outside-toplevel
 import sys
+import math
 from typing import Any, Optional, OrderedDict, Union
 import numpy as np
 import torch
@@ -446,7 +447,7 @@ class HalutConv2d(_ConvNd):
     def check_store_offline(self, _input: Tensor) -> None:
         if self.store_input[0]:
             input_a = self.transform_input(_input)
-            input_b = self.transform_weight()
+            input_b = self.transform_weight(self.weight)
             print(
                 "storing input in ram ",
                 input_a.shape,
@@ -480,20 +481,39 @@ class HalutConv2d(_ConvNd):
             raise NotImplementedError("groups > 1 has to be implemented")
         return unfolded
 
-    def transform_weight(self) -> Tensor:
-        weights_prepared = self.weight.view(self.weight.size(0), -1).t()
+    def transform_weight(self, weight: Tensor) -> Tensor:
+        # weight is passed that the trasnfrom can also be used from test etc.
+        weights_prepared = weight.view(weight.size(0), -1).t()
         return weights_prepared
 
-    def transform_output(self, batch_size: int, output: Tensor) -> Tensor:
-        output = output.transpose(1, 2)
-        out = torch.nn.functional.fold(
-            output,
-            batch_size,
-            kernel_size=self.kernel_size,
-            dilation=self.dilation,
-            padding=self.padding,  # type: ignore[arg-type]
-            stride=self.stride,
+    def transform_output(self, output: Tensor, _input: Tensor) -> Tensor:
+        output = output.reshape((_input.shape[0], -1, output.size(1))).transpose(1, 2)
+        # reference: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+        H_out, W_out = (
+            math.floor(
+                (
+                    _input.shape[2]
+                    + 2 * self.padding[0]  # type: ignore[arg-type]
+                    - self.dilation[0] * (self.kernel_size[0] - 1)
+                    - 1
+                )
+                / self.stride[0]
+                + 1
+            ),
+            math.floor(
+                (
+                    _input.shape[3]
+                    + 2 * self.padding[1]  # type: ignore[arg-type]
+                    - self.dilation[1] * (self.kernel_size[1] - 1)
+                    - 1
+                )
+                / self.stride[0]
+                + 1
+            ),
         )
+
+        # torch.nn.functional.fold had some issues ...
+        out = output.reshape((output.size(0), output.size(1), H_out, W_out))
         return out
 
     def forward(self, _input: Tensor) -> Tensor:
@@ -504,15 +524,15 @@ class HalutConv2d(_ConvNd):
             transformed_input = self.transform_input(_input)
 
             ret_tensor = halut_matmul_forward(
-                transformed_input[self.dims],
+                transformed_input,
                 self.thresholds,
                 self.lut,
                 self.dims,
                 self.lut.size(1),
-                int(np.sqrt(self.lut.size(2))),
+                self.lut.size(2),
             )
 
-            output = self.transform_output(_input.size(0), ret_tensor)
+            output = self.transform_output(ret_tensor, _input)
             if self.bias is not None:
                 bias = torch.broadcast_to(
                     self.bias.repeat(output.size(-2), output.size(-1)).reshape(
