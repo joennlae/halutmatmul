@@ -19,10 +19,13 @@ from halutmatmul.halutmatmul import (
 )
 
 
-def create_selection_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
-    selection_matrix = torch.zeros((C * 15, C * depth), dtype=torch.float32)
-    based_selection_matrix = torch.zeros((2**depth - 1, depth), dtype=torch.float32)
-    for i in range(2**depth - 1):
+def create_selection_matrix(
+    C: int = 1, K: int = 16, dtype=torch.float16
+) -> torch.Tensor:
+    depth = int(math.sqrt(K))
+    selection_matrix = torch.zeros((C * 15, C * depth), dtype=dtype)
+    based_selection_matrix = torch.zeros((K - 1, depth), dtype=dtype)
+    for i in range(K - 1):
         if i == 0:
             based_selection_matrix[0, 0] = 1
         else:
@@ -34,7 +37,7 @@ def create_selection_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
     return selection_matrix
 
 
-def create_bit_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
+def create_bit_matrix(C: int = 1, K: int = 16, dtype=torch.float16) -> torch.Tensor:
     # example when using C = 1
     offset = 0
     bit_matrix_numpy = np.array(
@@ -73,12 +76,12 @@ def create_bit_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1],
         ]
     )
-    bit_matrix_base = torch.from_numpy(bit_matrix_numpy.T).to(torch.float32)
-    bit_matrix = torch.ones((C * 2**depth, C * (2**depth - 1)), dtype=torch.float32)
+    bit_matrix_base = torch.from_numpy(bit_matrix_numpy.T).to(dtype)
+    bit_matrix = torch.ones((C * K, C * (K - 1)), dtype=dtype)
     for c in range(C):
         bit_matrix[
-            c * 2**depth : (c + 1) * 2**depth,
-            c * (2**depth - 1) : (c + 1) * (2**depth - 1),
+            c * K : (c + 1) * K,
+            c * (K - 1) : (c + 1) * (K - 1),
         ] = bit_matrix_base
     return bit_matrix
 
@@ -88,16 +91,11 @@ def halut_matmul_forward(
     T: torch.Tensor,
     L: torch.Tensor,
     dims: torch.Tensor,
+    S: torch.Tensor,
+    B: torch.Tensor,
     C: int = 32,
     K: int = 16,
 ) -> torch.Tensor:
-    # TODO: move outside + change forced dtype
-    S = create_selection_matrix(C=C)
-    B = create_bit_matrix(C=C)
-
-    S = S.to(device=input.device)
-    B = B.to(device=input.device)
-
     # encoding
     h = S.mm(input[:, dims].T) - T.unsqueeze(1)
     b = B.mm(h.relu())
@@ -159,6 +157,8 @@ class HalutLinear(Linear):
         self.report_error = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
+        self.S = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+        self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -166,6 +166,7 @@ class HalutLinear(Linear):
 
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
+    # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
     ) -> None:
@@ -189,11 +190,17 @@ class HalutLinear(Linear):
                 requires_grad=False,
             )
             self.lut = Parameter(
-                state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
+                state_dict[prefix + "lut"]
+                .clone()
+                .to(str(self.weight.device))
+                .to(self.weight.dtype),
                 requires_grad=True,
             )
             self.thresholds = Parameter(
-                state_dict[prefix + "thresholds"].clone().to(str(self.weight.device)),
+                state_dict[prefix + "thresholds"]
+                .clone()
+                .to(str(self.weight.device))
+                .to(self.weight.dtype),
                 requires_grad=True,
             )
             self.dims = Parameter(
@@ -201,6 +208,18 @@ class HalutLinear(Linear):
                 .clone()
                 .to(torch.int64)
                 .to(str(self.weight.device)),
+                requires_grad=False,
+            )
+            self.B = Parameter(
+                create_bit_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ),
+                requires_grad=False,
+            )
+            self.S = Parameter(
+                create_selection_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ),
                 requires_grad=False,
             )
         elif any(
@@ -261,6 +280,8 @@ class HalutLinear(Linear):
                 self.thresholds,
                 self.lut,
                 self.dims,
+                self.S,
+                self.B,
                 self.lut.size(1),
                 self.lut.size(2),
             )
@@ -378,7 +399,8 @@ class HalutConv2d(_ConvNd):
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
-
+        self.S = Parameter(torch.zeros(1), requires_grad=False)
+        self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
@@ -407,11 +429,17 @@ class HalutConv2d(_ConvNd):
                 requires_grad=False,
             )
             self.lut = Parameter(
-                state_dict[prefix + "lut"].clone().to(str(self.weight.device)),
+                state_dict[prefix + "lut"]
+                .clone()
+                .to(str(self.weight.device))
+                .to(self.weight.dtype),
                 requires_grad=True,
             )
             self.thresholds = Parameter(
-                state_dict[prefix + "thresholds"].clone().to(str(self.weight.device)),
+                state_dict[prefix + "thresholds"]
+                .clone()
+                .to(str(self.weight.device))
+                .to(self.weight.dtype),
                 requires_grad=True,
             )
             self.dims = Parameter(
@@ -419,6 +447,18 @@ class HalutConv2d(_ConvNd):
                 .clone()
                 .to(torch.int64)
                 .to(str(self.weight.device)),
+                requires_grad=False,
+            )
+            self.B = Parameter(
+                create_bit_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ),
+                requires_grad=False,
+            )
+            self.S = Parameter(
+                create_selection_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ),
                 requires_grad=False,
             )
         elif any(
@@ -531,6 +571,8 @@ class HalutConv2d(_ConvNd):
                 self.thresholds,
                 self.lut,
                 self.dims,
+                self.S,
+                self.B,
                 self.lut.size(1),
                 self.lut.size(2),
             )
