@@ -11,7 +11,7 @@ dependencies:
   - pylint
   - pytest
   - pre-commit
-  - mypy=0.942
+  - pyright 
   - pytest-xdist
   - numpy # mypy
   # HW deps
