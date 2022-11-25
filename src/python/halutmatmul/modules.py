@@ -95,6 +95,9 @@ def halut_matmul_forward(
     S = create_selection_matrix(C=C)
     B = create_bit_matrix(C=C)
 
+    S = S.to(device=input.device)
+    B = B.to(device=input.device)
+
     # encoding
     h = S.mm(input[:, dims].T) - T.unsqueeze(1)
     b = B.mm(h.relu())
