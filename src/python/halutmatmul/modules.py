@@ -210,16 +210,18 @@ class HalutLinear(Linear):
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
+            state_dict[prefix + "B"] = create_bit_matrix(
+                self.lut.size(1), self.lut.size(2), self.weight.dtype
+            ).to(str(self.weight.device))
             self.B = Parameter(
-                create_bit_matrix(
-                    self.lut.size(1), self.lut.size(2), self.weight.dtype
-                ).to(str(self.weight.device)),
+                state_dict[prefix + "B"],
                 requires_grad=False,
             )
+            state_dict[prefix + "S"] = create_selection_matrix(
+                self.lut.size(1), self.lut.size(2), self.weight.dtype
+            ).to(str(self.weight.device))
             self.S = Parameter(
-                create_selection_matrix(
-                    self.lut.size(1), self.lut.size(2), self.weight.dtype
-                ).to(str(self.weight.device)),
+                state_dict[prefix + "S"],
                 requires_grad=False,
             )
         elif any(
@@ -449,16 +451,18 @@ class HalutConv2d(_ConvNd):
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
+            state_dict[prefix + "B"] = create_bit_matrix(
+                self.lut.size(1), self.lut.size(2), self.weight.dtype
+            ).to(str(self.weight.device))
             self.B = Parameter(
-                create_bit_matrix(
-                    self.lut.size(1), self.lut.size(2), self.weight.dtype
-                ).to(str(self.weight.device)),
+                state_dict[prefix + "B"],
                 requires_grad=False,
             )
+            state_dict[prefix + "S"] = create_selection_matrix(
+                self.lut.size(1), self.lut.size(2), self.weight.dtype
+            ).to(str(self.weight.device))
             self.S = Parameter(
-                create_selection_matrix(
-                    self.lut.size(1), self.lut.size(2), self.weight.dtype
-                ).to(str(self.weight.device)),
+                state_dict[prefix + "S"],
                 requires_grad=False,
             )
         elif any(
