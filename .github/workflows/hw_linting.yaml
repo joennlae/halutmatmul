@@ -37,8 +37,7 @@ jobs:
     - name: Check types with mypy
       run: |
         source /venv/bin/activate
-        pip install types-requests types-setuptools
-        mypy --config-file .mypy.ini --pretty hardware/util hardware/dv/**/*.py
+        pyright hardware/util hardware/dv/**/*.py
 
   verilator_lint_hw:
     needs: changes
