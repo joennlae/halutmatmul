@@ -176,7 +176,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
         # update optimizer with new parameters
         # pylint: disable=using-constant-test
-        if False:
+        if True:
             custom_keys_weight_decay = []
             if args_checkpoint.bias_weight_decay is not None:
                 custom_keys_weight_decay.append(
@@ -212,7 +212,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             print(opt_state_dict["param_groups"])
             # ACTIVATE REPLACE AND FREEZE TRAINING
             # optimizer updates
-            # checkpoint["optimizer"] = opt_state_dict
+            checkpoint["optimizer"] = opt_state_dict
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
@@ -251,7 +251,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-2"
+    MODEL_NAME_EXTENSION = "cifar10-reformulated"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
