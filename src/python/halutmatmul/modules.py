@@ -249,36 +249,38 @@ class HalutLinear(Linear):
                 )
 
     def forward(self, _input: Tensor) -> Tensor:
-        self.check_store_offline(_input)
+        if self.halut_active[0] and not self.store_input[0]:
+            input_shape_len = len(_input.shape)
+            batch_size = _input.shape[0]
+            _input = _input.reshape((-1, _input.shape[-1]))
+            output = halut_matmul_forward(
+                _input,
+                self.thresholds,
+                self.lut,
+                self.dims,
+                self.lut.size(1),
+                self.lut.size(2),
+            )
+            if self.bias is not None:
+                output += self.bias.t().repeat(*(*output.shape[:-1], 1))
+            if input_shape_len > 2:
+                output = output.reshape(batch_size, -1, output.shape[-1])
+            if self.report_error[0]:
+                torch_ret = F.linear(_input, self.weight, self.bias)
+                output_clone = output.detach()
+                if "cuda" in str(_input.device):
+                    from halutmatmul.cuda.functions import error_cupy
 
-        input_shape_len = len(_input.shape)
-        batch_size = _input.shape[0]
-        _input = _input.reshape((-1, _input.shape[-1]))
-        output = halut_matmul_forward(
-            _input,
-            self.thresholds,
-            self.lut,
-            self.dims,
-            self.lut.size(1),
-            self.lut.size(2),
-        )
-        if self.bias is not None:
-            output += self.bias.t().repeat(*(*output.shape[:-1], 1))
-        if input_shape_len > 2:
-            output = output.reshape(batch_size, -1, output.shape[-1])
-        if self.report_error[0]:
-            torch_ret = F.linear(_input, self.weight, self.bias)
-            output_clone = output.detach()
-            if "cuda" in str(_input.device):
-                from halutmatmul.cuda.functions import error_cupy
+                    res_error = error_cupy(output_clone, torch_ret)
+                    self.errors.append((_input.shape[0], res_error))  # type: ignore
+                else:
+                    res_error = error_numpy(output_clone, torch_ret)
+                    self.errors.append((_input.shape[0], res_error))  # type: ignore
 
-                res_error = error_cupy(output_clone, torch_ret)
-                self.errors.append((_input.shape[0], res_error))  # type: ignore
-            else:
-                res_error = error_numpy(output_clone, torch_ret)
-                self.errors.append((_input.shape[0], res_error))  # type: ignore
-
-        return output
+            return output
+        else:
+            self.check_store_offline(_input)
+            return F.linear(_input, self.weight, self.bias)
 
     def extra_repr(self) -> str:
         return "Halut in_features={}, out_features={}, bias={}".format(
@@ -518,8 +520,7 @@ class HalutConv2d(_ConvNd):
     def forward(self, _input: Tensor) -> Tensor:
         # https://pytorch.org/docs/stable/generated/torch.nn.Unfold.html
 
-        if self.halut_active[0]:
-            self.check_store_offline(_input)
+        if self.halut_active[0] and not self.store_input[0]:
             transformed_input = self.transform_input(_input)
 
             ret_tensor = halut_matmul_forward(
@@ -563,6 +564,7 @@ class HalutConv2d(_ConvNd):
                     self.errors.append((_input.shape[0], res_error))  # type: ignore
             return output
         else:
+            self.check_store_offline(_input)
             if self.padding_mode != "zeros":
                 return F.conv2d(
                     F.pad(
