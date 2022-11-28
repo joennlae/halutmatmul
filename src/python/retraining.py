@@ -146,13 +146,19 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     else:
         next_layer_idx = len(halut_modules.keys())
     next_layer = layers[next_layer_idx]
-    C = int(args.C)
-    print()
+    # C = int(args.C)
     enc = EncodingAlgorithm.FOUR_DIM_HASH
     K = 16
     rows = -1  # subsampling
     if not test_only:
-        modules = {next_layer: [C, rows, K, enc]} | halut_modules
+        c_ = 32
+        if "layer2" in next_layer:
+            c_ = 64
+        elif "layer3" in next_layer:
+            c_ = 128
+        elif "layer4" in next_layer:
+            c_ = 256
+        modules = {next_layer: [c_, rows, K, enc]} | halut_modules
     else:
         modules = halut_modules
     for k, v in modules.items():
@@ -276,7 +282,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-reformulated-2"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
