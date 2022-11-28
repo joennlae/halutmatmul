@@ -147,18 +147,19 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         next_layer_idx = len(halut_modules.keys())
     next_layer = layers[next_layer_idx]
     # C = int(args.C)
-    enc = EncodingAlgorithm.FOUR_DIM_HASH
     K = 16
     rows = -1  # subsampling
     if not test_only:
-        c_ = 32
+        c_ = 64
         if "layer2" in next_layer:
-            c_ = 64
-        elif "layer3" in next_layer:
             c_ = 128
-        elif "layer4" in next_layer:
+        elif "layer3" in next_layer:
             c_ = 256
-        modules = {next_layer: [c_, rows, K, enc]} | halut_modules
+        elif "layer4" in next_layer:
+            c_ = 512
+        if "downsample" in next_layer:
+            c_ = 64
+        modules = {next_layer: [c_, rows, K]} | halut_modules
     else:
         modules = halut_modules
     for k, v in modules.items():
@@ -167,7 +168,6 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             C=v[HalutModuleConfig.C],
             rows=v[HalutModuleConfig.ROWS],
             K=v[HalutModuleConfig.K],
-            encoding_algorithm=v[HalutModuleConfig.ENCODING_ALGORITHM],
         )
     halut_model.run_inference()
     print(halut_model.get_stats())
@@ -283,7 +283,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-2"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -314,7 +314,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/checkpoint_base_100.pth"
+            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/retrained_checkpoint.pth"
             # f"/scratch2/janniss/model_checkpoints/cifar10/checkpoint.pth"
         ),
     )
