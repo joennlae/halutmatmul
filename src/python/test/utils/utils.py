@@ -3,6 +3,7 @@ import timeit
 import functools
 from typing import Callable, Optional, Any
 import torch
+from torch.autograd import profiler
 import numpy as np
 
 from halutmatmul.modules import ErrorTuple, error_numpy
@@ -110,6 +111,27 @@ def helper_test_module(
             halutmatmul_fp,
         )
     )
+
+    # pylint: disable=using-constant-test
+    if False:
+        # profiling
+        # warmup
+        # https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html
+        halutmatmul_module(ts_input)
+        with profiler.profile(
+            use_cuda=True, record_shapes=True, profile_memory=True, with_stack=True
+        ) as prof:
+            ret = halutmatmul_module(ts_input)
+            loss = ret.sum()
+            loss.backward()
+        # with profiler.profile(with_stack=True, profile_memory=True) as prof:
+        #     halutmatmul_module(ts_input)
+        print(
+            prof.key_averages(group_by_stack_n=10).table(
+                sort_by="cuda_time_total", row_limit=20
+            )
+        )
+        prof.export_chrome_trace("profiler_trace_cuda.json")
 
 
 def error_hist_numpy(actual: np.ndarray, desired: np.ndarray) -> None:
