@@ -57,7 +57,6 @@ def check_file_exists_and_return_path(
     C: int = 16,
     rows: int = 256,
     K: int = 16,
-    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> list[str]:
     files = glob.glob(base_path + "/*.npy")
     files_res = []
@@ -71,7 +70,7 @@ def check_file_exists_and_return_path(
         files_res = files_a + files_b
         assert len(files_res) == 0 or len(files_res) == 2
     elif _type == "learned":
-        regex = rf"{layers_name}_{C}_{K}_{encoding_algorithm}_{rows}-.+\.npy"
+        regex = rf"{layers_name}_{C}_{K}_{rows}-.+\.npy"
         print("pattern", regex)
         pattern = re.compile(regex)
         files_res = [x for x in files if pattern.search(x)]
@@ -119,7 +118,6 @@ class HalutHelper:
         C: int,
         rows: int,
         K: int = 16,
-        encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
     ) -> None:
         if name not in self.editable_keys:
             raise Exception(f"module {name} not in model")
@@ -127,7 +125,7 @@ class HalutHelper:
         if name in self.halut_modules.keys():
             print(f"overwrite halut layer {name}")
 
-        self.halut_modules |= dict({name: [C, rows, K, encoding_algorithm]})
+        self.halut_modules |= dict({name: [C, rows, K]})
 
     def deactivate_halut_module(self, name: str) -> None:
         if name not in self.halut_modules.keys():
@@ -207,7 +205,6 @@ class HalutHelper:
                 args[hm.HalutModuleConfig.C],
                 args[hm.HalutModuleConfig.ROWS],
                 args[hm.HalutModuleConfig.K],
-                args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
             )
             if len(learned_files) == 1:
                 continue
@@ -215,7 +212,6 @@ class HalutHelper:
                 args[hm.HalutModuleConfig.C],
                 args[hm.HalutModuleConfig.ROWS],
                 args[hm.HalutModuleConfig.K],
-                args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
             ]
             paths = check_file_exists_and_return_path(
                 self.data_path, k, "input", rows=args[hm.HalutModuleConfig.ROWS]
@@ -253,7 +249,6 @@ class HalutHelper:
                 C=args[hm.HalutModuleConfig.C],
                 rows=args[hm.HalutModuleConfig.ROWS],
                 K=args[hm.HalutModuleConfig.K],
-                encoding_algorithm=args[hm.HalutModuleConfig.ENCODING_ALGORITHM],
             )
             print("learned files", learned_files)
             if len(learned_files) == 1:
@@ -272,9 +267,6 @@ class HalutHelper:
                 self.stats[k + ".C"] = args[hm.HalutModuleConfig.C]
                 self.stats[k + ".rows"] = args[hm.HalutModuleConfig.ROWS]
                 self.stats[k + ".K"] = args[hm.HalutModuleConfig.K]
-                self.stats[k + ".encoding_algorithm"] = args[
-                    hm.HalutModuleConfig.ENCODING_ALGORITHM
-                ]
                 self.stats[k + ".stored_array_size"] = store_array.nbytes
                 self.stats[k + ".L_size"] = (
                     store_array[hm.HalutOfflineStorage.LUT].astype(np.float32).nbytes
