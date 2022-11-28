@@ -143,6 +143,13 @@ def traverse_tree(
     C: int = 32,
     depth: int = 4,
 ) -> torch.Tensor:
+    print("S", S, S.shape, input.shape)
+    selection_tensor = torch.Tensor([0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3])
+    selection_tensor_all = torch.zeros((C * 15), dtype=torch.int64)
+    for c in range(C):
+        selection_tensor_all[c * 15 : (c + 1) * 15] = selection_tensor + c * 4
+    print("selection_tensor", selection_tensor_all.shape)
+    h = input[selection_tensor_all, :] - T.unsqueeze(1)
     h = S.mm(input) - T.unsqueeze(1)
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, 2**depth))
