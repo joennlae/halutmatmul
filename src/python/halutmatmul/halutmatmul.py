@@ -8,12 +8,6 @@ import numpy as np
 
 import numba
 
-from halutmatmul.decision_tree_and_pq import (
-    halut_encode_decision_tree,
-    halut_encode_pq,
-    learn_proto_and_hash_function_decision_tree,
-    learn_proto_and_hash_function_full_pq,
-)
 from halutmatmul.functions import (
     get_str_hash_buckets,
     halut_encode_opt,
@@ -34,16 +28,6 @@ class HalutOfflineStorage:
     PROTOTYPES = 3
     THRESHOLDS = 4
     DIMS = 5
-    MAX = 6
-
-
-class HalutConfig:
-    LUT_OFFSET = 0
-    LUT_SCALE = 1
-    RUN_OPTIMIZED = 2
-    QUANTIZE_LUT = 3
-    UPCAST_EVERY = 4
-    ENCODING_ALGORITHM = 5
     MAX = 6
 
 
@@ -79,7 +63,6 @@ def learn_halut_offline_report(
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
-    encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> tuple[np.ndarray, Dict[str, Any]]:
     mn = HalutMatmul(
         C,
@@ -87,7 +70,6 @@ def learn_halut_offline_report(
         lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
-        encoding_algorithm=encoding_algorithm,
     )
     mn.learn_offline(A, B)
 
@@ -105,7 +87,6 @@ def learn_halut_offline(
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
-    encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> np.ndarray:
     mn = HalutMatmul(
         C,
@@ -113,23 +94,9 @@ def learn_halut_offline(
         lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
-        encoding_algorithm=encoding_algorithm,
     )
     mn.learn_offline(A, B)
     return mn.to_numpy()
-
-
-ENCODING_FUNCTIONS = [
-    halut_encode_opt,  # FOUR_DIM_HASH
-    halut_encode_decision_tree,  # DECISION_TREE
-    halut_encode_pq,  # FULL_PQ
-]
-
-LEARNING_FUNCTIONS = [
-    learn_proto_and_hash_function,  # FOUR_DIM_HASH
-    learn_proto_and_hash_function_decision_tree,  # DECISION_TREE
-    learn_proto_and_hash_function_full_pq,  # FULL_PQ
-]
 
 
 class HalutMatmul:
@@ -140,29 +107,24 @@ class HalutMatmul:
         lut_work_const: int = -1,
         quantize_lut: bool = False,
         run_optimized: bool = True,
-        encoding_algorithm: int = EncodingAlgorithm.FOUR_DIM_HASH,
     ) -> None:
 
         self.C = C
         self.K = K
-        self.encoding_algorithm = encoding_algorithm
         self.prototypes: np.ndarray = np.array([])
         self.luts: np.ndarray = np.array([])
         self.optimized = run_optimized
         self.thresholds: np.ndarray = np.array([])
         self.dims: np.ndarray = np.array([])
 
-        self.encoding_function = ENCODING_FUNCTIONS[self.encoding_algorithm]
-        self.learning_function = LEARNING_FUNCTIONS[self.encoding_algorithm]
+        self.encoding_function = halut_encode_opt
+        self.learning_function = learn_proto_and_hash_function
 
         self.lut_work_const = lut_work_const
         self.A_enc: np.ndarray = np.array([])
 
         # EncodingAlgorithm.FOUR_DIM_HASH
         self.splits_lists: np.ndarray = np.array([])
-
-        # EncodingAlgorithm.DECISION_TREE
-        self.decision_trees: np.ndarray = np.array([])
 
         self.quantize_lut = quantize_lut
         self.upcast_every = 16
@@ -238,7 +200,7 @@ class HalutMatmul:
             print("Autocorrecting C == D == ", D)
             self.C = D
         (
-            return_split_list_or_decison_trees,
+            split_lists,
             self.prototypes,
             report_array,
             self.thresholds,
@@ -246,15 +208,7 @@ class HalutMatmul:
         ) = self.learning_function(
             A, self.C, self.K, lut_work_const=self.lut_work_const
         )  # type: ignore[operator]
-        print("THRESHOLDS: ", self.thresholds, self.thresholds.shape)
-        print("DIMS: ", self.dims, self.dims.shape)
-        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            self.splits_lists = return_split_list_or_decison_trees
-        elif self.encoding_algorithm in [
-            EncodingAlgorithm.DECISION_TREE,
-            EncodingAlgorithm.FULL_PQ,
-        ]:
-            self.decision_trees = return_split_list_or_decison_trees
+        self.splits_lists = split_lists
 
         self.stats_dict["MSE_ERROR"] = report_array[ProtoHashReport.MSE_ERROR]
         self.stats_dict["MSV_ORIG"] = report_array[ProtoHashReport.MSV_ORIG]
@@ -274,13 +228,7 @@ class HalutMatmul:
 
     def to_numpy(self) -> np.ndarray:
         self._check_if_learned()
-        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            splits = self.splits_lists
-        elif self.encoding_algorithm in [
-            EncodingAlgorithm.DECISION_TREE,
-            EncodingAlgorithm.FULL_PQ,
-        ]:
-            splits = self.decision_trees.astype(np.float32)
+        splits = self.splits_lists
 
         store_array = np.array(
             [
@@ -293,7 +241,6 @@ class HalutMatmul:
                         self.optimized,
                         self.quantize_lut,
                         self.upcast_every,
-                        self.encoding_algorithm,
                     ],
                     dtype=np.float32,
                 ),
@@ -306,34 +253,18 @@ class HalutMatmul:
         return store_array
 
     def from_numpy(self, numpy_array: np.ndarray) -> HalutMatmul:
-        config = numpy_array[HalutOfflineStorage.CONFIG]
-        self.encoding_algorithm = int(config[HalutConfig.ENCODING_ALGORITHM])
-        self.encoding_function = ENCODING_FUNCTIONS[self.encoding_algorithm]
-        self.learning_function = LEARNING_FUNCTIONS[self.encoding_algorithm]
+        self.encoding_function = halut_encode_opt
+        self.learning_function = learn_proto_and_hash_function
 
-        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
-            self.splits_lists = splits_numpy
-        elif self.encoding_algorithm in [
-            EncodingAlgorithm.DECISION_TREE,
-            EncodingAlgorithm.FULL_PQ,
-        ]:
-            self.decision_trees = numpy_array[HalutOfflineStorage.HASH_TABLES]
+        splits_numpy = numpy_array[HalutOfflineStorage.HASH_TABLES]
+        self.splits_lists = splits_numpy
 
         self.luts = numpy_array[HalutOfflineStorage.LUT]
-        self.offset = config[HalutConfig.LUT_OFFSET]
-        self.scale = config[HalutConfig.LUT_SCALE]
-        upcast_every = int(config[HalutConfig.UPCAST_EVERY])
-        self.optimized = bool(config[HalutConfig.RUN_OPTIMIZED])
-        self.quantize_lut = bool(config[HalutConfig.QUANTIZE_LUT])
 
-        # if self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
         self.prototypes = numpy_array[HalutOfflineStorage.PROTOTYPES]
-        # assert self.splits_lists and self.luts.shape[1]
         _, C, K = self.luts.shape
         self.C = C
         self.K = K
-        self.upcast_every = min(self.C, upcast_every)
         assert self.upcast_every in (1, 2, 4, 8, 16, 32, 64, 128, 256)
         return self
 
@@ -364,12 +295,7 @@ class HalutMatmul:
 
     def encode(self, A: np.ndarray) -> np.ndarray:
         idxs = np.zeros((A.shape[0], self.C), np.int32)
-        if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-            idxs = halut_encode_opt(A, self.splits_lists)
-        elif self.encoding_algorithm == EncodingAlgorithm.DECISION_TREE:
-            idxs = halut_encode_decision_tree(A, self.decision_trees)
-        elif self.encoding_algorithm == EncodingAlgorithm.FULL_PQ:
-            idxs = halut_encode_pq(A, self.prototypes)
+        idxs = halut_encode_opt(A, self.splits_lists)
         # offsets = [  0  16  32  48  64  80  96 112 128 144 160 176 192 208 224 240]
         offsets = np.arange(self.C, dtype=np.int32) * self.K
         return idxs + offsets
@@ -477,21 +403,13 @@ class HalutMatmul:
             ret_str = f"Shape LUT: {self.luts.shape}, "
             ret_str += f"elements: {reduce(lambda x, y: x * y, self.luts.shape)} \n"
             ret_str += f"Actual storage LUT: {self.luts.nbytes / 1024} KB ({self.luts.dtype}) \n"
-            if self.encoding_algorithm == EncodingAlgorithm.FOUR_DIM_HASH:
-                numpy_array = self.splits_lists
-                ret_str += f"Shaple splits_list: {numpy_array.shape}, "
-                ret_str += (
-                    f"elements: {reduce(lambda x, y: x * y, numpy_array.shape)} \n"
-                )
-                ret_str += (
-                    f"Actual storage splits_list: {numpy_array.nbytes / 1024} KB "
-                    f"({numpy_array.dtype}) \n"
-                )
-            elif self.encoding_algorithm in [
-                EncodingAlgorithm.FOUR_DIM_HASH,
-                EncodingAlgorithm.FULL_PQ,
-            ]:
-                pass  # TODO: add print function here
+            numpy_array = self.splits_lists
+            ret_str += f"Shaple splits_list: {numpy_array.shape}, "
+            ret_str += f"elements: {reduce(lambda x, y: x * y, numpy_array.shape)} \n"
+            ret_str += (
+                f"Actual storage splits_list: {numpy_array.nbytes / 1024} KB "
+                f"({numpy_array.dtype}) \n"
+            )
             return ret_str
         else:
             return "not learned"

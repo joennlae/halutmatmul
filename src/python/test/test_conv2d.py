@@ -21,7 +21,6 @@ def conv2d_helper(
     K: int = 16,
     a: float = 1.0,
     b: float = 0.0,
-    encoding_algorithm: int = hm.EncodingAlgorithm.FOUR_DIM_HASH,
 ) -> None:
     torch.manual_seed(4419)
 
@@ -61,7 +60,6 @@ def conv2d_helper(
         C=C,
         K=K,
         lut_work_const=-1,
-        encoding_algorithm=encoding_algorithm,
     )
 
     state_dict = OrderedDict({"weight": weights})
@@ -73,21 +71,7 @@ def conv2d_helper(
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "hash_function_thresholds": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.HASH_TABLES].astype(np.float32)
-                    if encoding_algorithm
-                    in [
-                        hm.EncodingAlgorithm.FOUR_DIM_HASH,
-                        hm.EncodingAlgorithm.DECISION_TREE,
-                    ]
-                    else store_array[hm.HalutOfflineStorage.PROTOTYPES].astype(
-                        np.float32
-                    )
-                ),
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
-                "halut_config": torch.from_numpy(
-                    store_array[hm.HalutOfflineStorage.CONFIG]
-                ),
                 "thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
@@ -101,7 +85,6 @@ def conv2d_helper(
     print(
         f"params: C: {C}, in: {in_channels}, out: {out_channels}, bias: {bias}, "
         f"input_learn: {input_learn.shape}, input_test: {input_test.shape}, a: {a}, b: {b} "
-        f"encoding_algorithm: {encoding_algorithm}"
     )
     helper_test_module(
         input_test,

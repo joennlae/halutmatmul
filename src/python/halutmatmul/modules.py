@@ -14,10 +14,6 @@ from torch.nn.modules.utils import _pair
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
-from halutmatmul.halutmatmul import (
-    HalutConfig,
-)
-
 
 def create_selection_matrix(
     C: int = 1, K: int = 16, dtype=torch.float16
@@ -140,17 +136,11 @@ class HalutLinear(Linear):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_function_thresholds = Parameter(
-            torch.zeros(1, dtype=torch.bool), requires_grad=False
-        )
         self.lut = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.thresholds = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.dims = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.halut_config = Parameter(
-            torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
-        )
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
@@ -173,9 +163,7 @@ class HalutLinear(Linear):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_function_thresholds",
                 prefix + "lut",
-                prefix + "halut_config",
                 prefix + "thresholds",
                 prefix + "dims",
             )
@@ -183,12 +171,6 @@ class HalutLinear(Linear):
             if not state_dict[prefix + "halut_active"]:
                 return
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_function_thresholds = Parameter(
-                state_dict[prefix + "hash_function_thresholds"]
-                .clone()
-                .to(str(self.weight.device)),
-                requires_grad=False,
-            )
             self.lut = Parameter(
                 state_dict[prefix + "lut"]
                 .clone()
@@ -227,16 +209,14 @@ class HalutLinear(Linear):
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_function_thresholds",
                 prefix + "lut",
-                prefix + "halut_config",
                 prefix + "thresholds",
                 prefix + "dims",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_function_thresholds', '{prefix}lut', "
-                f"'{prefix}halut_config', '{prefix}thresholds', '{prefix}dims' in state_dict"
+                f"not all '{prefix}lut', "
+                f"'{prefix}thresholds', '{prefix}dims' in state_dict"
             )
 
     def get_error(self) -> np.ndarray:
@@ -387,13 +367,9 @@ class HalutConv2d(_ConvNd):
         self.halut_active = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
-        self.hash_function_thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.lut = Parameter(torch.zeros(1), requires_grad=False)
         self.thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.dims = Parameter(torch.zeros(1), requires_grad=False)
-        self.halut_config = Parameter(
-            torch.zeros(HalutConfig.MAX, dtype=torch.float32), requires_grad=False
-        )
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
@@ -414,9 +390,7 @@ class HalutConv2d(_ConvNd):
         if all(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_function_thresholds",
                 prefix + "lut",
-                prefix + "halut_config",
                 prefix + "thresholds",
                 prefix + "dims",
             )
@@ -424,12 +398,6 @@ class HalutConv2d(_ConvNd):
             if not state_dict[prefix + "halut_active"]:
                 return
             # hack to support variable parameter size --> with the cost of double copying :-)
-            self.hash_function_thresholds = Parameter(
-                state_dict[prefix + "hash_function_thresholds"]
-                .clone()
-                .to(str(self.weight.device)),
-                requires_grad=False,
-            )
             self.lut = Parameter(
                 state_dict[prefix + "lut"]
                 .clone()
@@ -468,16 +436,14 @@ class HalutConv2d(_ConvNd):
         elif any(
             k in state_dict.keys()
             for k in (
-                prefix + "hash_function_thresholds",
                 prefix + "lut",
-                prefix + "halut_config",
                 prefix + "tresholds",
                 prefix + "dims",
             )
         ):
             raise Exception(
-                f"not all '{prefix}hash_function_thresholds', '{prefix}lut', "
-                f"'{prefix}halut_config', '{prefix}thresholds', '{prefix}dims' in state_dict"
+                f"not all '{prefix}lut', "
+                f"'{prefix}thresholds', '{prefix}dims' in state_dict"
             )
 
     def get_error(self) -> np.ndarray:
