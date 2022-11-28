@@ -51,8 +51,7 @@ class HalutModuleConfig:
     C = 0
     ROWS = 1
     K = 2
-    ENCODING_ALGORITHM = 3
-    MAX = 4
+    MAX = 3
 
 
 def learn_halut_offline_report(

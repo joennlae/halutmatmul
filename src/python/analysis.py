@@ -176,7 +176,6 @@ def halut_analysis_helper(
             C=v[HalutModuleConfig.C],
             rows=v[HalutModuleConfig.ROWS],
             K=v[HalutModuleConfig.K],
-            encoding_algorithm=v[HalutModuleConfig.ENCODING_ALGORITHM],
         )
     halut_model.run_inference()
     print(halut_model.get_stats())
