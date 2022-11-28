@@ -16,7 +16,6 @@ def analyze_halut(
     r: int,
     data_path: str,
     batch_size: int,
-    encoding_algorithm: int,
     # pylint: disable=unused-argument
     K: int = 16,
 ) -> dict[str, Any]:
@@ -61,9 +60,7 @@ def analyze_halut(
         np.count_nonzero(a_numpy == 0) / (a_numpy.shape[0] * a_numpy.shape[1]) * 100,
     )
     print("range B", np.min(b_numpy), np.max(b_numpy))
-    _, report_dict = hm.learn_halut_offline_report(
-        a_numpy, b_numpy, C, encoding_algorithm=encoding_algorithm
-    )
+    _, report_dict = hm.learn_halut_offline_report(a_numpy, b_numpy, C)
 
     report_dict["layer_name"] = l
     report_dict["zeros_percentage"] = (
@@ -91,16 +88,14 @@ if __name__ == "__main__":
     report_dicts = []
     layer_name = layers[6]
     for layer_name in layers:
-        for algo in [0, 1]:
-            report = analyze_halut(
-                layer_name,
-                64,
-                16,
-                "/scratch2/janniss/resnet_input_data",
-                256,
-                algo,
-            )
-            report_dicts.append(report)
+        report = analyze_halut(
+            layer_name,
+            64,
+            16,
+            "/scratch2/janniss/resnet_input_data",
+            256,
+        )
+        report_dicts.append(report)
     print(report_dicts)
     with open(
         "halut_learning_64.json",
