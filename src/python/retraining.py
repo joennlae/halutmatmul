@@ -225,6 +225,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.01
         checkpoint["lr_scheduler"]["step_size"] = 5
 
+        args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         save_on_master(
             checkpoint,
             os.path.join(
