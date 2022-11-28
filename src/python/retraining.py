@@ -249,9 +249,34 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     return args_checkpoint, idx, len(layers)
 
 
+def model_analysis(args: Any) -> None:
+    (_, model, state_dict, _, _, _, _, _) = load_model(args.checkpoint)
+
+    total_params = 0
+    for k, v in state_dict.items():
+        if ".lut" in k or ".threshold" in k:
+            print(k, v.shape)
+            if len(v.shape) > 1:
+                print(k, v.size(0) * v.size(1) * v.size(2) * 16 / 1024)
+                total_params += v.size(0) * v.size(1) * v.size(2)
+            else:
+                total_params += v.size(0)
+        if ".weight" in k:
+            print(k, v.shape)
+            params_weight = 1
+            for i in range(len(v.shape)):
+                params_weight *= v.size(i)
+            print(k, params_weight)
+    print("total params", total_params)
+    # pylint: disable=import-outside-toplevel
+    from torchinfo import summary
+
+    summary(model, input_size=(1, 3, 32, 32), depth=4)
+
+
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-reformulated"
+    MODEL_NAME_EXTENSION = "cifar10-reformulated-2"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -282,8 +307,14 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/retrained_checkpoint.pth"
+            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/checkpoint_base_100.pth"
+            # f"/scratch2/janniss/model_checkpoints/cifar10/checkpoint.pth"
         ),
+    )
+    parser.add_argument(
+        "-analysis",
+        action="store_true",
+        help="analysis",
     )
     # distributed training parameters
     parser.add_argument(
@@ -297,6 +328,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    if args.analysis:
+        print(
+            args.checkpoint,
+        )
+        model_analysis(args)
+        sys.exit(0)
+
     utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
     # start with retraining checkpoint
     if args.rank == 0:
@@ -306,7 +344,7 @@ if __name__ == "__main__":
         return_values = [None, None, None]
     torch.cuda.set_device(args.gpu)
     torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
-    TRAIN_EPOCHS = 25
+    TRAIN_EPOCHS = 15
     args_checkpoint = return_values[0]
     idx = return_values[1]
     total = return_values[2]
@@ -317,6 +355,7 @@ if __name__ == "__main__":
     args_checkpoint.distributed = args.distributed  # type: ignore
     args_checkpoint.dist_backend = args.dist_backend  # type: ignore
     args_checkpoint.workers = 0  # type: ignore
+    args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     for i in range(idx, total):  # type: ignore
         args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS  # type: ignore
         args_checkpoint.resume = (  # type: ignore
