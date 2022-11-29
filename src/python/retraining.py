@@ -391,7 +391,7 @@ if __name__ == "__main__":
             torch.distributed.barrier()  # type: ignore
         # pylint: disable=line-too-long
         args.checkpoint = f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"  # type: ignore
-        if args.rank == 0:
+        if args.single or args.rank == 0:
             shutil.copy(
                 os.path.join(args_checkpoint.output_dir, "checkpoint.pth"),  # type: ignore
                 args.checkpoint,
