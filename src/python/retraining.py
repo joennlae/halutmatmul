@@ -283,7 +283,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-2"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -323,6 +323,11 @@ if __name__ == "__main__":
         action="store_true",
         help="analysis",
     )
+    parser.add_argument(
+        "-single",
+        action="store_true",
+        help="run in non distributed mode",
+    )
     # distributed training parameters
     parser.add_argument(
         "--world-size", default=1, type=int, help="number of distributed processes"
@@ -342,25 +347,33 @@ if __name__ == "__main__":
         model_analysis(args)
         sys.exit(0)
 
-    utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
-    # start with retraining checkpoint
-    if args.rank == 0:
+    if args.single:
+        args.gpu = args.cuda_id
         args_checkpoint, idx, total = run_retraining(args)
-        return_values = [args_checkpoint, idx, total]
+        args_checkpoint.distributed = False
+        args_checkpoint.world_size = 1
+        args_checkpoint.rank = 0
+        args_checkpoint.gpu = args.cuda_id
     else:
-        return_values = [None, None, None]
-    torch.cuda.set_device(args.gpu)
-    torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
+        utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
+        # start with retraining checkpoint
+        if args.rank == 0:
+            args_checkpoint, idx, total = run_retraining(args)
+            return_values = [args_checkpoint, idx, total]
+        else:
+            return_values = [None, None, None]
+        torch.cuda.set_device(args.gpu)
+        torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
+        args_checkpoint = return_values[0]
+        idx = return_values[1]
+        total = return_values[2]
+        # carry over rank, world_size, gpu backend
+        args_checkpoint.rank = args.rank  # type: ignore
+        args_checkpoint.world_size = args.world_size  # type: ignore
+        args_checkpoint.gpu = args.gpu  # type: ignore
+        args_checkpoint.distributed = args.distributed  # type: ignore
+        args_checkpoint.dist_backend = args.dist_backend  # type: ignore
     TRAIN_EPOCHS = 15
-    args_checkpoint = return_values[0]
-    idx = return_values[1]
-    total = return_values[2]
-    # carry over rank, world_size, gpu backend
-    args_checkpoint.rank = args.rank  # type: ignore
-    args_checkpoint.world_size = args.world_size  # type: ignore
-    args_checkpoint.gpu = args.gpu  # type: ignore
-    args_checkpoint.distributed = args.distributed  # type: ignore
-    args_checkpoint.dist_backend = args.dist_backend  # type: ignore
     args_checkpoint.workers = 0  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     for i in range(idx, total):  # type: ignore
@@ -368,14 +381,14 @@ if __name__ == "__main__":
         args_checkpoint.resume = (  # type: ignore
             f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"  # type: ignore
         )
-        torch.distributed.barrier()  # type: ignore
-        # sys_info()
-        torch.cuda.empty_cache()
-        torch.cuda.set_device(args.gpu)
-        torch.distributed.barrier()  # type: ignore
-        # sys_info()
+        if not args.single:
+            torch.distributed.barrier()  # type: ignore
+            torch.cuda.empty_cache()
+            torch.cuda.set_device(args.gpu)
+            torch.distributed.barrier()  # type: ignore
         main(args_checkpoint)
-        torch.distributed.barrier()  # type: ignore
+        if not args.single:
+            torch.distributed.barrier()  # type: ignore
         # pylint: disable=line-too-long
         args.checkpoint = f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"  # type: ignore
         if args.rank == 0:
@@ -385,4 +398,5 @@ if __name__ == "__main__":
             )
             _, idx, total = run_retraining(args, test_only=True)
             _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
-        torch.distributed.barrier()  # type: ignore
+        if not args.single:
+            torch.distributed.barrier()  # type: ignore
