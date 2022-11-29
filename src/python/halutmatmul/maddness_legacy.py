@@ -242,10 +242,11 @@ def learn_proto_and_hash_function(
         all_prototypes += all_prototypes_delta
 
         # check how much improvement we got
-        X_error -= _XW_encoded(A_enc, W, K=K)  # if we fit to X_error
-        mse_res = (X_error * X_error).mean()
-
-        print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
+        # very slow to compute, but useful for debugging
+        # X_error -= _XW_encoded(A_enc, W, K=K)  # if we fit to X_error
+        # mse_res = (X_error * X_error).mean()
+        # print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
+        mse_res = mse_error
 
     ram_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print(
