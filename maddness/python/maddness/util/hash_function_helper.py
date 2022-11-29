@@ -88,7 +88,8 @@ def calculate_loss(
     return X[split_n, dim], bucket_0_error + bucket_1_error
 
 
-@numba.njit(cache=True, parallel=True)
+# this is not working
+@numba.njit(cache=True, parallel=False)
 def optimal_split_val_new(
     X: np.ndarray, dim: int, idxs: np.ndarray
 ) -> tuple[float, float]:
