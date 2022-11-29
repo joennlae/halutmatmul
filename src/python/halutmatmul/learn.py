@@ -67,6 +67,7 @@ def learn_halut(
     if check_is_more_than_enough(C, K, total_rows, a_numpy.shape[1]):
         print("would use too much ram!!")
         # return
+    a_parts = []
     for i in range(1, files_to_load):
         print(
             f"loading file {data_path}/{l}_{batch_size}_{i}_{iterations}{END_STORE_A}"
@@ -74,7 +75,8 @@ def learn_halut(
         a_part = np.load(
             data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
         )
-        a_numpy = np.vstack((a_numpy, a_part))
+        a_parts.append(a_part)
+    a_numpy = np.vstack(a_parts)
     if total_rows > 1000000:
         total_rows = 1000000
     a_numpy = a_numpy[:total_rows]
