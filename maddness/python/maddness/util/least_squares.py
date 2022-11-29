@@ -105,12 +105,10 @@ def _XW_encoded(A_enc, W, K=16):
 
     out = np.zeros((N, M), W.dtype)
 
+    encoded_shifted = A_enc + np.repeat(np.arange(C) * K, N).reshape(N, C)
     for n in range(N):
         for c in range(C):
-            code_left = A_enc[n, c]
-            dim_left = (K * c) + code_left
-            for m in range(M):
-                out[n, m] += W[dim_left, m]
+            out[n, :] += W[encoded_shifted[n, c], :]
 
     return out
 
