@@ -150,15 +150,16 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     K = 16
     rows = -1  # subsampling
     if not test_only:
-        c_ = 64
+        c_base = 32
+        c_ = c_base
         if "layer2" in next_layer:
-            c_ = 128
+            c_ = 2 * c_base
         elif "layer3" in next_layer:
-            c_ = 256
+            c_ = 4 * c_base
         elif "layer4" in next_layer:
-            c_ = 512
+            c_ = 8 * c_base
         if "downsample" in next_layer:
-            c_ = 64
+            c_ = c_base
         modules = {next_layer: [c_, rows, K]} | halut_modules
     else:
         modules = halut_modules
@@ -283,7 +284,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw18"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -306,7 +307,7 @@ if __name__ == "__main__":
         "-resultpath",
         type=str,
         help="result_path",
-        default=f"./results/data/resnet18-{MODEL_NAME_EXTENSION}-e2e-true/",
+        default=f"./results/data/resnet18-{MODEL_NAME_EXTENSION}/",
     )
     parser.add_argument(
         "-checkpoint",
@@ -376,7 +377,7 @@ if __name__ == "__main__":
     TRAIN_EPOCHS = 15
     args_checkpoint.workers = 0  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
-    for i in range(idx, total):  # type: ignore
+    for i in range(idx, total + 1):  # type: ignore
         args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS  # type: ignore
         args_checkpoint.resume = (  # type: ignore
             f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"  # type: ignore
@@ -397,6 +398,7 @@ if __name__ == "__main__":
                 args.checkpoint,
             )
             _, idx, total = run_retraining(args, test_only=True)
-            _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
+            if idx < total:
+                _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
         if not args.single:
             torch.distributed.barrier()  # type: ignore
