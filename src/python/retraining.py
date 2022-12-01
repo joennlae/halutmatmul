@@ -145,12 +145,12 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         halut_modules = {}
     else:
         next_layer_idx = len(halut_modules.keys())
-    next_layer = layers[next_layer_idx]
     # C = int(args.C)
     K = 16
     rows = -1  # subsampling
     if not test_only:
-        c_base = 32
+        next_layer = layers[next_layer_idx]
+        c_base = 64
         c_ = c_base
         if "layer2" in next_layer:
             c_ = 2 * c_base
@@ -224,7 +224,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
         checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 5
+        checkpoint["lr_scheduler"]["step_size"] = 10
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         save_on_master(
@@ -284,7 +284,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw18"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9-2"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -374,7 +374,7 @@ if __name__ == "__main__":
         args_checkpoint.gpu = args.gpu  # type: ignore
         args_checkpoint.distributed = args.distributed  # type: ignore
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
-    TRAIN_EPOCHS = 15
+    TRAIN_EPOCHS = 20
     args_checkpoint.workers = 0  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     for i in range(idx, total + 1):  # type: ignore
