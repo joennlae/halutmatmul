@@ -155,9 +155,7 @@ def traverse_tree(
     b = b.T.reshape((-1, C, 2**depth))
     encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
-    encoding_hard = torch.zeros_like(
-        encoding_soft, memory_format=torch.legacy_contiguous_format
-    ).scatter_(2, index, 1.0)
+    encoding_hard = torch.zeros_like(encoding_soft).scatter_(2, index, 1.0)
     encoding_out = encoding_hard - encoding_soft.detach() + encoding_soft
     return encoding_out.to(torch.float32)
 
@@ -189,8 +187,22 @@ encoded_new = encode_with_traversal(S, B, threshold_table_torch, input_torch_nor
 lut_torch = torch.from_numpy(lut.transpose(0, 1, 2)).to(torch.float32)
 lut_torch.requires_grad = True
 encoded_new = encoded_new.permute((0, 1, 2))
-result_torch = torch.einsum("nij, kij -> nki", [encoded_new, lut_torch])
-result_torch = result_torch.sum(dim=2)
+result_torch = torch.zeros(
+    (encoded_new.shape[0], lut_torch.shape[0]), dtype=torch.float32
+)
+# for m in range(lut_torch.size(0)):
+#     result_torch[:, m] += (
+#         (encoded_new * lut_torch[m].repeat((encoded_new.shape[0], 1, 1)))
+#         .sum(dim=2)
+#         .sum(dim=1)
+#     )
+# result_torch = torch.einsum("nij, kij -> nki", [encoded_new, lut_torch])
+# result_torch = result_torch.sum(dim=2)
+for i in range(2):
+    M = lut_torch.size(0)
+    result_torch[:, (M // 2) * i : (M // 2) * (i + 1)] = torch.einsum(
+        "nij, kij -> nki", [encoded_new, lut_torch[(M // 2) * i : (M // 2) * (i + 1)]]
+    ).sum(dim=2)
 
 loss = result_torch.sigmoid().prod()
 loss.backward()
