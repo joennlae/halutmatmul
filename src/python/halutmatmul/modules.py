@@ -103,8 +103,24 @@ def halut_matmul_forward(
     ).scatter_(2, index, 1.0)
     E = encoding_hard - encoding_soft.detach() + encoding_soft
     # decoding
-    result = torch.einsum("nij, kij -> nki", [E, L])
-    result = result.sum(dim=2)
+    result = torch.zeros(
+        [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
+    )
+    # # for m in range(L.size(0)):
+    # #     result[:, m] += (E * L[m].repeat((E.shape[0], 1, 1))).sum(dim=2).sum(dim=1)
+    split_factor = 4
+    for i in range(split_factor):
+        M = L.size(0)
+        result[
+            :, (M // split_factor) * i : (M // split_factor) * (i + 1)
+        ] = torch.einsum(
+            "nij, kij -> nki",
+            [E, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
+        ).sum(
+            dim=2
+        )
+    # result = torch.einsum("nij, kij -> nki", [E, L])
+    # result = result.sum(dim=2)
     return result
 
 
