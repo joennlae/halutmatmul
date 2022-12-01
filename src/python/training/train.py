@@ -48,6 +48,7 @@ def train_one_epoch(
     ):
         start_time = time.time()
         image, target = image.to(device), target.to(device)
+        image = image.half()
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
             loss = criterion(output, target)
@@ -90,6 +91,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix="")
     num_processed_samples = 0
     with torch.inference_mode():
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
+            image = image.half()
             image = image.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             output = model(image)
@@ -318,6 +320,7 @@ def main(args):
         checkpoint = torch.load(args.resume, map_location="cpu")
         # load to update halut deactivated layers
         model.load_state_dict(checkpoint["model"])
+    model.half()
     model.to(device)
 
     if args.distributed and args.sync_bn:
