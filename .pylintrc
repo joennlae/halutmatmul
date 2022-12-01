@@ -6,7 +6,7 @@ jobs=4
 ignore-paths=^maddness/python/joblib/.*$,
              ^src/python/results/*$,
 
-ignore-patterns=.*\.json,.*\.pth,.*\.core,.*\.sh,.*\.log,.*\.txt,
+ignore-patterns=.*\.json,.*\.pth,.*\.core,.*\.sh,.*\.log,.*\.txt,.*\.npy
 # init-hook='import sys; sys.path.append("./maddness/python/")'
 
 [FORMAT]
