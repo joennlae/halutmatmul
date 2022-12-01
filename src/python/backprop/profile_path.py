@@ -27,7 +27,7 @@ print(input.shape, T.shape, dims.shape, L.shape, S.shape, B.shape)
 times = []
 memory_allocated = []
 memory_reserved = []
-for i in range(10):
+for i in range(500):
     start_event = torch.cuda.Event(enable_timing=True)
     end_event = torch.cuda.Event(enable_timing=True)
     start_event.record()  # type: ignore
@@ -42,15 +42,19 @@ for i in range(10):
     times.append(elapsed_time_ms)
     memory_allocated.append(torch.cuda.max_memory_allocated(torch_device))
     print(torch.cuda.max_memory_allocated(torch_device))
-    memory_reserved.append(torch.cuda.memory_reserved(torch_device))
+    memory_reserved.append(torch.cuda.max_memory_reserved(torch_device))
     print(torch.cuda.max_memory_reserved(torch_device))
 
     del out
 
-print("all times", times, memory_allocated, memory_reserved)
-print("mean time", np.mean(times[1:]))
-print("memory", memory_allocated[0] / 1000 / 1000, "MiB")
+print("mean time", np.mean(times[100:]))
+print("memory reserved", memory_reserved[0] / 1000 / 1000, "MiB")
+print("memory allocated", memory_allocated[0] / 1000 / 1000, "MiB")
 
 # current numbers on my machine
 # mean time 0.4418311085965898
 # memory 10210.524672 MiB
+
+# mean time 75.02608726501465
+# memory reserved 10708.058112 MiB
+# memory allocated 10210.524672 MiB
