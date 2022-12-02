@@ -32,6 +32,7 @@ def load_model(
 ]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
+    args.batch_size = 48
     args.distributed = False
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
@@ -160,6 +161,8 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             c_ = 8 * c_base
         if "downsample" in next_layer:
             c_ = c_base
+        if "fc" in next_layer:
+            c_ = 4 * c_base  # fc.weight = [512, 10]
         modules = {next_layer: [c_, rows, K]} | halut_modules
     else:
         modules = halut_modules
@@ -224,7 +227,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
         checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 10
+        checkpoint["lr_scheduler"]["step_size"] = 7
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         save_on_master(
@@ -284,7 +287,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9-2"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9-b48"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
