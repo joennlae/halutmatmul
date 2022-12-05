@@ -151,7 +151,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     rows = -1  # subsampling
     if not test_only:
         next_layer = layers[next_layer_idx]
-        c_base = 64
+        c_base = 32
         c_ = c_base
         if "layer2" in next_layer:
             c_ = 2 * c_base
@@ -257,6 +257,9 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     ) as fp:
         json.dump(halut_model.get_stats(), fp, sort_keys=True, indent=4)
     idx = len(halut_model.halut_modules.keys())
+
+    del model
+    torch.cuda.empty_cache()
     return args_checkpoint, idx, len(layers)
 
 
@@ -287,7 +290,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw9-b48"
+    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw18-b64"
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -394,6 +397,7 @@ if __name__ == "__main__":
         if not args.single:
             torch.distributed.barrier()  # type: ignore
         # pylint: disable=line-too-long
+        torch.cuda.empty_cache()
         args.checkpoint = f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"  # type: ignore
         if args.single or args.rank == 0:
             shutil.copy(
@@ -401,7 +405,9 @@ if __name__ == "__main__":
                 args.checkpoint,
             )
             _, idx, total = run_retraining(args, test_only=True)
+            torch.cuda.empty_cache()
             if idx < total:
                 _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
+        torch.cuda.empty_cache()
         if not args.single:
             torch.distributed.barrier()  # type: ignore
