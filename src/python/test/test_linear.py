@@ -44,7 +44,7 @@ def linear_helper(
     )
 
     halutmatmul_module = HalutLinear(
-        in_features=in_features, out_features=out_features, bias=bias
+        in_features=in_features, out_features=out_features, bias=bias, split_factor=1
     )
     state_dict = OrderedDict({"weight": weights})
     if bias:

@@ -50,6 +50,7 @@ def conv2d_helper(
         stride=stride,
         bias=bias,
         groups=groups,
+        split_factor=1,
     )
     input_a = halutmatmul_module.transform_input(input_learn)
     input_b = halutmatmul_module.transform_weight(weights)
