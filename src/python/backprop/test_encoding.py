@@ -26,12 +26,15 @@ def test_encoding(C=64):
     #             )
 
     # load data
-    data_path = "/usr/scratch2/vilan1/janniss/halut/resnet18-cifar10-same-compression"
+    data_path = (
+        "/usr/scratch2/vilan2/janniss/halut/resnet18-cifar10-same-compression-cw9-b48"
+    )
     layers_to_test = [
         "layer1.1.conv2",
         "layer2.1.conv2",
         "layer3.1.conv2",
         "layer4.1.conv2",
+        "fc",
     ]
     l = "layer2.1.conv2"
     error_numbers = []
@@ -40,7 +43,7 @@ def test_encoding(C=64):
     bincount_c = []
     error_per_c_k_all = []
     for l in layers_to_test:
-        batch_size = 64
+        batch_size = 48
         files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
         print(files)
         configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
@@ -184,7 +187,7 @@ def run_tests():
         [all_errors, all_zero_percentage, all_bincount, all_bincount_c, all_error_c_k]
     )
     print(store_array)
-    np.save("store_array_all.npy", store_array)
+    np.save("store_array_all_w_fc.npy", store_array)
 
 
 # pylint: disable=line-too-long
@@ -312,7 +315,7 @@ def annotate_heatmap(
 
 
 def plot():
-    loaded = np.load("store_array_all.npy", allow_pickle=True)
+    loaded = np.load("store_array_all_w_fc.npy", allow_pickle=True)
     print(loaded.shape)
     all_errors = loaded[0]
     all_zero_percentage = loaded[1]
@@ -324,6 +327,7 @@ def plot():
         (100 - np.array(all_zero_percentage)) / 100
     )
     print(zero_scaled_error)
+    print(all_zero_percentage)
 
     # plot error
     # line plot for zero scaled error and non scaled error
@@ -362,6 +366,13 @@ def plot():
             linestyle="--",
         )
         ax.plot(
+            Cs,
+            values[:, 4],
+            label="fc",
+            marker="o",
+            linestyle="--",
+        )
+        ax.plot(
             Cs[:4],
             values[[0, 1, 2, 3], [0, 1, 2, 3]],
             label="CW18",
@@ -376,7 +387,11 @@ def plot():
             linestyle="dotted",
         )
         ax.set_xlabel("Number of Codebooks")
-        ax.set_ylabel("Encoding Error (scaled for zero values)")
+        ax.set_ylabel(
+            "Encoding Error" + " (scaled for zero values)"
+            if name == "zero_scaled"
+            else ""
+        )
         ax.set_title("Encoding Error for different number of codebooks")
         ax.set_xscale("log")
         ax.set_xticks(Cs)
@@ -429,6 +444,7 @@ def plot():
     fig, axes = plt.subplots(2, 2, figsize=(17, 8))
     fig.subplots_adjust(top=0.7)
     colormaps = ["Blues", "Oranges", "Greens", "Reds"]
+
     for i, ax in enumerate([item for sublist in axes for item in sublist]):
         plot_array = np.zeros((len(Cs), K))
         looper = np.array(all_bincount[:, i])
@@ -436,6 +452,10 @@ def plot():
             looper[c] = np.append(looper[c], [0 for _ in range(K - len(looper[c]))])
             plot_array[c, :] = looper[c]
         plot_array = plot_array / np.atleast_2d(Cs).T.repeat(K, axis=1)
+        all_vals = np.sum(plot_array, axis=1)
+        print("all vals", all_vals)
+        percentage_array = (plot_array / all_vals[0]) * 100
+        print("percentage array", percentage_array)
         _, _ = heatmap(
             plot_array,
             [str(x) for x in np.array(Cs)],
@@ -444,6 +464,16 @@ def plot():
             cmap=colormaps[i],
             cbarlabel="# encoded inputs",
         )
+        for k in range(percentage_array.shape[0]):
+            for j in range(percentage_array.shape[1]):
+                ax.text(
+                    j,
+                    k,
+                    f"{percentage_array[k][j]:.0f}",
+                    ha="center",
+                    va="center",
+                    color="w" if percentage_array[k][j] > 40 else "black",
+                )
         ax.set_title("layer" + str(i + 1) + ".1.conv2")
     fig.tight_layout()
     fig.suptitle("# of encoded inputs in each prototype for different Cs", fontsize=20)
@@ -454,6 +484,44 @@ def plot():
         "results/figures/bincount_heatmap_all.png", bbox_inches="tight", dpi=600
     )
 
+    fig, axes = plt.subplots(2, 2, figsize=(17, 8))
+    fig.subplots_adjust(top=0.7)
+    colormaps = ["Blues", "Oranges", "Greens", "Reds"]
+
+    for i, ax in enumerate([item for sublist in axes for item in sublist]):
+        plot_array = np.zeros((len(Cs), K))
+        looper = np.array(all_error_c_k[:, i])
+        for c in range(len(Cs)):
+            plot_array[c, :] = np.sum(looper[c], axis=0)
+        all_vals = np.sum(plot_array, axis=1)
+        print("all vals", all_vals)
+        percentage_array = (
+            plot_array / np.atleast_2d(all_vals).T.repeat(K, axis=1)
+        ) * 100
+        print("percentage array", percentage_array)
+        _, _ = heatmap(
+            percentage_array,
+            [str(x) for x in np.array(Cs)],
+            [str(x) for x in np.arange(K) + 1],
+            ax=ax,
+            cmap=colormaps[i],
+            cbarlabel="% of Total Encoding Error",
+        )
+        for k in range(percentage_array.shape[0]):
+            for j in range(percentage_array.shape[1]):
+                ax.text(
+                    j,
+                    k,
+                    f"{percentage_array[k][j]:.0f}",
+                    ha="center",
+                    va="center",
+                    color="w" if percentage_array[k][j] > 40 else "black",
+                )
+        ax.set_title("layer" + str(i + 1) + ".1.conv2")
+    fig.tight_layout()
+    fig.suptitle("Total Encoding Error Normalized per C", fontsize=20)
+    plt.savefig("results/figures/error_heatmap_all.pdf", bbox_inches="tight", dpi=600)
+    plt.savefig("results/figures/error_heatmap_all.png", bbox_inches="tight", dpi=600)
     # plot error
     print(all_error_c_k.shape)
     print(all_error_c_k[0])
