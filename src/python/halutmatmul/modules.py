@@ -91,6 +91,7 @@ def halut_matmul_forward(
     B: torch.Tensor,
     C: int = 32,
     K: int = 16,
+    split_factor: int = 4,
 ) -> torch.Tensor:
     # encoding
     h = S.mm(input[:, dims].T) - T.unsqueeze(1)
@@ -108,7 +109,6 @@ def halut_matmul_forward(
     )
     # # for m in range(L.size(0)):
     # #     result[:, m] += (E * L[m].repeat((E.shape[0], 1, 1))).sum(dim=2).sum(dim=1)
-    split_factor = 4
     for i in range(split_factor):
         M = L.size(0)
         result[
@@ -141,6 +141,7 @@ class HalutLinear(Linear):
         bias: bool = True,
         device: Union[str, Any] = None,
         dtype: Union[str, Any] = None,
+        split_factor: int = 4,
     ) -> None:
         super().__init__(
             in_features=in_features,
@@ -170,6 +171,7 @@ class HalutLinear(Linear):
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
+        self.split_factor = split_factor
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
@@ -282,6 +284,7 @@ class HalutLinear(Linear):
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
+                self.split_factor,
             )
             if self.bias is not None:
                 output += self.bias.t().repeat(*(*output.shape[:-1], 1))
@@ -360,6 +363,7 @@ class HalutConv2d(_ConvNd):
         padding_mode: str = "zeros",  # TODO: refine this type
         device: Union[Any, None] = None,
         dtype: Union[Any, None] = None,
+        split_factor: int = 4,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         kernel_size_ = _pair(kernel_size)
@@ -398,6 +402,7 @@ class HalutConv2d(_ConvNd):
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
+        self.split_factor = split_factor
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     def state_dict_hook(
@@ -561,6 +566,7 @@ class HalutConv2d(_ConvNd):
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
+                self.split_factor
             )
 
             output = self.transform_output(ret_tensor, _input)
