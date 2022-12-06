@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import sys
 from typing import Any, Optional
-
+import pandas as pd
 import torch
 
 from models.resnet import ResNet18_Weights, resnet18
@@ -263,25 +263,105 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     return args_checkpoint, idx, len(layers)
 
 
+# pylint: disable=consider-iterating-dictionary
 def model_analysis(args: Any) -> None:
     (_, model, state_dict, _, _, _, _, _) = load_model(args.checkpoint)
 
     total_params = 0
+    prev_params = 0
+    all_results = {}
+    print("model", model)
     for k, v in state_dict.items():
+        layer = ".".join(k.split(".")[:-1])
+        if (
+            "bn" in layer or "downsample.1" in layer or "conv1" == layer
+        ):  # downsample.1 = bn
+            continue
+        if layer not in all_results.keys():
+            all_results[layer] = {}
         if ".lut" in k or ".threshold" in k:
             print(k, v.shape)
-            if len(v.shape) > 1:
-                print(k, v.size(0) * v.size(1) * v.size(2) * 16 / 1024)
-                total_params += v.size(0) * v.size(1) * v.size(2)
-            else:
-                total_params += v.size(0)
+            type_ = k.split(".")[-1]
+            all_results[layer]["name"] = layer
+            all_results[layer][f"{type_}_shape"] = v.shape
+            all_results[layer][f"{type_}_size"] = v.numel() * 2 // 1024
+            all_results[layer][f"{type_}_params"] = v.numel()
+            if type_ == "lut":
+                all_results[layer]["C"] = v.shape[1]
+                all_results[layer]["K"] = v.shape[2]
+                all_results[layer]["M"] = v.shape[0]
+            total_params += v.numel()
         if ".weight" in k:
             print(k, v.shape)
-            params_weight = 1
-            for i in range(len(v.shape)):
-                params_weight *= v.size(i)
+            params_weight = v.numel() * 2 // 1024
+            prev_params += v.numel()
+            all_results[layer]["weight_size"] = v.numel() * 2 // 1024
+            all_results[layer]["weight_params"] = v.numel()
+            all_results[layer]["weight_shape"] = v.shape
+            all_results[layer]["in"] = v.shape[1]
+            all_results[layer]["out"] = v.shape[0]
+            all_results[layer]["kernel_size"] = v.shape[2] if len(v.shape) > 2 else 1
+            all_results[layer]["D"] = (
+                v.shape[1] * all_results[layer]["kernel_size"] ** 2
+            )
             print(k, params_weight)
+    # pylint: disable=consider-using-dict-items
+    for layer in all_results.keys():
+        all_results[layer]["CW"] = all_results[layer]["D"] // all_results[layer]["C"]
+        all_results[layer]["ratio"] = (
+            all_results[layer]["lut_size"] / all_results[layer]["weight_size"]
+        )
     print("total params", total_params)
+    print("prev params", prev_params)
+    print(all_results)
+    df = pd.DataFrame(all_results).T
+    print(df)
+    df_selected = df[
+        [
+            "name",
+            "D",
+            "M",
+            "C",
+            "in",
+            "out",
+            "kernel_size",
+            "CW",
+            "lut_size",
+            "weight_size",
+            # "thresholds_size",
+            "ratio",
+        ]
+    ]
+    cidx = pd.Index(
+        [
+            "Layer Name",
+            "D",
+            "M",
+            "C",
+            "In",
+            "Out",
+            "Kernel",
+            "CW",
+            "LUT [kB]",
+            "Weight [kB]",
+            # "Threshold [kB]",
+            "Ratio",
+        ],
+    )
+    df_selected.columns = cidx
+    styler = df_selected.style
+    styler.format(subset="CW", precision=0).format_index(escape="latex", axis=1).format(
+        subset="Ratio", precision=2
+    ).format_index(escape="latex", axis=0).hide(level=0, axis=0)
+    styler.to_latex(
+        "table_resnet18_cifar10.tex",
+        clines="skip-last;data",
+        convert_css=True,
+        position_float="centering",
+        multicol_align="|c|",
+        hrules=True,
+        # float_format="%.2f",
+    )
     # pylint: disable=import-outside-toplevel
     from torchinfo import summary
 
