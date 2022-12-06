@@ -109,6 +109,7 @@ def halut_matmul_forward(
     )
     # # for m in range(L.size(0)):
     # #     result[:, m] += (E * L[m].repeat((E.shape[0], 1, 1))).sum(dim=2).sum(dim=1)
+    assert L.size(0) % split_factor == 0
     for i in range(split_factor):
         M = L.size(0)
         result[
@@ -566,7 +567,7 @@ class HalutConv2d(_ConvNd):
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
-                self.split_factor
+                self.split_factor,
             )
 
             output = self.transform_output(ret_tensor, _input)

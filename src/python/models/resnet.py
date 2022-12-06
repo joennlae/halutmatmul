@@ -232,7 +232,7 @@ class ResNet(nn.Module):
             block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = HalutLinear(512 * block.expansion, num_classes)
+        self.fc = HalutLinear(512 * block.expansion, num_classes, split_factor=1)
         # nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
