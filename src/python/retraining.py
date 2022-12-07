@@ -158,7 +158,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     rows = -1  # subsampling
     if not test_only:
         next_layer = layers[next_layer_idx]
-        c_base = 32
+        c_base = 64
         c_ = c_base
         if "layer2" in next_layer:
             c_ = 2 * c_base
@@ -377,7 +377,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "imagenet-cw9"
+    MODEL_NAME_EXTENSION = "imagenet-cw9-2"
     TRAIN_EPOCHS = 2
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
@@ -409,7 +409,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/checkpoint_start.pth"
+            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/retrained_checkpoint.pth"
             # f"/scratch2/janniss/model_checkpoints/cifar10/checkpoint.pth"
         ),
     )
@@ -470,6 +470,7 @@ if __name__ == "__main__":
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
     args_checkpoint.workers = 0  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
+    args_checkpoint.simulate = False  # type: ignore
     for i in range(idx, total + 1):  # type: ignore
         args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS  # type: ignore
         args_checkpoint.resume = (  # type: ignore

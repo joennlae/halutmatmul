@@ -12,7 +12,7 @@ from halutmatmul.modules import HalutConv2d, HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
 
-MAX_ROWS_FOR_SUBSAMPLING = 1024 * 256
+MAX_ROWS_FOR_SUBSAMPLING = 1024 * 512
 RUN_ALL_SUBSAMPLING = 4419 * 4419
 
 # pylint: disable=W0212
