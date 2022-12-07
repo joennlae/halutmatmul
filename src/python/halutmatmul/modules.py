@@ -15,6 +15,19 @@ from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
 
+def create_A_matrix_from_dims(
+    dims: torch.Tensor, D: int, C: int, K: int = 16, dtype=torch.float16
+) -> torch.Tensor:
+    assert D % C == 0
+    depth = int(math.sqrt(K))
+    A = torch.zeros((C, D // C, depth), dtype=dtype)
+    dims_reshape = dims.reshape((C, depth)) % (D // C)
+    for c in range(C):
+        for d in range(depth):
+            A[c, dims_reshape[c, d], d] = 1
+    return A
+
+
 def create_selection_matrix(
     C: int = 1, K: int = 16, dtype=torch.float16
 ) -> torch.Tensor:
@@ -103,7 +116,7 @@ def halut_matmul_forward(
         input_tilde = (
             torch.bmm(X_tilde, A).transpose(1, 2).reshape((C * int(math.sqrt(K)), -1)).T
         )
-        h = S.mm(input.mm(input_tilde.T)) - T.unsqueeze(1)
+        h = S.mm(input_tilde.T) - T.unsqueeze(1)
     else:
         raise Exception("Either dims or M must be provided")
     b = B.mm(h.relu())
@@ -224,6 +237,17 @@ class HalutLinear(Linear):
                 .to(torch.int64)
                 .to(str(self.weight.device)),
                 requires_grad=False,
+            )
+            state_dict[prefix + "A"] = create_A_matrix_from_dims(
+                self.dims,
+                self.in_features,
+                self.lut.size(1),
+                self.lut.size(2),
+                self.weight.dtype,
+            ).to(str(self.weight.device))
+            self.A = Parameter(
+                state_dict[prefix + "A"],
+                requires_grad=True,
             )
             state_dict[prefix + "B"] = create_bit_matrix(
                 self.lut.size(1), self.lut.size(2), self.weight.dtype
@@ -458,6 +482,19 @@ class HalutConv2d(_ConvNd):
                 .to(torch.int64)
                 .to(str(self.weight.device)),
                 requires_grad=False,
+            )
+            state_dict[prefix + "A"] = create_A_matrix_from_dims(
+                self.dims,
+                self.in_channels
+                * self.kernel_size[0]
+                * self.kernel_size[1],  # TODO: needs fix when groups > 1
+                self.lut.size(1),
+                self.lut.size(2),
+                self.weight.dtype,
+            ).to(str(self.weight.device))
+            self.A = Parameter(
+                state_dict[prefix + "A"],
+                requires_grad=True,
             )
             state_dict[prefix + "B"] = create_bit_matrix(
                 self.lut.size(1), self.lut.size(2), self.weight.dtype
