@@ -35,7 +35,7 @@ for i in range(500):
     end_event = torch.cuda.Event(enable_timing=True)
     start_event.record()  # type: ignore
 
-    out = halut_matmul_forward(input, T, L, dims, S, B, C, K)
+    out = halut_matmul_forward(input, T, L, S, B, C, K, dims, None)
 
     end_event.record()  # type: ignore
     torch.cuda.synchronize()  # Wait for the events to be recorded!
@@ -46,7 +46,7 @@ for i in range(500):
     del end_event
     start_event = torch.cuda.Event(enable_timing=True)
     end_event = torch.cuda.Event(enable_timing=True)
-    out = halut_matmul_forward(input, T, L, dims, S, B, C, K)
+    out = halut_matmul_forward(input, T, L, S, B, C, K, dims, None)
     loss = out.sum()
     start_event.record()  # type: ignore
     loss.backward()

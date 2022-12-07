@@ -86,15 +86,26 @@ def halut_matmul_forward(
     input: torch.Tensor,
     T: torch.Tensor,
     L: torch.Tensor,
-    dims: torch.Tensor,
     S: torch.Tensor,
     B: torch.Tensor,
     C: int = 32,
     K: int = 16,
+    dims: Optional[torch.Tensor] = None,
+    A: Optional[torch.Tensor] = None,  # [C, D // C, N]
     split_factor: int = 4,
 ) -> torch.Tensor:
     # encoding
-    h = S.mm(input[:, dims].T) - T.unsqueeze(1)
+    if dims is not None:
+        h = S.mm(input[:, dims].T) - T.unsqueeze(1)
+    elif A is not None:
+        assert input.shape[1] % C == 0
+        X_tilde = input.T.reshape((C, -1, input.shape[0])).transpose(1, 2)
+        input_tilde = (
+            torch.bmm(X_tilde, A).transpose(1, 2).reshape((C * int(math.sqrt(K)), -1)).T
+        )
+        h = S.mm(input.mm(input_tilde.T)) - T.unsqueeze(1)
+    else:
+        raise Exception("Either dims or M must be provided")
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, K))
     encoding_soft = torch.nn.Softmax(dim=2)(b)
@@ -143,6 +154,7 @@ class HalutLinear(Linear):
         device: Union[str, Any] = None,
         dtype: Union[str, Any] = None,
         split_factor: int = 4,
+        use_A: bool = False,
     ) -> None:
         super().__init__(
             in_features=in_features,
@@ -167,12 +179,14 @@ class HalutLinear(Linear):
         )
         self.S = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+        self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
         self.split_factor = split_factor
+        self.use_A = use_A
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
@@ -280,11 +294,12 @@ class HalutLinear(Linear):
                 _input,
                 self.thresholds,
                 self.lut,
-                self.dims,
                 self.S,
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
+                self.dims if not self.use_A else None,
+                self.A if self.use_A else None,
                 self.split_factor,
             )
             if self.bias is not None:
@@ -365,6 +380,7 @@ class HalutConv2d(_ConvNd):
         device: Union[Any, None] = None,
         dtype: Union[Any, None] = None,
         split_factor: int = 4,
+        use_A: bool = False,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         kernel_size_ = _pair(kernel_size)
@@ -400,10 +416,12 @@ class HalutConv2d(_ConvNd):
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
         self.S = Parameter(torch.zeros(1), requires_grad=False)
         self.B = Parameter(torch.zeros(1), requires_grad=False)
+        self.A = Parameter(torch.zeros(1), requires_grad=False)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
         self.split_factor = split_factor
+        self.use_A = use_A
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     def state_dict_hook(
@@ -562,11 +580,12 @@ class HalutConv2d(_ConvNd):
                 transformed_input,
                 self.thresholds,
                 self.lut,
-                self.dims,
                 self.S,
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
+                self.dims if not self.use_A else None,
+                self.A if self.use_A else None,
                 self.split_factor,
             )
 
