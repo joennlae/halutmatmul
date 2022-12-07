@@ -8,8 +8,9 @@ import sys
 from typing import Any, Optional
 import pandas as pd
 import torch
+import torchvision
 
-from models.resnet import ResNet18_Weights, resnet18
+from training.timm_model import convert_to_halut
 from training import utils_train
 from training.utils_train import save_on_master, set_weight_decay  # type: ignore[attr-defined]
 from training.train import load_data, main  # type: ignore[attr-defined]
@@ -32,13 +33,14 @@ def load_model(
 ]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
-    args.batch_size = 48
+    args.batch_size = 64
     args.distributed = False
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
     dataset, dataset_test, train_sampler, test_sampler = load_data(
         train_dir, val_dir, args
     )
+    num_classes = len(dataset.classes)
     data_loader = torch.utils.data.DataLoader(  # type: ignore
         dataset,
         batch_size=args.batch_size,  # needs to be lower to work due to error calculations
@@ -55,21 +57,26 @@ def load_model(
         pin_memory=True,
         drop_last=False,
     )
-    if args.model == "resnet18":
-        if args.cifar100:
-            model = resnet18(
-                progress=True,
-                **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
-            )
-        elif args.cifar10:
-            model = resnet18(
-                progress=True,
-                **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
-            )
-        else:
-            model = resnet18(progress=True)
-    else:
-        raise Exception(f"model: {args.model} not supported")
+    # if args.model == "resnet18":
+    #     if args.cifar100:
+    #         model = resnet18(
+    #             progress=True,
+    #             **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
+    #         )
+    #     elif args.cifar10:
+    #         model = resnet18(
+    #             progress=True,
+    #             **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
+    #         )
+    #     else:
+    #         model = resnet18(progress=True)
+    # else:
+    #     raise Exception(f"model: {args.model} not supported")
+    # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
+    model = torchvision.models.get_model(
+        args.model, pretrained=True, num_classes=num_classes
+    )
+    convert_to_halut(model)
     model.load_state_dict(checkpoint["model"])
 
     halut_modules = (
@@ -114,7 +121,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     model.to(args.gpu)
 
     original_stdout = sys.stdout
-    with open("resnet18.txt", "w") as f:
+    with open("model_output.txt", "w") as f:
         sys.stdout = f  # Change the standard output to the file we created.
         print("model", model)
         sys.stdout = original_stdout
@@ -226,8 +233,8 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
-        checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 7
+        checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.001
+        checkpoint["lr_scheduler"]["step_size"] = 1
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         save_on_master(
@@ -370,7 +377,8 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-same-compression-cw18-b64"
+    MODEL_NAME_EXTENSION = "imagenet-cw9"
+    TRAIN_EPOCHS = 2
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -401,7 +409,7 @@ if __name__ == "__main__":
         help="check_point_path",
         # WILL BE OVERWRITTEN!!!
         default=(
-            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/retrained_checkpoint.pth"
+            f"/scratch2/janniss/model_checkpoints/{MODEL_NAME_EXTENSION}/checkpoint_start.pth"
             # f"/scratch2/janniss/model_checkpoints/cifar10/checkpoint.pth"
         ),
     )
@@ -460,7 +468,6 @@ if __name__ == "__main__":
         args_checkpoint.gpu = args.gpu  # type: ignore
         args_checkpoint.distributed = args.distributed  # type: ignore
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
-    TRAIN_EPOCHS = 20
     args_checkpoint.workers = 0  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     for i in range(idx, total + 1):  # type: ignore

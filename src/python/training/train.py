@@ -19,7 +19,7 @@ sys.path.append(os.getcwd())
 # pylint: disable=wrong-import-position
 from training import transforms, utils_train, presets
 from training.sampler import RASampler
-from models.resnet import resnet18, ResNet18_Weights
+from training.timm_model import convert_to_halut
 
 
 def train_one_epoch(
@@ -301,21 +301,29 @@ def main(args):
     )
 
     print("Creating model")
-    if args.model == "resnet18":
-        if args.cifar100:
-            model = resnet18(
-                progress=True, **{"is_cifar": True, "num_classes": num_classes}
-            )
-        elif args.cifar10:
-            model = resnet18(
-                progress=True, **{"is_cifar": True, "num_classes": num_classes}
-            )
-        else:
-            model = resnet18(progress=True)
-    else:
-        model = torchvision.models.get_model(
-            args.model, weights=args.weights, num_classes=num_classes
-        )
+    # if args.model == "resnet18":
+    #     if args.cifar100:
+    #         model = resnet18(
+    #             progress=True, **{"is_cifar": True, "num_classes": num_classes}
+    #         )
+    #     elif args.cifar10:
+    #         model = resnet18(
+    #             progress=True, **{"is_cifar": True, "num_classes": num_classes}
+    #         )
+    #     else:
+    #         model = resnet18(progress=True)
+
+    # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
+    # state_dict_copy = model.state_dict().copy()
+    # convert_to_halut(model)
+    # model.load_state_dict(state_dict_copy, strict=False)
+
+    model = torchvision.models.get_model(
+        args.model, pretrained=True, num_classes=num_classes
+    )
+    state_dict_copy = model.state_dict().copy()
+    convert_to_halut(model)
+    model.load_state_dict(state_dict_copy, strict=False)
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
         # load to update halut deactivated layers
@@ -469,6 +477,33 @@ def main(args):
         else:
             evaluate(model, criterion, data_loader_test, device=device)
         return
+
+    if args.simulate:
+        for epoch in range(args.start_epoch, args.epochs):
+            if args.distributed:
+                train_sampler.set_epoch(epoch)
+            lr_scheduler.step()
+        if args.output_dir:
+            checkpoint = {
+                "model": model_without_ddp.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "lr_scheduler": lr_scheduler.state_dict(),
+                "epoch": epoch,
+                "args": args,
+            }
+            if halut_modules is not None:
+                checkpoint["halut_modules"] = halut_modules
+            if model_ema:
+                checkpoint["model_ema"] = model_ema.state_dict()
+            if scaler:
+                checkpoint["scaler"] = scaler.state_dict()
+            utils_train.save_on_master(
+                checkpoint, os.path.join(args.output_dir, "model_base.pth")
+            )
+            utils_train.save_on_master(
+                checkpoint, os.path.join(args.output_dir, "checkpoint_base.pth")
+            )
+        return  # comment out to test if training is stable after simulation
 
     print("Start training")
     start_time = time.time()
@@ -647,7 +682,7 @@ def get_args_parser(add_help=True):
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
     parser.add_argument(
         "--output-dir",
-        default="/scratch2/janniss/model_checkpoints/cifar10",
+        default="/scratch2/janniss/model_checkpoints/imagenet",
         type=str,
         help="path to save outputs",
     )
@@ -780,6 +815,12 @@ def get_args_parser(add_help=True):
         "--cifar10",
         action="store_true",
         help="Uses CIFAR10 dataset",
+    )
+
+    parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Simulate the training process",
     )
 
     return parser
