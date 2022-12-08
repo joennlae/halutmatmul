@@ -15,6 +15,7 @@ from training import utils_train
 from training.utils_train import save_on_master, set_weight_decay  # type: ignore[attr-defined]
 from training.train import load_data, main  # type: ignore[attr-defined]
 from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
+from models.resnet import resnet18
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 from halutmatmul.model import HalutHelper
 
@@ -57,26 +58,22 @@ def load_model(
         pin_memory=True,
         drop_last=False,
     )
-    # if args.model == "resnet18":
-    #     if args.cifar100:
-    #         model = resnet18(
-    #             progress=True,
-    #             **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
-    #         )
-    #     elif args.cifar10:
-    #         model = resnet18(
-    #             progress=True,
-    #             **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
-    #         )
-    #     else:
-    #         model = resnet18(progress=True)
-    # else:
-    #     raise Exception(f"model: {args.model} not supported")
-    # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
-    model = torchvision.models.get_model(
-        args.model, pretrained=True, num_classes=num_classes
-    )
-    convert_to_halut(model)
+    if args.cifar100:
+        model = resnet18(
+            progress=True,
+            **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
+        )
+    elif args.cifar10:
+        model = resnet18(
+            progress=True,
+            **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
+        )
+    else:
+        # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
+        model = torchvision.models.get_model(
+            args.model, pretrained=True, num_classes=num_classes
+        )
+        convert_to_halut(model)
     model.load_state_dict(checkpoint["model"])
 
     halut_modules = (
@@ -233,8 +230,10 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
-        checkpoint["optimizer"]["param_groups"][0]["lr"] = 0.001
-        checkpoint["lr_scheduler"]["step_size"] = 1
+        checkpoint["optimizer"]["param_groups"][0][
+            "lr"
+        ] = 0.01  # imagenet 0.001, cifar10 0.01
+        checkpoint["lr_scheduler"]["step_size"] = 7  # imagenet 1, cifar10 7
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         save_on_master(
@@ -377,8 +376,8 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "imagenet-cw9-2"
-    TRAIN_EPOCHS = 2
+    MODEL_NAME_EXTENSION = "cifar10-halut-A"
+    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 20
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
