@@ -21,6 +21,7 @@ def conv2d_helper(
     K: int = 16,
     a: float = 1.0,
     b: float = 0.0,
+    use_A: bool = False,
 ) -> None:
     torch.manual_seed(4419)
 
@@ -51,6 +52,7 @@ def conv2d_helper(
         bias=bias,
         groups=groups,
         split_factor=1,
+        use_A=use_A
     )
     input_a = halutmatmul_module.transform_input(input_learn)
     input_b = halutmatmul_module.transform_weight(weights)
@@ -97,9 +99,9 @@ def conv2d_helper(
 
 
 @pytest.mark.parametrize(
-    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, groups",
+    "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, groups, use_A",
     [
-        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, g)
+        (in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, g, use_A)
         for in_channels in [64, 32]
         for out_channels in [64, 32]
         for image_x_y in [7, 14]
@@ -110,6 +112,7 @@ def conv2d_helper(
         for b in [-0.35]
         for K in [16]  # [8, 16, 32]
         for g in [1]  # only supporting one group for now
+        for use_A in [True, False]
     ],
 )
 def test_conv2d_module(
@@ -123,11 +126,15 @@ def test_conv2d_module(
     a: float,
     b: float,
     groups: int,
+    use_A: bool,
 ) -> None:
     batch_size = 32
 
     if C > out_channels // groups:
         pytest.skip("Not possible due to D < C")
+
+    if use_A and in_channels * kernel_size**2 % C != 0:
+        pytest.skip("Not supported yet when usage of A is enabled")
 
     stride = 1
     conv2d_helper(
@@ -143,4 +150,5 @@ def test_conv2d_module(
         K=K,
         a=a,
         b=b,
+        use_A=use_A,
     )
