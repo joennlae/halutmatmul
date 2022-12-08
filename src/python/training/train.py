@@ -20,6 +20,7 @@ sys.path.append(os.getcwd())
 from training import transforms, utils_train, presets
 from training.sampler import RASampler
 from training.timm_model import convert_to_halut
+from models.resnet import resnet18
 
 
 def train_one_epoch(
@@ -302,28 +303,25 @@ def main(args):
 
     print("Creating model")
     # if args.model == "resnet18":
-    #     if args.cifar100:
-    #         model = resnet18(
-    #             progress=True, **{"is_cifar": True, "num_classes": num_classes}
-    #         )
-    #     elif args.cifar10:
-    #         model = resnet18(
-    #             progress=True, **{"is_cifar": True, "num_classes": num_classes}
-    #         )
-    #     else:
-    #         model = resnet18(progress=True)
-
-    # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
-    # state_dict_copy = model.state_dict().copy()
-    # convert_to_halut(model)
-    # model.load_state_dict(state_dict_copy, strict=False)
-
-    model = torchvision.models.get_model(
-        args.model, pretrained=True, num_classes=num_classes
-    )
-    state_dict_copy = model.state_dict().copy()
-    convert_to_halut(model)
-    model.load_state_dict(state_dict_copy, strict=False)
+    if args.cifar100:
+        model = resnet18(
+            progress=True, **{"is_cifar": True, "num_classes": num_classes}
+        )
+    elif args.cifar10:
+        model = resnet18(
+            progress=True, **{"is_cifar": True, "num_classes": num_classes}
+        )
+    else:
+        # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
+        # state_dict_copy = model.state_dict().copy()
+        # convert_to_halut(model)
+        # model.load_state_dict(state_dict_copy, strict=False)
+        model = torchvision.models.get_model(
+            args.model, pretrained=True, num_classes=num_classes
+        )
+        state_dict_copy = model.state_dict().copy()
+        convert_to_halut(model)
+        model.load_state_dict(state_dict_copy, strict=False)
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
         # load to update halut deactivated layers
