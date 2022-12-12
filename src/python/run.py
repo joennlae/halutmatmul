@@ -68,7 +68,6 @@ def cifar_inference() -> None:
 
 def store_offline_data(
     batch_size: int = 256,
-    iterations: int = 40,
     data_path: str = "/scratch2/janniss/resnet_input_data",
     dataset_path: str = "/scratch2/janniss/imagenet/",
     device_id: int = 1,
@@ -97,7 +96,7 @@ def store_offline_data(
         device=device,
         data_path=data_path,
     )
-    halut_model.store_all(iterations=iterations)
+    halut_model.store_all()
     print(halut_model.get_stats())
 
 
