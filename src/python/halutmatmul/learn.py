@@ -31,21 +31,18 @@ def learn_halut(
     C: int,
     r: int,
     data_path: str,
-    batch_size: int,
     store_path: str,
     K: int = 16,
 ) -> None:
     print("start learning", l, C, r, K)
-    files = glob.glob(data_path + f"/{l}_{batch_size}_*" + END_STORE_A)
+    files = glob.glob(data_path + f"/{l}" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
     print(files)
     print(data_path)
     if len(files) > 1:
         raise Exception("more than one file not supported anymore")
     assert len(files) == 1
-    configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
-    iterations = int(configs_reg[1])
-    a_numpy = np.load(data_path + f"/{l}_{batch_size}_{iterations}" + END_STORE_A)
+    a_numpy = np.load(data_path + f"/{l}" + END_STORE_A)
 
     save_path = store_path + f"/{l}_{C}_{K}_{r}-{a_numpy.shape[1]}.npy"
     _exists = os.path.exists(save_path)
@@ -59,7 +56,7 @@ def learn_halut(
         a_numpy.shape[0] * a_numpy.shape[1] * 4 / (1024 * 1024 * 1024),
         " GB",
     )
-    b_numpy = np.load(data_path + f"/{l}_{batch_size}_{iterations}" + END_STORE_B)
+    b_numpy = np.load(data_path + f"/{l}" + END_STORE_B)
     print(
         "B input: ",
         b_numpy.shape,
@@ -128,7 +125,6 @@ def learn_halut_multi_core(
 def learn_halut_multi_core_dict(
     dict_to_learn: dict[str, list[int]],
     data_path: str,
-    batch_size: int,
     store_path: str,
     amount_of_workers: int = 1,
 ) -> None:
@@ -149,7 +145,6 @@ def learn_halut_multi_core_dict(
             v[hm.HalutModuleConfig.C],
             v[hm.HalutModuleConfig.ROWS],
             data_path,
-            batch_size,
             store_path,
             v[hm.HalutModuleConfig.K],
         )

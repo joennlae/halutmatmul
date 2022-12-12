@@ -20,7 +20,6 @@ RUN_ALL_SUBSAMPLING = 4419 * 4419
 # pylint: disable=W0212
 def write_inputs_to_disk(
     model: torch.nn.Module,
-    batch_size: int,
     iteration: int,
     total_iterations: int,
     store_arrays: dict[str, np.ndarray],
@@ -62,11 +61,16 @@ def write_inputs_to_disk(
                         .cpu()
                         .numpy()
                     )
-                    if prefix + module._get_name() not in store_arrays:
-                        store_arrays[prefix + module._get_name()] = np.zeros(
+                    store_layer_name = prefix[:-1]
+                    print("store_layer_name", store_layer_name)
+                    store_layer_name = store_layer_name.replace("module.", "")
+                    print("store_layer_name_replace", store_layer_name)
+                    # in distributed mode module. is added in the beginning
+                    if store_layer_name not in store_arrays:
+                        store_arrays[store_layer_name] = np.zeros(
                             (effective_rows_stored, np_array_a.shape[1])
                         )
-                    store_arrays[prefix + module._get_name()][
+                    store_arrays[store_layer_name][
                         iteration
                         * effective_store_per_iter : (iteration + 1)
                         * effective_store_per_iter
@@ -90,11 +94,10 @@ def write_inputs_to_disk(
                         np.save(
                             path
                             + "/"
-                            + prefix[:-1]
-                            + f"_{str(batch_size)}_{str(total_iterations)}"
+                            + store_layer_name
                             + (f"_gpu_{str(device_id)}" if distributed else "")
                             + END_STORE_A,
-                            store_arrays[prefix + module._get_name()],
+                            store_arrays[store_layer_name],
                         )
                     module.input_storage_a = None  # type: ignore[assignment]
                 if hasattr(module, "input_storage_b") and iteration == 0:
@@ -103,11 +106,7 @@ def write_inputs_to_disk(
                     )
                     if (distributed and device_id == 0) or not distributed:
                         np.save(
-                            path
-                            + "/"
-                            + prefix[:-1]
-                            + f"_{str(batch_size)}_{str(total_iterations)}"
-                            + END_STORE_B,
+                            path + "/" + store_layer_name + END_STORE_B,
                             np_array_b,
                         )
                 module.input_storage_b = None  # type: ignore[assignment]
@@ -148,6 +147,7 @@ def evaluate_distributed(
     log_suffix="",
 ):
     model.eval()
+    model.half()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
 
@@ -155,6 +155,7 @@ def evaluate_distributed(
     store_arrays = {}
     criterion = torch.nn.CrossEntropyLoss()
     num_processed_samples = 0
+    n_iter = 0
     with torch.inference_mode():
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
             image = image.half()
@@ -180,7 +181,6 @@ def evaluate_distributed(
                 )
                 write_inputs_to_disk(
                     model,
-                    batch_size=batch_size,  # naming only, can have less elements in last iter
                     iteration=n_iter,
                     total_iterations=iterations,
                     store_arrays=store_arrays,
@@ -223,26 +223,16 @@ def evaluate_distributed(
                 read_in_arrays = []
                 for i in range(torch.distributed.get_world_size()):  # type: ignore
                     read_in_arrays.append(
-                        np.load(
-                            data_path
-                            + "/"
-                            + key
-                            + f"_{str(batch_size)}_{str(iterations)}"
-                            + f"_gpu_{str(i)}"
-                            + END_STORE_A
-                        )
+                        np.load(data_path + "/" + key + f"_gpu_{str(i)}" + END_STORE_A)
                     )
                     total_arrays[key] = np.concatenate(read_in_arrays, axis=0)
             for key, value in total_arrays.items():
                 np.save(
-                    data_path
-                    + "/"
-                    + key
-                    + f"_{str(batch_size)}_{str(iterations)}"
-                    + END_STORE_A,
+                    data_path + "/" + key + END_STORE_A,
                     value,
                 )
 
+    torch.distributed.barrier()  # type: ignore
     return metric_logger.acc1.global_avg
 
 
@@ -299,7 +289,6 @@ def evaluate_halut_imagenet(
                 )
                 write_inputs_to_disk(
                     model,
-                    batch_size=batch_size,  # naming only, can have less elements in last iter
                     iteration=n_iter,
                     total_iterations=iterations,
                     store_arrays=store_arrays,
@@ -358,7 +347,6 @@ def eval_halut_kws(
             print("iteration for storage: ", inputs.shape)
             write_inputs_to_disk(
                 model,
-                batch_size=0,  # naming only, can have less elements in last iter
                 iteration=0,
                 total_iterations=1,
                 path=data_path,

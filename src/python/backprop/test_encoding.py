@@ -43,21 +43,9 @@ def test_encoding(C=64):
     bincount_c = []
     error_per_c_k_all = []
     for l in layers_to_test:
-        batch_size = 48
-        files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
+        files = glob.glob(data_path + f"/{l}" + END_STORE_A)
         print(files)
-        configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
-        iterations = int(configs_reg[2])
-        a_parts = []
-        for i in range(1, iterations):
-            print(
-                f"loading file {data_path}/{l}_{batch_size}_{i}_{iterations}{END_STORE_A}"
-            )
-            a_part = np.load(
-                data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
-            )
-            a_parts.append(a_part)
-        a_numpy = np.vstack(a_parts)
+        a_numpy = np.load(data_path + f"/{l}" + END_STORE_A)
         print(a_numpy.shape)
         idx = np.arange(a_numpy.shape[0])
         np.random.shuffle(idx)

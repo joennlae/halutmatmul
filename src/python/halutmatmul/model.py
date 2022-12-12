@@ -207,7 +207,7 @@ class HalutHelper:
 
         evaluate_distributed(
             model=model,
-            data_loader=self.dataset,  # type: ignore
+            data_loader=self.dataset_train,  # type: ignore
             device=self.device,
             is_store=True,
             data_path=self.data_path,
@@ -249,7 +249,6 @@ class HalutHelper:
         learn_halut_multi_core_dict(
             dict_to_learn,
             data_path=self.data_path,
-            batch_size=self.batch_size_store,
             store_path=self.learned_path,
             amount_of_workers=self.workers_offline_training,
         )
