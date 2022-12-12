@@ -1,3 +1,6 @@
+from collections import OrderedDict
+import gc
+import time
 import torch
 import numpy as np
 
@@ -5,68 +8,205 @@ from halutmatmul.modules import (
     halut_matmul_forward,
     create_bit_matrix,
     create_selection_matrix,
+    HalutConv2d,
 )
+import halutmatmul.halutmatmul as hm
 
 # cuda:2, cpu
-torch_device = torch.device("cuda:2")
+torch_device = torch.device("cpu")
 
 C = 512
 M = 512
 K = 16
-input = (
-    torch.rand([64 * 512, 9 * C], requires_grad=True).to(torch.float16).to(torch_device)
+batch_size = 64
+out_channels = 512
+in_channels = 512
+groups = 1
+kernel_size = 3
+stride = 1
+image_x_y = 16
+a = 1.0
+b = 0.0
+
+weights = torch.rand((out_channels, in_channels // groups, kernel_size, kernel_size))
+bias_weights = torch.rand((out_channels))
+input_learn = (torch.rand((batch_size * 2, in_channels, image_x_y, image_x_y)) + b) * a
+
+input_test = (torch.rand((batch_size, in_channels, image_x_y, image_x_y)) + b) * a
+torch_module = torch.nn.Conv2d(
+    in_channels,
+    out_channels,
+    kernel_size=kernel_size,
+    stride=stride,
+    groups=groups,
 )
-T = torch.rand([C * 15], requires_grad=True).to(torch.float16).to(torch_device)
-idx = np.arange(9 * C)
-np.random.shuffle(idx)
-dims = torch.Tensor(np.arange(9 * C)[idx][: 4 * C]).to(torch.int64).to(torch_device)
-L = torch.rand([M, C, K], requires_grad=True).to(torch.float16).to(torch_device)
-S = create_selection_matrix(C=C, dtype=torch.float16).to(torch_device)
-B = create_bit_matrix(C=C, dtype=torch.float16).to(torch_device)
 
-print(input.shape, T.shape, dims.shape, L.shape, S.shape, B.shape)
+halutmatmul_module = HalutConv2d(
+    in_channels,
+    out_channels,
+    kernel_size=kernel_size,
+    stride=stride,
+    groups=groups,
+    split_factor=4,
+    use_A=False,
+)
+input_a = halutmatmul_module.transform_input(input_learn)
+input_b = halutmatmul_module.transform_weight(weights)
 
-times = []
-memory_allocated = []
-memory_reserved = []
-times_backward = []
-for i in range(500):
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
-    start_event.record()  # type: ignore
+# store_array = hm.learn_halut_offline(
+#     input_a.detach().cpu().numpy(),
+#     input_b.detach().cpu().numpy(),
+#     C=C,
+#     K=K,
+#     lut_work_const=-1,
+# )
+#
+# np.save("store_array.npy", store_array)
 
-    out = halut_matmul_forward(input, T, L, S, B, C, K, dims, None)
+store_array = np.load("store_array.npy", allow_pickle=True)
+weights.to(torch_device)
 
-    end_event.record()  # type: ignore
-    torch.cuda.synchronize()  # Wait for the events to be recorded!
-    elapsed_time_ms = start_event.elapsed_time(end_event)
-    print(out.shape)
-    del out
-    del start_event
-    del end_event
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
-    out = halut_matmul_forward(input, T, L, S, B, C, K, dims, None)
-    loss = out.sum()
-    start_event.record()  # type: ignore
-    loss.backward()
-    end_event.record()  # type: ignore
-    torch.cuda.synchronize()  # Wait for the events to be recorded!
-    elapsed_time_ms_backward = start_event.elapsed_time(end_event)
-    print("time", elapsed_time_ms, elapsed_time_ms_backward)
-    times.append(elapsed_time_ms)
-    times_backward.append(elapsed_time_ms_backward)
-    memory_allocated.append(torch.cuda.max_memory_allocated(torch_device))
-    print(torch.cuda.max_memory_allocated(torch_device))
-    memory_reserved.append(torch.cuda.max_memory_reserved(torch_device))
-    print(torch.cuda.max_memory_reserved(torch_device))
+state_dict = OrderedDict({"weight": weights})
+torch_module.load_state_dict(state_dict, strict=False)
+if torch_device.type == "cuda":
+    torch_module.half().to(torch_device)
+    halutmatmul_module.half().to(torch_device)
+state_dict = OrderedDict(
+    state_dict
+    | OrderedDict(
+        {
+            "halut_active": torch.ones(1, dtype=torch.bool).to(torch_device),
+            "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
+            .to(torch_device)
+            .half(),
+            "thresholds": torch.from_numpy(
+                store_array[hm.HalutOfflineStorage.THRESHOLDS]
+            )
+            .to(torch_device)
+            .half(),
+            "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]).to(
+                torch_device
+            ),
+        }
+    )
+)
+halutmatmul_module.load_state_dict(state_dict, strict=False)
 
-    del out
+# pylint: disable=dangerous-default-value
+def get_tensors(only_cuda=False, omit_objs=[]):
+    add_all_tensors = not only_cuda
+    # To avoid counting the same tensor twice, create a dictionary of tensors,
+    # each one identified by its id (the in memory address).
+    tensors = {}
 
-print("mean time", np.mean(times[100:]))
-print("mean time backward", np.mean(times_backward[100:]))
-print("memory reserved", memory_reserved[0] / 1000 / 1000, "MiB")
-print("memory allocated", memory_allocated[0] / 1000 / 1000, "MiB")
+    # omit_obj_ids = [id(obj) for obj in omit_objs]
+
+    def add_tensor(obj):
+        if torch.is_tensor(obj):
+            tensor = obj
+        elif hasattr(obj, "data") and torch.is_tensor(obj.data):
+            tensor = obj.data
+        else:
+            return
+
+        if (only_cuda and tensor.is_cuda) or add_all_tensors:
+            tensors[id(tensor)] = tensor
+
+    for obj in gc.get_objects():
+        try:
+            # Add the obj if it is a tensor.
+            add_tensor(obj)
+            # Some tensors are "saved & hidden" for the backward pass.
+            if hasattr(obj, "saved_tensors") and (id(obj) not in omit_objs):
+                for tensor_obj in obj.saved_tensors:
+                    add_tensor(tensor_obj)
+        except Exception:
+            pass
+            # print("Exception: ", ex)
+            # logger.debug(f"Exception: {str(ex)}")
+    return tensors.values()  # return a list of detected tensors
+
+
+iterations = 100
+times = np.zeros((2, iterations))
+memory_allocated = np.zeros((2, iterations))
+memory_reserved = np.zeros((2, iterations))
+times_backward = np.zeros((2, iterations))
+# input_test = input_test.half().to(torch_device)
+if torch.cuda.is_available():
+    input_test = input_test.half().to(torch_device)
+    for idx, module in enumerate([torch_module, halutmatmul_module]):
+        for i in range(iterations):
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+            start_event.record()  # type: ignore
+            out = module(input_test)
+            end_event.record()  # type: ignore
+            torch.cuda.synchronize()  # Wait for the events to be recorded!
+            elapsed_time_ms = start_event.elapsed_time(end_event)
+            del out
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+            out = module(input_test)
+            loss = out.sum()
+            start_event.record()  # type: ignore
+            loss.backward()
+            end_event.record()  # type: ignore
+            torch.cuda.synchronize()  # Wait for the events to be recorded!
+            elapsed_time_ms_backward = start_event.elapsed_time(end_event)
+            # print("time", elapsed_time_ms, elapsed_time_ms_backward)
+            times[idx, i] = elapsed_time_ms
+            times_backward[idx, i] = elapsed_time_ms_backward
+            memory_allocated[idx, i] = torch.cuda.max_memory_allocated(torch_device)
+            # print(torch.cuda.max_memory_allocated(torch_device))
+            memory_reserved[idx, i] = torch.cuda.max_memory_reserved(torch_device)
+            # print(torch.cuda.max_memory_reserved(torch_device))
+            if i == iterations - 1:
+                tensors = get_tensors()
+                for tensor in tensors:
+                    print(
+                        tensor.shape,
+                        tensor.dtype,
+                        tensor.device,
+                        tensor.is_cuda,
+                        tensor.numel() * tensor.element_size() / 1024 / 1024,
+                    )
+                del tensors
+                del out
+
+if not torch.cuda.is_available():
+    for idx, module in enumerate([torch_module, halutmatmul_module]):
+        for i in range(iterations):
+            start_time = time.time()
+            out = module(input_test)
+            elapsed_time_ms = time.time() - start_time
+            del out
+            out = module(input_test)
+            loss = out.sum()
+            start_time = time.time()
+            loss.backward()
+            elapsed_time_ms_backward = time.time() - start_time
+            print("time", elapsed_time_ms, elapsed_time_ms_backward)
+            times[idx, i] = elapsed_time_ms
+            times_backward[idx, i] = elapsed_time_ms_backward
+            if i == iterations - 1:
+                tensors = get_tensors()
+                for tensor in tensors:
+                    print(
+                        tensor.shape,
+                        tensor.dtype,
+                        tensor.device,
+                        tensor.is_cuda,
+                        tensor.numel() * tensor.element_size() / 1024 / 1024,
+                    )
+                del tensors
+                del out
+
+
+print("mean time", np.mean(times[:, 10:], axis=1))
+print("mean time backward", np.mean(times_backward[:, 10:], axis=1))
+print("memory reserved", memory_reserved[:, 0] / 1000 / 1000, "MiB")
+print("memory allocated", memory_allocated[:, 0] / 1000 / 1000, "MiB")
 
 # current numbers on my machine
 # mean time 0.4418311085965898
@@ -119,3 +259,8 @@ print("memory allocated", memory_allocated[0] / 1000 / 1000, "MiB")
 # mean time backward 335.18721862792967
 # memory reserved 4265.607168 MiB
 # memory allocated 4028.644864 MiB
+
+# mean time [  0.409632   126.24782223]
+# mean time backward [0.87060764 1.43258417]
+# memory reserved [ 322.961408 8547.991552] MiB
+# memory allocated [ 292.353536 8190.75072 ] MiB
