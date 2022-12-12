@@ -12,6 +12,7 @@ def convert_to_halut(model, parent_name=""):
                 child.out_features,
                 bias=child.bias is not None,
                 split_factor=1,
+                use_A=False,
             )
             setattr(model, child_name, halut_module)
         elif isinstance(child, torch.nn.Conv2d) and parent_name != "":
@@ -25,7 +26,8 @@ def convert_to_halut(model, parent_name=""):
                 child.groups,
                 child.bias is not None,
                 child.padding_mode,
-                split_factor=1,
+                split_factor=4,
+                use_A=False,
             )
             setattr(model, child_name, halut_module)
         else:
