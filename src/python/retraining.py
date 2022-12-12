@@ -34,7 +34,7 @@ def load_model(
 ]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
-    args.batch_size = 32
+    args.batch_size = 8
     # args.distributed = False
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
@@ -238,8 +238,8 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         # TODO: make learning rate more adaptive
         checkpoint["optimizer"]["param_groups"][0][
             "lr"
-        ] = 0.01  # imagenet 0.001, cifar10 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 8  # imagenet 1, cifar10 7
+        ] = 0.001  # imagenet 0.001, cifar10 0.01
+        checkpoint["lr_scheduler"]["step_size"] = 1  # imagenet 1, cifar10 7
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         if args.rank == 0:
@@ -383,8 +383,8 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-A-2"
-    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 20
+    MODEL_NAME_EXTENSION = "imagenet-cw9-bs8-sf4-2"
+    TRAIN_EPOCHS = 1  # imagenet 2, cifar10 20
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
