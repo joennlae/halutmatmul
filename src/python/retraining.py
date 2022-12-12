@@ -34,8 +34,8 @@ def load_model(
 ]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
-    args.batch_size = 64
-    args.distributed = False
+    args.batch_size = 32
+    # args.distributed = False
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
     dataset, dataset_test, train_sampler, test_sampler = load_data(
@@ -117,11 +117,11 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     model.cuda()
     model.to(args.gpu)
 
-    original_stdout = sys.stdout
-    with open("model_output.txt", "w") as f:
-        sys.stdout = f  # Change the standard output to the file we created.
-        print("model", model)
-        sys.stdout = original_stdout
+    # original_stdout = sys.stdout
+    # with open("model_output.txt", "w") as f:
+    #     sys.stdout = f  # Change the standard output to the file we created.
+    #     print("model", model)
+    #     sys.stdout = original_stdout
 
     torch.cuda.set_device(args.gpu)
     sys_info()
@@ -140,6 +140,8 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         device=device,
         learned_path=learned_path,
         report_error=True,
+        distributed=args.distributed,
+        device_id=args.gpu,
     )
     halut_model.print_available_module()
     layers = get_layers(model_name)  # type: ignore[arg-type]
@@ -177,7 +179,11 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             rows=v[HalutModuleConfig.ROWS],
             K=v[HalutModuleConfig.K],
         )
+    if args.distributed:
+        torch.distributed.barrier()  # type: ignore
     halut_model.run_inference()
+    if args.distributed:
+        torch.distributed.barrier()  # type: ignore
     print(halut_model.get_stats())
 
     if not test_only:
@@ -233,35 +239,36 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         checkpoint["optimizer"]["param_groups"][0][
             "lr"
         ] = 0.01  # imagenet 0.001, cifar10 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 7  # imagenet 1, cifar10 7
+        checkpoint["lr_scheduler"]["step_size"] = 8  # imagenet 1, cifar10 7
 
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
-        save_on_master(
-            checkpoint,
-            os.path.join(
-                args_checkpoint.output_dir,
-                f"model_halut_{len(halut_model.halut_modules.keys())}.pth",
-            ),
-        )
-        save_on_master(
-            checkpoint,
-            os.path.join(
-                args_checkpoint.output_dir,
-                f"retrained_checkpoint_{len(halut_model.halut_modules.keys())}.pth",
-            ),
-        )
+        if args.rank == 0:
+            save_on_master(
+                checkpoint,
+                os.path.join(
+                    args_checkpoint.output_dir,
+                    f"model_halut_{len(halut_model.halut_modules.keys())}.pth",
+                ),
+            )
+            save_on_master(
+                checkpoint,
+                os.path.join(
+                    args_checkpoint.output_dir,
+                    f"retrained_checkpoint_{len(halut_model.halut_modules.keys())}.pth",
+                ),
+            )
 
     result_base_path = args.resultpath
     if model_name not in result_base_path.lower():
         result_base_path += "/" + model_name + "/"
     Path(result_base_path).mkdir(parents=True, exist_ok=True)
-
-    with open(
-        f"{args.resultpath}/retrained_{len(halut_model.halut_modules.keys())}"
-        f"{'_trained' if test_only else ''}.json",
-        "w",
-    ) as fp:
-        json.dump(halut_model.get_stats(), fp, sort_keys=True, indent=4)
+    if args.rank == 0:
+        with open(
+            f"{args.resultpath}/retrained_{len(halut_model.halut_modules.keys())}"
+            f"{'_trained' if test_only else ''}.json",
+            "w",
+        ) as fp:
+            json.dump(halut_model.get_stats(), fp, sort_keys=True, indent=4)
     idx = len(halut_model.halut_modules.keys())
 
     del model
@@ -376,7 +383,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-A"
+    MODEL_NAME_EXTENSION = "cifar10-halut-A-2"
     TRAIN_EPOCHS = 20  # imagenet 2, cifar10 20
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
@@ -451,16 +458,16 @@ if __name__ == "__main__":
     else:
         utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
         # start with retraining checkpoint
-        if args.rank == 0:
-            args_checkpoint, idx, total = run_retraining(args)
-            return_values = [args_checkpoint, idx, total]
-        else:
-            return_values = [None, None, None]
+        # if args.rank == 0:
+        args_checkpoint, idx, total = run_retraining(args)
+        #     return_values = [args_checkpoint, idx, total]
+        # else:
+        # return_values = [None, None, None]
         torch.cuda.set_device(args.gpu)
-        torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
-        args_checkpoint = return_values[0]
-        idx = return_values[1]
-        total = return_values[2]
+        # torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
+        # args_checkpoint = return_values[0]
+        # idx = return_values[1]
+        # total = return_values[2]
         # carry over rank, world_size, gpu backend
         args_checkpoint.rank = args.rank  # type: ignore
         args_checkpoint.world_size = args.world_size  # type: ignore
@@ -491,10 +498,13 @@ if __name__ == "__main__":
                 os.path.join(args_checkpoint.output_dir, "checkpoint.pth"),  # type: ignore
                 args.checkpoint,
             )
-            _, idx, total = run_retraining(args, test_only=True)
-            torch.cuda.empty_cache()
-            if idx < total:
-                _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
+        if not args.single:
+            torch.distributed.barrier()  # type: ignore
+        _, idx, total = run_retraining(args, test_only=True)
+        torch.cuda.empty_cache()
+        torch.distributed.barrier()  # type: ignore
+        if idx < total:
+            _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
         torch.cuda.empty_cache()
         if not args.single:
             torch.distributed.barrier()  # type: ignore
