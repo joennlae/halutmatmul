@@ -9,6 +9,7 @@ from models.resnet import END_STORE_A, END_STORE_B
 from timm.utils import accuracy
 import models.levit.utils
 from models.dscnn.dataset import AudioGenerator
+from training import utils_train
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
@@ -26,6 +27,8 @@ def write_inputs_to_disk(
     path: str = ".data/",
     additional_dict: Optional[dict[str, int]] = None,
     total_rows_store: int = MAX_ROWS_FOR_SUBSAMPLING,
+    distributed: bool = False,
+    device_id: int = 0,
 ) -> None:
     def store(module: torch.nn.Module, prefix: str = "") -> None:
         if (
@@ -80,6 +83,7 @@ def write_inputs_to_disk(
                         iteration * effective_store_per_iter,
                         " / ",
                         effective_rows_stored,
+                        f"GPU {device_id}" if distributed else "",
                     )
 
                     if iteration == total_iterations - 1:
@@ -88,6 +92,7 @@ def write_inputs_to_disk(
                             + "/"
                             + prefix[:-1]
                             + f"_{str(batch_size)}_{str(total_iterations)}"
+                            + (f"_gpu_{str(device_id)}" if distributed else "")
                             + END_STORE_A,
                             store_arrays[prefix + module._get_name()],
                         )
@@ -96,14 +101,15 @@ def write_inputs_to_disk(
                     np_array_b = (
                         module.input_storage_b.detach().cpu().numpy()  # type: ignore[operator]
                     )
-                    np.save(
-                        path
-                        + "/"
-                        + prefix[:-1]
-                        + f"_{str(batch_size)}_{str(total_iterations)}"
-                        + END_STORE_B,
-                        np_array_b,
-                    )
+                    if (distributed and device_id == 0) or not distributed:
+                        np.save(
+                            path
+                            + "/"
+                            + prefix[:-1]
+                            + f"_{str(batch_size)}_{str(total_iterations)}"
+                            + END_STORE_B,
+                            np_array_b,
+                        )
                 module.input_storage_b = None  # type: ignore[assignment]
         for name, child in module._modules.items():
             if child is not None:
@@ -129,6 +135,115 @@ def get_and_print_layers_to_use_halut(
     del layers
     print(all_layers)
     return all_layers
+
+
+def evaluate_distributed(
+    model: torch.nn.Module,
+    data_loader: DataLoader,
+    device: torch.device,
+    is_store: bool,
+    data_path: str = "./data",
+    device_id: int = 0,
+    print_freq: int = 1,
+    log_suffix="",
+):
+    model.eval()
+    metric_logger = utils_train.MetricLogger(delimiter="  ")
+    header = f"Test: {log_suffix}"
+
+    iterations = len(data_loader)
+    store_arrays = {}
+    criterion = torch.nn.CrossEntropyLoss()
+    num_processed_samples = 0
+    with torch.inference_mode():
+        for image, target in metric_logger.log_every(data_loader, print_freq, header):
+            image = image.half()
+            image = image.to(device, non_blocking=True)
+            target = target.to(device, non_blocking=True)
+            output = model(image)
+            loss = criterion(output, target)
+            # pylint: disable=unbalanced-tuple-unpacking
+            acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
+            # FIXME need to take into account that the datasets
+            # could have been padded in distributed setup
+            batch_size = image.shape[0]
+            metric_logger.update(loss=loss.item())
+            metric_logger.meters["acc1"].update(acc1.item(), n=batch_size)
+            metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
+            num_processed_samples += batch_size
+            if is_store:
+                print(
+                    "iteration for storage: ",
+                    image.shape,
+                    device_id,
+                    f" {n_iter + 1}/{iterations}",
+                )
+                write_inputs_to_disk(
+                    model,
+                    batch_size=batch_size,  # naming only, can have less elements in last iter
+                    iteration=n_iter,
+                    total_iterations=iterations,
+                    store_arrays=store_arrays,
+                    path=data_path,
+                    total_rows_store=MAX_ROWS_FOR_SUBSAMPLING
+                    // torch.distributed.get_world_size(),  # type: ignore
+                    distributed=True,
+                    device_id=device_id,
+                )
+            n_iter = n_iter + 1
+    # gather the stats from all processes
+
+    num_processed_samples = utils_train.reduce_across_processes(num_processed_samples)
+    if (
+        hasattr(data_loader.dataset, "__len__")
+        and len(data_loader.dataset) != num_processed_samples  # type: ignore
+        and torch.distributed.get_rank() == 0  # type: ignore
+    ):
+        # See FIXME above
+        print(
+            f"It looks like the dataset has {len(data_loader.dataset)} samples, "  # type: ignore
+            f"but {num_processed_samples} "
+            "samples were used for the validation, which might bias the results. "
+            "Try adjusting the batch size and / or the world size. "
+            "Setting the world size to 1 is always a safe bet."
+        )
+
+    metric_logger.synchronize_between_processes()
+
+    print(
+        f"{header} Acc@1 {metric_logger.acc1.global_avg:.3f} "
+        f"Acc@5 {metric_logger.acc5.global_avg:.3f}"
+    )
+    torch.distributed.barrier()  # type: ignore
+    if is_store:
+        # merge inputs
+        if device_id == 0:
+            total_arrays = {}
+            for key in store_arrays:
+                read_in_arrays = []
+                for i in range(torch.distributed.get_world_size()):  # type: ignore
+                    read_in_arrays.append(
+                        np.load(
+                            data_path
+                            + "/"
+                            + key
+                            + f"_{str(batch_size)}_{str(iterations)}"
+                            + f"_gpu_{str(i)}"
+                            + END_STORE_A
+                        )
+                    )
+                    total_arrays[key] = np.concatenate(read_in_arrays, axis=0)
+            for key, value in total_arrays.items():
+                np.save(
+                    data_path
+                    + "/"
+                    + key
+                    + f"_{str(batch_size)}_{str(iterations)}"
+                    + END_STORE_A,
+                    value,
+                )
+
+    return metric_logger.acc1.global_avg
 
 
 @torch.no_grad()

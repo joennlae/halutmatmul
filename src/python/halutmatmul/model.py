@@ -13,6 +13,7 @@ from models.helper import (
     RUN_ALL_SUBSAMPLING,
     evaluate_halut_imagenet,
     get_and_print_layers_to_use_halut,
+    evaluate_distributed,
 )
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
@@ -93,6 +94,8 @@ class HalutHelper:
         report_error: bool = False,
         num_workers: int = 8,
         eval_function: eval_func_type = evaluate_halut_imagenet,
+        distributed: bool = False,
+        device_id: int = 0,
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -110,6 +113,8 @@ class HalutHelper:
         self.report_error = report_error
         self.num_workers = num_workers
         self.eval_function = eval_function
+        self.distributed = distributed
+        self.device_id = device_id
 
     def activate_halut_module(
         self,
@@ -152,10 +157,13 @@ class HalutHelper:
         )
         state_dict_to_store = OrderedDict(self.state_dict_base | dict_to_add)
         if dict_to_store:
-            self.run_for_input_storage(
-                state_dict_to_store,
-                additional_dict=dict_to_store,
-            )
+            if self.distributed:
+                self.run_for_input_storage_distributed(state_dict_to_store)
+            else:
+                self.run_for_input_storage(
+                    state_dict_to_store,
+                    additional_dict=dict_to_store,
+                )
 
     def store_all(self) -> None:
         dict_to_add = OrderedDict(
@@ -184,6 +192,26 @@ class HalutHelper:
             additional_dict,
             self.batch_size_store,
             self.num_workers,
+        )
+
+    def run_for_input_storage_distributed(
+        self,
+        state_dict: "OrderedDict[str, torch.Tensor]",
+    ) -> None:
+        self.model.load_state_dict(state_dict, strict=False)
+        self.model.eval()
+
+        model = torch.nn.parallel.DistributedDataParallel(
+            self.model, device_ids=[self.device_id], find_unused_parameters=True
+        )
+
+        evaluate_distributed(
+            model=model,
+            data_loader=self.dataset,  # type: ignore
+            device=self.device,
+            is_store=True,
+            data_path=self.data_path,
+            device_id=self.device_id,
         )
 
     def run_halut_offline_training(self) -> None:
@@ -313,16 +341,19 @@ class HalutHelper:
         self.model.load_state_dict(state_dict_with_halut, strict=False)
         end = timer()
         print("State dict time: %.2f s" % (end - start))
-        top_1_acc, top_5_acc = self.eval_function(
-            self.dataset,
-            self.model,
-            self.device,
-            False,
-            "",
-            None,
-            self.batch_size_inference,
-            self.num_workers,
-        )
-        self.stats["top_1_accuracy"] = top_1_acc
-        self.stats["top_5_accuracy"] = top_5_acc
-        return top_1_acc
+        if self.device_id == 0:
+            top_1_acc, top_5_acc = self.eval_function(
+                self.dataset,
+                self.model,
+                self.device,
+                False,
+                "",
+                None,
+                self.batch_size_inference,
+                self.num_workers,
+            )
+            self.stats["top_1_accuracy"] = top_1_acc
+            self.stats["top_5_accuracy"] = top_5_acc
+            return top_1_acc
+        else:
+            return -1
