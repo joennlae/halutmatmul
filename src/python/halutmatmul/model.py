@@ -26,7 +26,6 @@ eval_func_type = Callable[
         torch.nn.Module,
         torch.device,
         bool,
-        int,
         str,
         Optional[dict[str, int]],
         int,
@@ -145,10 +144,6 @@ class HalutHelper:
 
     def store_inputs(self, dict_to_store: dict[str, int]) -> None:
         print("keys to store", dict_to_store)
-        max_iterations = 1
-        for _, v in dict_to_store.items():
-            if v > max_iterations:
-                max_iterations = v
         dict_to_add = OrderedDict(
             [
                 (k + ".store_input", torch.ones(1, dtype=torch.bool))
@@ -159,11 +154,10 @@ class HalutHelper:
         if dict_to_store:
             self.run_for_input_storage(
                 state_dict_to_store,
-                iterations=max_iterations,
                 additional_dict=dict_to_store,
             )
 
-    def store_all(self, iterations: int = 1) -> None:
+    def store_all(self) -> None:
         dict_to_add = OrderedDict(
             [
                 (k + ".store_input", torch.ones(1, dtype=torch.bool))
@@ -171,12 +165,11 @@ class HalutHelper:
             ]
         )
         state_dict_to_store = OrderedDict(self.state_dict_base | dict_to_add)
-        self.run_for_input_storage(state_dict_to_store, iterations=iterations)
+        self.run_for_input_storage(state_dict_to_store)
 
     def run_for_input_storage(
         self,
         state_dict: "OrderedDict[str, torch.Tensor]",
-        iterations: int = 1,
         additional_dict: Optional[dict[str, int]] = None,
     ) -> None:
         self.model.load_state_dict(state_dict, strict=False)
@@ -187,7 +180,6 @@ class HalutHelper:
             self.model,
             self.device,
             True,
-            iterations,
             self.data_path,
             additional_dict,
             self.batch_size_store,
@@ -224,11 +216,6 @@ class HalutHelper:
                     dict_to_store[k] = RUN_ALL_SUBSAMPLING
                     # just needs to be bigger than in input_images / batch_size
                     # used for subsampling
-                else:
-                    if self.batch_size_store != 0:
-                        dict_to_store[k] = ceil(
-                            args[hm.HalutModuleConfig.ROWS] / self.batch_size_store
-                        )
         self.store_inputs(dict_to_store)
         print(dict_to_learn, dict_to_store)
         learn_halut_multi_core_dict(
@@ -331,7 +318,6 @@ class HalutHelper:
             self.model,
             self.device,
             False,
-            -1,
             "",
             None,
             self.batch_size_inference,

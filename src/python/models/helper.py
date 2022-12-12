@@ -1,4 +1,5 @@
 from typing import Optional, TypeVar, Union
+import math
 import torch
 import numpy as np
 
@@ -12,7 +13,7 @@ from halutmatmul.modules import HalutConv2d, HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
 
-MAX_ROWS_FOR_SUBSAMPLING = 1024 * 512
+MAX_ROWS_FOR_SUBSAMPLING = 1024 * 128
 RUN_ALL_SUBSAMPLING = 4419 * 4419
 
 # pylint: disable=W0212
@@ -21,10 +22,10 @@ def write_inputs_to_disk(
     batch_size: int,
     iteration: int,
     total_iterations: int,
+    store_arrays: dict[str, np.ndarray],
     path: str = ".data/",
     additional_dict: Optional[dict[str, int]] = None,
     total_rows_store: int = MAX_ROWS_FOR_SUBSAMPLING,
-    run_subsampling: bool = False,
 ) -> None:
     def store(module: torch.nn.Module, prefix: str = "") -> None:
         if (
@@ -39,54 +40,57 @@ def write_inputs_to_disk(
                     module, "input_storage_b"
                 )
                 if hasattr(module, "input_storage_a"):
-                    if run_subsampling:  # run subsampling
-                        rows_to_store_during_current_iter = (
-                            total_rows_store // total_iterations
-                        )
-                        rows = module.input_storage_a.shape[0]  # type: ignore[index]
-                        rows = min(rows_to_store_during_current_iter, rows)  # type: ignore
-                        # subsampling
-                        idx = np.arange(rows)
-                        np.random.shuffle(idx)
-                        np_array_a = (
-                            module.input_storage_a[idx[:total_rows_store]]  # type: ignore[index]
-                            .detach()
-                            .cpu()
-                            .numpy()
-                        )
-                        print(
-                            "[SUBSAMPLED] store inputs for module",
-                            prefix + module._get_name(),
-                            np_array_a.shape,
-                            np_array_a.shape[0]
-                            * np_array_a.shape[1]
-                            * 4
-                            / (1024 * 1024 * 1024),
-                            " GB",
-                        )
-                    else:
-                        print(
-                            "store inputs for module",
-                            prefix + module._get_name(),
-                            module.input_storage_a.shape,
-                            module.input_storage_a.shape[0]  # type: ignore[index]
-                            * module.input_storage_a.shape[1]  # type: ignore[index]
-                            * 4
-                            / (1024 * 1024 * 1024),
-                            " GB",
-                        )
-                        np_array_a = (
-                            module.input_storage_a.detach().cpu().numpy()  # type: ignore[operator]
-                        )
-
-                    np.save(
-                        path
-                        + "/"
-                        + prefix[:-1]
-                        + f"_{str(batch_size)}_{str(iteration)}_{str(total_iterations)}"
-                        + END_STORE_A,
-                        np_array_a,
+                    rows_to_store_during_current_iter = math.ceil(
+                        total_rows_store / total_iterations
                     )
+                    rows = module.input_storage_a.shape[0]  # type: ignore[index]
+                    effective_store_per_iter = rows_to_store_during_current_iter
+                    if effective_store_per_iter > rows:
+                        effective_store_per_iter = rows
+                    effective_rows_stored = effective_store_per_iter * total_iterations
+                    # subsampling
+                    idx = np.arange(rows)
+                    np.random.shuffle(idx)
+                    np_array_a = (
+                        module.input_storage_a[  # type: ignore[index]
+                            idx[:effective_store_per_iter]
+                        ]
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )
+                    if prefix + module._get_name() not in store_arrays:
+                        store_arrays[prefix + module._get_name()] = np.zeros(
+                            (effective_rows_stored, np_array_a.shape[1])
+                        )
+                    store_arrays[prefix + module._get_name()][
+                        iteration
+                        * effective_store_per_iter : (iteration + 1)
+                        * effective_store_per_iter
+                    ] = np_array_a
+                    print(
+                        "[SUBSAMPLED] store inputs for module",
+                        prefix + module._get_name(),
+                        np_array_a.shape,
+                        np_array_a.shape[0]
+                        * np_array_a.shape[1]
+                        * 4
+                        / (1024 * 1024 * 1024),
+                        " GB",
+                        iteration * effective_store_per_iter,
+                        " / ",
+                        effective_rows_stored,
+                    )
+
+                    if iteration == total_iterations - 1:
+                        np.save(
+                            path
+                            + "/"
+                            + prefix[:-1]
+                            + f"_{str(batch_size)}_{str(total_iterations)}"
+                            + END_STORE_A,
+                            store_arrays[prefix + module._get_name()],
+                        )
                     module.input_storage_a = None  # type: ignore[assignment]
                 if hasattr(module, "input_storage_b") and iteration == 0:
                     np_array_b = (
@@ -96,7 +100,7 @@ def write_inputs_to_disk(
                         path
                         + "/"
                         + prefix[:-1]
-                        + f"_{str(batch_size)}_{str(iteration)}_{str(total_iterations)}"
+                        + f"_{str(batch_size)}_{str(total_iterations)}"
                         + END_STORE_B,
                         np_array_b,
                     )
@@ -133,7 +137,6 @@ def evaluate_halut_imagenet(
     model: torch.nn.Module,
     device: torch.device,
     is_store: bool = False,
-    iterations: int = 1,
     data_path: str = "./data",
     additional_dict: Optional[dict[str, int]] = None,
     batch_size: int = 128,
@@ -153,13 +156,11 @@ def evaluate_halut_imagenet(
     metric_logger = models.levit.utils.MetricLogger(delimiter="  ")  # type: ignore[attr-defined]
     header = "Test:"
 
-    run_subsampling = False
-    if iterations == RUN_ALL_SUBSAMPLING:
-        run_subsampling = True
-        iterations = len(data_loader)
+    iterations = len(data_loader)
     # switch to evaluation mode
     model.eval()
     n_iter = 0
+    store_arrays = {}
     with torch.inference_mode():
         for images, target in metric_logger.log_every(data_loader, 1, header):
             images = images.to(device, non_blocking=True)
@@ -176,8 +177,6 @@ def evaluate_halut_imagenet(
             metric_logger.meters["acc1"].update(acc1.item(), n=images.shape[0])
             metric_logger.meters["acc5"].update(acc5.item(), n=images.shape[0])
             if is_store:
-                if n_iter > iterations:
-                    break
                 print(
                     "iteration for storage: ",
                     images.shape,
@@ -188,9 +187,9 @@ def evaluate_halut_imagenet(
                     batch_size=batch_size,  # naming only, can have less elements in last iter
                     iteration=n_iter,
                     total_iterations=iterations,
+                    store_arrays=store_arrays,
                     path=data_path,
                     additional_dict=additional_dict,
-                    run_subsampling=run_subsampling,
                 )
             n_iter = n_iter + 1
 
@@ -213,7 +212,6 @@ def eval_halut_kws(
     model: torch.nn.Module,
     device: torch.device,
     is_store: bool = False,
-    iterations: int = 1,
     data_path: str = "./data",
     additional_dict: Optional[dict[str, int]] = None,
     # pylint: disable=unused-argument
@@ -223,6 +221,7 @@ def eval_halut_kws(
     # data = AudioGenerator(mode, self.audio_processor, training_parameters)
     model.eval()
 
+    store_arrays = {}
     with torch.no_grad():
         inputs_, labels_ = data[0]
         inputs = torch.Tensor(inputs_[:, None, :, :]).to(device)
@@ -246,8 +245,9 @@ def eval_halut_kws(
                 model,
                 batch_size=0,  # naming only, can have less elements in last iter
                 iteration=0,
-                total_iterations=iterations,
+                total_iterations=1,
                 path=data_path,
+                store_arrays=store_arrays,
                 additional_dict=additional_dict,
             )
 

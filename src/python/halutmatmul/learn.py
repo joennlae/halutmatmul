@@ -36,57 +36,30 @@ def learn_halut(
     K: int = 16,
 ) -> None:
     print("start learning", l, C, r, K)
-    files = glob.glob(data_path + f"/{l}_{batch_size}_{0}_*" + END_STORE_A)
+    files = glob.glob(data_path + f"/{l}_{batch_size}_*" + END_STORE_A)
     files = [x.split("/")[-1] for x in files]
     print(files)
     print(data_path)
     if len(files) > 1:
-        # will take the one with more
-        # ['layer1.0.conv2_256_0_10_A.npy', 'layer1.0.conv2_256_0_4_A.npy']
-        files.sort()
+        raise Exception("more than one file not supported anymore")
     assert len(files) == 1
     configs_reg = re.findall(r"(?<=_)(\d+)", files[0])
-    iterations = int(configs_reg[2])
-    a_numpy = np.load(data_path + f"/{l}_{batch_size}_{0}_{iterations}" + END_STORE_A)
-    files_to_load = 1
-    if batch_size != 0:
-        files_to_load = ceil(r / batch_size)
-        if r == -1:
-            files_to_load = iterations
-    rows_per_batch = a_numpy.shape[0]
-    total_rows = rows_per_batch
-    if batch_size != 0:
-        total_rows = ceil(rows_per_batch * files_to_load)
+    iterations = int(configs_reg[1])
+    a_numpy = np.load(data_path + f"/{l}_{batch_size}_{iterations}" + END_STORE_A)
 
-    save_path = store_path + f"/{l}_{C}_{K}_{r}-{total_rows}-{a_numpy.shape[1]}.npy"
+    save_path = store_path + f"/{l}_{C}_{K}_{r}-{a_numpy.shape[1]}.npy"
     _exists = os.path.exists(save_path)
     if _exists:
         print("already learned")
         return
 
-    if check_is_more_than_enough(C, K, total_rows, a_numpy.shape[1]):
-        print("would use too much ram!!")
-        # return
-    a_parts = []
-    for i in range(1, files_to_load):
-        print(
-            f"loading file {data_path}/{l}_{batch_size}_{i}_{iterations}{END_STORE_A}"
-        )
-        a_part = np.load(
-            data_path + f"/{l}_{batch_size}_{i}_{iterations}" + END_STORE_A
-        )
-        a_parts.append(a_part)
-    a_numpy = np.vstack(a_parts)
-    if total_rows > 1000000:
-        total_rows = 1000000
-    a_numpy = a_numpy[:total_rows]
     print(
         "A input: ",
         a_numpy.shape,
         a_numpy.shape[0] * a_numpy.shape[1] * 4 / (1024 * 1024 * 1024),
         " GB",
     )
-    b_numpy = np.load(data_path + f"/{l}_{batch_size}_{0}_{iterations}" + END_STORE_B)
+    b_numpy = np.load(data_path + f"/{l}_{batch_size}_{iterations}" + END_STORE_B)
     print(
         "B input: ",
         b_numpy.shape,
