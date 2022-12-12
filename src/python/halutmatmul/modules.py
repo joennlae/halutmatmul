@@ -118,7 +118,7 @@ def halut_matmul_forward(
         )
         h = S.mm(input_tilde.T) - T.unsqueeze(1)
     else:
-        raise Exception("Either dims or M must be provided")
+        raise Exception("Either dims or A must be provided")
     b = B.mm(h.relu())
     b = b.T.reshape((-1, C, K))
     encoding_soft = torch.nn.Softmax(dim=2)(b)
