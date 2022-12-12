@@ -17,7 +17,7 @@ from torchvision.transforms.functional import InterpolationMode
 sys.path.append(os.getcwd())
 
 # pylint: disable=wrong-import-position
-from training import transforms, utils_train, presets
+from training import presets, transforms, utils_train
 from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
@@ -35,12 +35,17 @@ def train_one_epoch(
     scaler=None,
 ):
     model.train()
+    # batch accumulation parameter
+    accum_iter = 8
+    optimizer.zero_grad()
+    loss_total = 0
+
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     metric_logger.add_meter(
         "lr", utils_train.SmoothedValue(window_size=1, fmt="{value}")
     )
     metric_logger.add_meter(
-        "img/s", utils_train.SmoothedValue(window_size=10, fmt="{value}")
+        "img/s", utils_train.SmoothedValue(window_size=10 * accum_iter, fmt="{value}")
     )
 
     header = f"Epoch: [{epoch}]"
@@ -48,13 +53,12 @@ def train_one_epoch(
         metric_logger.log_every(data_loader, args.print_freq, header)
     ):
         start_time = time.time()
-        image, target = image.to(device), target.to(device)
         image = image.half()
+        image, target = image.to(device), target.to(device)
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
             loss = criterion(output, target)
 
-        optimizer.zero_grad()
         if scaler is not None:
             scaler.scale(loss).backward()
             if args.clip_grad_norm is not None:
@@ -64,10 +68,19 @@ def train_one_epoch(
             scaler.step(optimizer)
             scaler.update()
         else:
+            loss = loss / accum_iter
             loss.backward()
+
+            loss_total += loss.item()
+
             if args.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
-            optimizer.step()
+
+            # weights update
+            if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
+                optimizer.step()
+                optimizer.zero_grad()
+                loss_total = 0
 
         if model_ema and i % args.model_ema_steps == 0:
             model_ema.update_parameters(model)
@@ -78,7 +91,7 @@ def train_one_epoch(
         # pylint: disable=unbalanced-tuple-unpacking
         acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
         batch_size = image.shape[0]
-        metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
+        metric_logger.update(loss=loss_total, lr=optimizer.param_groups[0]["lr"])
         metric_logger.meters["acc1"].update(acc1.item(), n=batch_size)
         metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
         metric_logger.meters["img/s"].update(batch_size / (time.time() - start_time))
