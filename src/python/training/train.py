@@ -33,13 +33,15 @@ def train_one_epoch(
     args,
     model_ema=None,
     scaler=None,
+    gradient_accumulation_steps=1,
 ):
     model.train()
     # batch accumulation parameter
-    accum_iter = 8
+    accum_iter = gradient_accumulation_steps
     optimizer.zero_grad()
     loss_total = 0
 
+    # prev_lut = None
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     metric_logger.add_meter(
         "lr", utils_train.SmoothedValue(window_size=1, fmt="{value}")
@@ -70,6 +72,12 @@ def train_one_epoch(
         else:
             loss = loss / accum_iter
             loss.backward()
+
+            # check if diff exists
+            # if prev_lut is not None:
+            #     diff = model.module.layer1[0].conv1.lut - prev_lut
+            #     print("diff", torch.norm(diff).item())
+            # prev_lut = model.module.layer1[0].conv1.lut.clone()
 
             loss_total += loss.item()
 
@@ -258,7 +266,7 @@ def load_data(traindir, valdir, args):
     return dataset, dataset_test, train_sampler, test_sampler
 
 
-def main(args):
+def main(args, gradient_accumulation_steps=1):
     if args.output_dir:
         utils_train.mkdir(args.output_dir)
 
@@ -464,7 +472,9 @@ def main(args):
     halut_modules = None
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
-        model_without_ddp.load_state_dict(checkpoint["model"])
+        # if we activate this then the optimizer references get overwritten!!!!!
+        # for lut, thresholds and so on
+        # model_without_ddp.load_state_dict(checkpoint["model"])
         if not args.test_only:
             optimizer.load_state_dict(checkpoint["optimizer"])
             lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
@@ -531,6 +541,7 @@ def main(args):
             args,
             model_ema,
             scaler,
+            gradient_accumulation_steps=gradient_accumulation_steps,
         )
         lr_scheduler.step()
         evaluate(model, criterion, data_loader_test, device=device)
@@ -552,9 +563,9 @@ def main(args):
                 checkpoint["model_ema"] = model_ema.state_dict()
             if scaler:
                 checkpoint["scaler"] = scaler.state_dict()
-            utils_train.save_on_master(
-                checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth")
-            )
+            # utils_train.save_on_master(
+            #     checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth")
+            # )
             utils_train.save_on_master(
                 checkpoint, os.path.join(args.output_dir, "checkpoint.pth")
             )
