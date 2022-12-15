@@ -166,7 +166,7 @@ class HalutLinear(Linear):
         bias: bool = True,
         device: Union[str, Any] = None,
         dtype: Union[str, Any] = None,
-        split_factor: int = 4,
+        split_factor: int = 1,
         use_A: bool = False,
     ) -> None:
         super().__init__(
@@ -264,6 +264,9 @@ class HalutLinear(Linear):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
+            self.weight.requires_grad = False
+            if self.bias:
+                self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
@@ -512,6 +515,9 @@ class HalutConv2d(_ConvNd):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
+            self.weight.requires_grad = False
+            if self.bias:
+                self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
