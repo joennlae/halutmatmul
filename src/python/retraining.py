@@ -22,6 +22,8 @@ from halutmatmul.model import HalutHelper
 
 def load_model(
     checkpoint_path: str,
+    distributed: bool = False,
+    batch_size: int = 32,
 ) -> tuple[
     str,
     torch.nn.Module,
@@ -34,8 +36,8 @@ def load_model(
 ]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
-    args.batch_size = 8
-    # args.distributed = False
+    args.batch_size = batch_size
+    args.distributed = distributed
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
     dataset, dataset_test, train_sampler, test_sampler = load_data(
@@ -91,7 +93,14 @@ def load_model(
     )
 
 
-def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
+def run_retraining(
+    args: Any,
+    test_only: bool = False,
+    distributed: bool = False,
+    batch_size: int = 32,
+    lr: float = 0.01,
+    lr_step_size: int = 8,
+) -> tuple[Any, int, int]:
     (
         model_name,
         model,
@@ -101,7 +110,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         args_checkpoint,
         halut_modules,
         checkpoint,
-    ) = load_model(args.checkpoint)
+    ) = load_model(args.checkpoint, distributed=distributed, batch_size=batch_size)
 
     learned_path = args.learned
     if model_name not in learned_path.lower():
@@ -116,12 +125,6 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     model_copy = deepcopy(model)
     model.cuda()
     model.to(args.gpu)
-
-    # original_stdout = sys.stdout
-    # with open("model_output.txt", "w") as f:
-    #     sys.stdout = f  # Change the standard output to the file we created.
-    #     print("model", model)
-    #     sys.stdout = original_stdout
 
     torch.cuda.set_device(args.gpu)
     sys_info()
@@ -139,7 +142,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         data_path=halut_data_path,
         device=device,
         learned_path=learned_path,
-        report_error=True,
+        report_error=False,
         distributed=args.distributed,
         device_id=args.gpu,
     )
@@ -156,6 +159,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
     K = 16
     rows = -1  # subsampling
     if not test_only:
+        # TODO: make this more generic
         next_layer = layers[next_layer_idx]
         c_base = 64
         c_ = c_base
@@ -169,6 +173,18 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             c_ = c_base
         if "fc" in next_layer:
             c_ = 4 * c_base  # fc.weight = [512, 10]
+        if "layer2.0.conv1" in next_layer:
+            c_ = c_base
+        if "layer3.0.conv1" in next_layer:
+            c_ = 2 * c_base
+        if "layer4.0.conv1" in next_layer:
+            c_ = 4 * c_base
+        if "layer2.0.donwsample.0" in next_layer:
+            c_ = c_base // 4
+        if "layer3.0.donwsample.0" in next_layer:
+            c_ = c_base // 2
+        if "layer4.0.donwsample.0" in next_layer:
+            c_ = c_base
         modules = {next_layer: [c_, rows, K]} | halut_modules
     else:
         modules = halut_modules
@@ -194,6 +210,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         # ugly hack to port halut active information
         model_copy.load_state_dict(checkpoint["model"])
 
+        print("checkpoint", checkpoint["optimizer"])
         # update optimizer with new parameters
         # pylint: disable=using-constant-test
         if True:
@@ -210,7 +227,9 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
                 if len(custom_keys_weight_decay) > 0
                 else None,
             )
+            print("LENGHT", len(parameters), len(list(model_copy.parameters())))
             opt_name = args_checkpoint.opt.lower()
+            # print("parameters", model.parameters())
             optimizer = torch.optim.SGD(
                 parameters,
                 lr=args_checkpoint.lr,
@@ -229,7 +248,7 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
             opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
                 "param_groups"
             ][0]["momentum"]
-            print(opt_state_dict["param_groups"])
+            print(opt_state_dict["param_groups"], opt_state_dict)
             # ACTIVATE REPLACE AND FREEZE TRAINING
             # optimizer updates
             checkpoint["optimizer"] = opt_state_dict
@@ -238,9 +257,10 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
         # TODO: make learning rate more adaptive
         checkpoint["optimizer"]["param_groups"][0][
             "lr"
-        ] = 0.001  # imagenet 0.001, cifar10 0.01
-        checkpoint["lr_scheduler"]["step_size"] = 1  # imagenet 1, cifar10 7
+        ] = lr  # imagenet 0.001, cifar10 0.01
+        checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
 
+        # sys.exit(0)
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
         if args.rank == 0:
             save_on_master(
@@ -278,7 +298,9 @@ def run_retraining(args: Any, test_only: bool = False) -> tuple[Any, int, int]:
 
 # pylint: disable=consider-iterating-dictionary
 def model_analysis(args: Any) -> None:
-    (_, model, state_dict, _, _, _, _, _) = load_model(args.checkpoint)
+    (_, model, state_dict, _, _, _, _, _) = load_model(
+        args.checkpoint, distributed=False
+    )
 
     total_params = 0
     prev_params = 0
@@ -292,18 +314,20 @@ def model_analysis(args: Any) -> None:
             continue
         if layer not in all_results.keys():
             all_results[layer] = {}
-        if ".lut" in k or ".threshold" in k:
+        if ".lut" in k or ".threshold" in k or ".A" in k:
             print(k, v.shape)
             type_ = k.split(".")[-1]
             all_results[layer]["name"] = layer
             all_results[layer][f"{type_}_shape"] = v.shape
             all_results[layer][f"{type_}_size"] = v.numel() * 2 // 1024
             all_results[layer][f"{type_}_params"] = v.numel()
-            if type_ == "lut":
+            if type_ == "lut" and len(v.shape) == 3:
                 all_results[layer]["C"] = v.shape[1]
                 all_results[layer]["K"] = v.shape[2]
                 all_results[layer]["M"] = v.shape[0]
             total_params += v.numel()
+            if ".A" in k or ".lut" in k:
+                print(k, v)
         if ".weight" in k:
             print(k, v.shape)
             params_weight = v.numel() * 2 // 1024
@@ -320,10 +344,16 @@ def model_analysis(args: Any) -> None:
             print(k, params_weight)
     # pylint: disable=consider-using-dict-items
     for layer in all_results.keys():
-        all_results[layer]["CW"] = all_results[layer]["D"] // all_results[layer]["C"]
-        all_results[layer]["ratio"] = (
-            all_results[layer]["lut_size"] / all_results[layer]["weight_size"]
-        )
+        if hasattr(all_results[layer], "C"):
+            all_results[layer]["CW"] = (
+                all_results[layer]["D"] // all_results[layer]["C"]
+            )
+            all_results[layer]["ratio"] = (
+                all_results[layer]["lut_size"] / all_results[layer]["weight_size"]
+            )
+        else:
+            all_results[layer]["CW"] = 0
+            all_results[layer]["ratio"] = 0
     print("total params", total_params)
     print("prev params", prev_params)
     print(all_results)
@@ -383,8 +413,12 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "imagenet-cw9-bs8-sf4-2"
-    TRAIN_EPOCHS = 1  # imagenet 2, cifar10 20
+    MODEL_NAME_EXTENSION = "cifar10-halut-cw9-proper-now"
+    TRAIN_EPOCHS = 16  # imagenet 2, cifar10 20
+    BATCH_SIZE = 32
+    LR = 0.01  # imagenet 0.001, cifar10 0.01
+    LR_STEP_SIZE = 8
+    GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -450,24 +484,27 @@ if __name__ == "__main__":
 
     if args.single:
         args.gpu = args.cuda_id
-        args_checkpoint, idx, total = run_retraining(args)
+        args_checkpoint, idx, total = run_retraining(
+            args,
+            distributed=False,
+            batch_size=BATCH_SIZE,
+            lr=LR,
+            lr_step_size=LR_STEP_SIZE,
+        )
         args_checkpoint.distributed = False
         args_checkpoint.world_size = 1
         args_checkpoint.rank = 0
         args_checkpoint.gpu = args.cuda_id
     else:
         utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
-        # start with retraining checkpoint
-        # if args.rank == 0:
-        args_checkpoint, idx, total = run_retraining(args)
-        #     return_values = [args_checkpoint, idx, total]
-        # else:
-        # return_values = [None, None, None]
+        args_checkpoint, idx, total = run_retraining(
+            args,
+            distributed=True,
+            batch_size=BATCH_SIZE,
+            lr=LR,
+            lr_step_size=LR_STEP_SIZE,
+        )
         torch.cuda.set_device(args.gpu)
-        # torch.distributed.broadcast_object_list(return_values, src=0)  # type: ignore
-        # args_checkpoint = return_values[0]
-        # idx = return_values[1]
-        # total = return_values[2]
         # carry over rank, world_size, gpu backend
         args_checkpoint.rank = args.rank  # type: ignore
         args_checkpoint.world_size = args.world_size  # type: ignore
@@ -487,7 +524,7 @@ if __name__ == "__main__":
             torch.cuda.empty_cache()
             torch.cuda.set_device(args.gpu)
             torch.distributed.barrier()  # type: ignore
-        main(args_checkpoint)
+        main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
         if not args.single:
             torch.distributed.barrier()  # type: ignore
         # pylint: disable=line-too-long
@@ -500,11 +537,24 @@ if __name__ == "__main__":
             )
         if not args.single:
             torch.distributed.barrier()  # type: ignore
-        _, idx, total = run_retraining(args, test_only=True)
+        _, idx, total = run_retraining(
+            args,
+            test_only=True,
+            distributed=not args.single,
+            batch_size=BATCH_SIZE,
+            lr=LR,
+            lr_step_size=LR_STEP_SIZE,
+        )
         torch.cuda.empty_cache()
         torch.distributed.barrier()  # type: ignore
         if idx < total:
-            _, idx, total = run_retraining(args)  # do not overwrite args_checkpoint
+            _, idx, total = run_retraining(
+                args,
+                distributed=not args.single,
+                batch_size=BATCH_SIZE,
+                lr=LR,
+                lr_step_size=LR_STEP_SIZE,
+            )  # do not overwrite args_checkpoint
         torch.cuda.empty_cache()
         if not args.single:
             torch.distributed.barrier()  # type: ignore
