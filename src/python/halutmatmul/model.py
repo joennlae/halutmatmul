@@ -218,6 +218,8 @@ class HalutHelper:
         dict_to_store: dict[str, int] = dict([])
         dict_to_learn: dict[str, list[int]] = dict([])
         for k, args in self.halut_modules.items():
+            if len(self.state_dict_base[k + ".lut"].shape) > 1:
+                continue
             learned_files = check_file_exists_and_return_path(
                 self.learned_path,
                 k,
@@ -256,6 +258,9 @@ class HalutHelper:
     def prepare_state_dict(self) -> "OrderedDict[str, torch.Tensor]":
         additional_dict: Dict[str, torch.Tensor] = dict([])
         for k, args in self.halut_modules.items():
+            # if layer is already learned, skip
+            if len(self.state_dict_base[k + ".lut"].shape) != 1:
+                continue
             learned_files = check_file_exists_and_return_path(
                 self.learned_path,
                 k,
