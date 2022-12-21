@@ -179,11 +179,11 @@ def run_retraining(
             c_ = 2 * c_base
         if "layer4.0.conv1" in next_layer:
             c_ = 4 * c_base
-        if "layer2.0.donwsample.0" in next_layer:
+        if "layer2.0.downsample.0" in next_layer:
             c_ = c_base // 4
-        if "layer3.0.donwsample.0" in next_layer:
+        if "layer3.0.downsample.0" in next_layer:
             c_ = c_base // 2
-        if "layer4.0.donwsample.0" in next_layer:
+        if "layer4.0.downsample.0" in next_layer:
             c_ = c_base
         modules = {next_layer: [c_, rows, K]} | halut_modules
     else:
@@ -344,7 +344,7 @@ def model_analysis(args: Any) -> None:
             print(k, params_weight)
     # pylint: disable=consider-using-dict-items
     for layer in all_results.keys():
-        if hasattr(all_results[layer], "C"):
+        if "C" in all_results[layer].keys():
             all_results[layer]["CW"] = (
                 all_results[layer]["D"] // all_results[layer]["C"]
             )
@@ -413,12 +413,12 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-cw9-proper-now"
-    TRAIN_EPOCHS = 16  # imagenet 2, cifar10 20
-    BATCH_SIZE = 32
-    LR = 0.01  # imagenet 0.001, cifar10 0.01
-    LR_STEP_SIZE = 8
-    GRADIENT_ACCUMULATION_STEPS = 1
+    MODEL_NAME_EXTENSION = "imagenet-cw9-bs8-sf4-opt"
+    TRAIN_EPOCHS = 2  # imagenet 2, cifar10 20
+    BATCH_SIZE = 8
+    LR = 0.001  # imagenet 0.001, cifar10 0.01
+    LR_STEP_SIZE = 1
+    GRADIENT_ACCUMULATION_STEPS = 8
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
