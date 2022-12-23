@@ -345,7 +345,7 @@ class HalutHelper:
         self.model.load_state_dict(state_dict_with_halut, strict=False)
         end = timer()
         print("State dict time: %.2f s" % (end - start))
-        if self.device_id == 0:
+        if self.device_id == 0 or not self.distributed:
             top_1_acc, top_5_acc = self.eval_function(
                 self.dataset,
                 self.model,

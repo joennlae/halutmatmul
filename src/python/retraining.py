@@ -123,7 +123,6 @@ def run_retraining(
     Path(halut_data_path).mkdir(parents=True, exist_ok=True)
 
     model_copy = deepcopy(model)
-    model.cuda()
     model.to(args.gpu)
 
     torch.cuda.set_device(args.gpu)
@@ -131,6 +130,9 @@ def run_retraining(
     device = torch.device(
         "cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu"
     )
+
+    if not hasattr(args, "distributed"):
+        args.distributed = False
 
     halut_model = HalutHelper(
         model,
@@ -413,9 +415,9 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "imagenet-cw9-bs8-sf4-opt"
+    MODEL_NAME_EXTENSION = "cifar10-halut-cw9-proper-A-test"
     TRAIN_EPOCHS = 2  # imagenet 2, cifar10 20
-    BATCH_SIZE = 8
+    BATCH_SIZE = 64
     LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 1
     GRADIENT_ACCUMULATION_STEPS = 8
@@ -491,6 +493,7 @@ if __name__ == "__main__":
             lr=LR,
             lr_step_size=LR_STEP_SIZE,
         )
+        args.distributed = False
         args_checkpoint.distributed = False
         args_checkpoint.world_size = 1
         args_checkpoint.rank = 0
