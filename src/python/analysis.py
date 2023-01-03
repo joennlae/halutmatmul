@@ -36,7 +36,7 @@ def model_loader(
     if name == "resnet-50":
         state_dict = ResNet50_Weights.IMAGENET1K_V2.get_state_dict(progress=True)
         data = torchvision.datasets.ImageNet(
-            root=dataset_path,  # "/scratch/janniss/imagenet/",
+            root=dataset_path,  # SCRATCH_BASE + "/imagenet/",
             split="val",
             transform=ResNet50_Weights.IMAGENET1K_V2.transforms(),
         )
@@ -45,7 +45,7 @@ def model_loader(
     elif name == "resnet18":
         state_dict = ResNet18_Weights.IMAGENET1K_V1.get_state_dict(progress=True)
         data = torchvision.datasets.ImageNet(
-            root=dataset_path,  # "/scratch/janniss/imagenet/",
+            root=dataset_path,  # SCRATCH_BASE + "/imagenet/",
             split="val",
             transform=ResNet18_Weights.IMAGENET1K_V1.transforms(),
         )
