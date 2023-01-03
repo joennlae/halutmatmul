@@ -22,6 +22,8 @@ from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 
+SCRATCH_BASE = "/scratch2/janniss"
+
 
 def train_one_epoch(
     model,
@@ -190,14 +192,14 @@ def load_data(traindir, valdir, args):
         )
         if args.cifar100:
             dataset = torchvision.datasets.CIFAR100(
-                root="/scratch/janniss/datasets",
+                root=SCRATCH_BASE + "/datasets",
                 train=True,
                 transform=preprocessing,
                 download=True,
             )
         elif args.cifar10:
             dataset = torchvision.datasets.CIFAR10(
-                root="/scratch/janniss/datasets",
+                root=SCRATCH_BASE + "/datasets",
                 train=True,
                 transform=preprocessing,
                 download=True,
@@ -228,14 +230,14 @@ def load_data(traindir, valdir, args):
             )
         if args.cifar100:
             dataset_test = torchvision.datasets.CIFAR100(
-                root="/scratch/janniss/datasets",
+                root=SCRATCH_BASE + "/datasets",
                 train=False,
                 transform=preprocessing,
                 download=True,
             )
         elif args.cifar10:
             dataset_test = torchvision.datasets.CIFAR10(
-                root="/scratch/janniss/datasets",
+                root=SCRATCH_BASE + "/datasets",
                 train=False,
                 transform=preprocessing,
                 download=True,
@@ -584,7 +586,7 @@ def get_args_parser(add_help=True):
 
     parser.add_argument(
         "--data-path",
-        default="/scratch/ml_datasets/ILSVRC2012",
+        default="/scratch2/ml_datasets/ILSVRC2012",
         type=str,
         help="dataset path",
     )
