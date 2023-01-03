@@ -264,7 +264,7 @@ def run_retraining(
 
         # sys.exit(0)
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
-        if args.rank == 0:
+        if not args.distributed or args.rank == 0:
             save_on_master(
                 checkpoint,
                 os.path.join(
@@ -284,7 +284,7 @@ def run_retraining(
     if model_name not in result_base_path.lower():
         result_base_path += "/" + model_name + "/"
     Path(result_base_path).mkdir(parents=True, exist_ok=True)
-    if args.rank == 0:
+    if not args.distributed or args.rank == 0:
         with open(
             f"{args.resultpath}/retrained_{len(halut_model.halut_modules.keys())}"
             f"{'_trained' if test_only else ''}.json",
@@ -549,7 +549,8 @@ if __name__ == "__main__":
             lr_step_size=LR_STEP_SIZE,
         )
         torch.cuda.empty_cache()
-        torch.distributed.barrier()  # type: ignore
+        if args.distributed:
+            torch.distributed.barrier()  # type: ignore
         if idx < total:
             _, idx, total = run_retraining(
                 args,
