@@ -265,8 +265,6 @@ class HalutLinear(Linear):
                 requires_grad=False,
             )
             self.weight.requires_grad = False
-            if self.bias is not None:
-                self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
@@ -516,8 +514,6 @@ class HalutConv2d(_ConvNd):
                 requires_grad=False,
             )
             self.weight.requires_grad = False
-            if self.bias is not None:
-                self.bias.requires_grad = False
         elif any(
             k in state_dict.keys()
             for k in (
