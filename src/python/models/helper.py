@@ -268,7 +268,8 @@ def evaluate_halut_imagenet(
     store_arrays = {}
     with torch.inference_mode():
         for images, target in metric_logger.log_every(data_loader, 1, header):
-            images = images.half()
+            if device.type == "cuda":
+                images = images.half()
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
