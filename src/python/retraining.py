@@ -100,6 +100,8 @@ def run_retraining(
     batch_size: int = 32,
     lr: float = 0.01,
     lr_step_size: int = 8,
+    # pylint: disable=unused-argument
+    train_epochs: int = 20,
 ) -> tuple[Any, int, int]:
     (
         model_name,
@@ -212,55 +214,57 @@ def run_retraining(
         # ugly hack to port halut active information
         model_copy.load_state_dict(checkpoint["model"])
 
-        print("checkpoint", checkpoint["optimizer"])
         # update optimizer with new parameters
-        # pylint: disable=using-constant-test
-        if True:
-            custom_keys_weight_decay = []
-            if args_checkpoint.bias_weight_decay is not None:
-                custom_keys_weight_decay.append(
-                    ("bias", args_checkpoint.bias_weight_decay)
-                )
-            parameters = set_weight_decay(
-                model_copy,
-                args_checkpoint.weight_decay,
-                norm_weight_decay=args_checkpoint.norm_weight_decay,
-                custom_keys_weight_decay=custom_keys_weight_decay
-                if len(custom_keys_weight_decay) > 0
-                else None,
-            )
-            print("LENGHT", len(parameters), len(list(model_copy.parameters())))
-            opt_name = args_checkpoint.opt.lower()
-            # print("parameters", model.parameters())
-            optimizer = torch.optim.SGD(
-                parameters,
-                lr=args_checkpoint.lr,
-                momentum=args_checkpoint.momentum,
-                weight_decay=args_checkpoint.weight_decay,
-                nesterov="nesterov" in opt_name,
-            )
-            # optimizer.load_state_dict(checkpoint["optimizer"])
-            opt_state_dict = optimizer.state_dict()
-            opt_state_dict["param_groups"][0]["weight_decay"] = checkpoint["optimizer"][
-                "param_groups"
-            ][0]["weight_decay"]
-            opt_state_dict["param_groups"][0]["lr"] = checkpoint["optimizer"][
-                "param_groups"
-            ][0]["lr"]
-            opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
-                "param_groups"
-            ][0]["momentum"]
-            print(opt_state_dict["param_groups"], opt_state_dict)
-            # ACTIVATE REPLACE AND FREEZE TRAINING
-            # optimizer updates
-            checkpoint["optimizer"] = opt_state_dict
+        custom_keys_weight_decay = []
+        if args_checkpoint.bias_weight_decay is not None:
+            custom_keys_weight_decay.append(("bias", args_checkpoint.bias_weight_decay))
+        parameters = set_weight_decay(
+            model_copy,
+            args_checkpoint.weight_decay,
+            norm_weight_decay=args_checkpoint.norm_weight_decay,
+            custom_keys_weight_decay=custom_keys_weight_decay
+            if len(custom_keys_weight_decay) > 0
+            else None,
+        )
+        opt_name = args_checkpoint.opt.lower()
+        optimizer = torch.optim.SGD(
+            parameters,
+            lr=args_checkpoint.lr,
+            momentum=args_checkpoint.momentum,
+            weight_decay=args_checkpoint.weight_decay,
+            nesterov="nesterov" in opt_name,
+        )
+        opt_state_dict = optimizer.state_dict()
+        opt_state_dict["param_groups"][0]["weight_decay"] = checkpoint["optimizer"][
+            "param_groups"
+        ][0]["weight_decay"]
+        opt_state_dict["param_groups"][0]["lr"] = checkpoint["optimizer"][
+            "param_groups"
+        ][0]["lr"]
+        opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
+            "param_groups"
+        ][0]["momentum"]
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
-        checkpoint["optimizer"]["param_groups"][0][
-            "lr"
-        ] = lr  # imagenet 0.001, cifar10 0.01
+        opt_state_dict["param_groups"][0]["lr"] = lr  # imagenet 0.001, cifar10 0.01
         checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
+        # args_checkpoint.lr_scheduler = "steplr"
+
+        print(
+            "LR",
+            args_checkpoint.lr,
+            lr,
+            checkpoint["optimizer"]["param_groups"][0],
+        )
+        # if args_checkpoint.cifar10:
+        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        #     optimizer, T_max=train_epochs
+        # )
+        # checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
+
+        # optimizer updates
+        checkpoint["optimizer"] = opt_state_dict
 
         # sys.exit(0)
         args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
@@ -415,12 +419,12 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-cw9-proper-A-test"
-    TRAIN_EPOCHS = 2  # imagenet 2, cifar10 20
-    BATCH_SIZE = 64
-    LR = 0.001  # imagenet 0.001, cifar10 0.01
-    LR_STEP_SIZE = 1
-    GRADIENT_ACCUMULATION_STEPS = 8
+    MODEL_NAME_EXTENSION = "cifar10-halut-better-3"
+    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 20
+    BATCH_SIZE = 48
+    LR = 0.01  # imagenet 0.001, cifar10 0.01
+    LR_STEP_SIZE = 8
+    GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -492,6 +496,7 @@ if __name__ == "__main__":
             batch_size=BATCH_SIZE,
             lr=LR,
             lr_step_size=LR_STEP_SIZE,
+            train_epochs=TRAIN_EPOCHS,
         )
         args.distributed = False
         args_checkpoint.distributed = False
