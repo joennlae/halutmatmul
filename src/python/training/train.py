@@ -13,6 +13,7 @@ import torchvision
 from torch import nn
 from torch.utils.data.dataloader import default_collate
 from torchvision.transforms.functional import InterpolationMode
+import torchvision.transforms as T
 
 sys.path.append(os.getcwd())
 
@@ -22,7 +23,7 @@ from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 
-SCRATCH_BASE = "/scratch2/janniss"
+SCRATCH_BASE = "/scratch/janniss"
 
 
 def train_one_epoch(
@@ -198,6 +199,14 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
+            preprocessing = T.Compose(
+                [
+                    T.RandomCrop(32, padding=4),
+                    T.RandomHorizontalFlip(),
+                    T.ToTensor(),
+                    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                ]
+            )
             dataset = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=True,
@@ -236,6 +245,12 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
+            preprocessing = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                ]
+            )
             dataset_test = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=False,
@@ -367,6 +382,8 @@ def main(args, gradient_accumulation_steps=1):
             "relative_position_bias_table",
         ]:
             custom_keys_weight_decay.append((key, args.transformer_embedding_decay))
+    if args.cifar10:
+        args.weight_decay = 5e-4
     parameters = utils_train.set_weight_decay(
         model,
         args.weight_decay,
@@ -406,6 +423,8 @@ def main(args, gradient_accumulation_steps=1):
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
     args.lr_scheduler = args.lr_scheduler.lower()
+    # if args.cifar10:
+    #     args.lr_scheduler = "cosineannealinglr"
     if args.lr_scheduler == "steplr":
         main_lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
@@ -586,7 +605,7 @@ def get_args_parser(add_help=True):
 
     parser.add_argument(
         "--data-path",
-        default="/scratch2/ml_datasets/ILSVRC2012",
+        default="/scratch/ml_datasets/ILSVRC2012",
         type=str,
         help="dataset path",
     )
