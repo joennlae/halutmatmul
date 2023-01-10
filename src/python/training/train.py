@@ -549,6 +549,7 @@ def main(args, gradient_accumulation_steps=1):
 
     print("Start training")
     start_time = time.time()
+    best_acc = 0.0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -565,12 +566,14 @@ def main(args, gradient_accumulation_steps=1):
             gradient_accumulation_steps=gradient_accumulation_steps,
         )
         lr_scheduler.step()
-        evaluate(model, criterion, data_loader_test, device=device)
+        acc = evaluate(model, criterion, data_loader_test, device=device)
         if model_ema:
             evaluate(
                 model_ema, criterion, data_loader_test, device=device, log_suffix="EMA"
             )
         if args.output_dir:
+            if args.distributed and utils_train.get_rank() > 0:
+                pass
             checkpoint = {
                 "model": model_without_ddp.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -584,6 +587,18 @@ def main(args, gradient_accumulation_steps=1):
                 checkpoint["model_ema"] = model_ema.state_dict()
             if scaler:
                 checkpoint["scaler"] = scaler.state_dict()
+            if acc > best_acc:
+                rm = os.path.join(args.output_dir, f"model_best-{best_acc:.2f}.pth")
+                if os.path.exists(rm):
+                    try:
+                        os.remove(rm)
+                    except OSError:
+                        pass
+                best_acc = acc
+                utils_train.save_on_master(
+                    checkpoint,
+                    os.path.join(args.output_dir, f"model_best-{best_acc:.2f}.pth"),
+                )
             # utils_train.save_on_master(
             #     checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth")
             # )
@@ -591,6 +606,8 @@ def main(args, gradient_accumulation_steps=1):
                 checkpoint, os.path.join(args.output_dir, "checkpoint.pth")
             )
 
+    if args.distributed:
+        torch.distributed.barrier()
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f"Training time {total_time_str}")
