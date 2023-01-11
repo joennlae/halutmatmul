@@ -12,6 +12,7 @@ import torch.utils.data
 import torchvision
 from torch import nn
 from torch.utils.data.dataloader import default_collate
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms.functional import InterpolationMode
 import torchvision.transforms as T
 
@@ -107,6 +108,14 @@ def train_one_epoch(
         metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
         metric_logger.meters["img/s"].update(batch_size / (time.time() - start_time))
 
+    return (
+        metric_logger.acc1.global_avg,
+        metric_logger.acc5.global_avg,
+        metric_logger.loss.global_avg,
+        metric_logger.lr.global_avg,
+        metric_logger.meters["img/s"].global_avg,
+    )
+
 
 def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix=""):
     model.eval()
@@ -151,7 +160,11 @@ def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix="")
     print(
         f"{header} Acc@1 {metric_logger.acc1.global_avg:.3f} Acc@5 {metric_logger.acc5.global_avg:.3f}"
     )
-    return metric_logger.acc1.global_avg
+    return (
+        metric_logger.acc1.global_avg,
+        metric_logger.acc5.global_avg,
+        metric_logger.loss.global_avg,
+    )
 
 
 def _get_cache_path(filepath):
@@ -550,10 +563,12 @@ def main(args, gradient_accumulation_steps=1):
     print("Start training")
     start_time = time.time()
     best_acc = 0.0
+    writer = SummaryWriter()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
-        train_one_epoch(
+        start_time = time.time()
+        acc_train, acc5_train, loss_train, lr_train, imgs_train = train_one_epoch(
             model,
             criterion,
             optimizer,
@@ -565,8 +580,18 @@ def main(args, gradient_accumulation_steps=1):
             scaler,
             gradient_accumulation_steps=gradient_accumulation_steps,
         )
+        writer.add_scalar("train/time_seconds", time.time() - start_time, epoch)
+        writer.add_scalar("train/acc", acc_train, epoch)
+        writer.add_scalar("train/acc5", acc5_train, epoch)
+        writer.add_scalar("train/loss", loss_train, epoch)
+        writer.add_scalar("train/lr", lr_train, epoch)
+        writer.add_scalar("train/imgs", imgs_train, epoch)
         lr_scheduler.step()
-        acc = evaluate(model, criterion, data_loader_test, device=device)
+        acc, acc5, loss = evaluate(model, criterion, data_loader_test, device=device)
+        writer.add_scalar("test/acc", acc, epoch)
+        writer.add_scalar("test/acc5", acc5, epoch)
+        writer.add_scalar("test/loss", loss, epoch)
+        writer.flush()
         if model_ema:
             evaluate(
                 model_ema, criterion, data_loader_test, device=device, log_suffix="EMA"
