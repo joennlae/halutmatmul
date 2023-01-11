@@ -21,6 +21,8 @@ def create_A_matrix_from_dims(
     assert D % C == 0
     depth = int(math.sqrt(K))
     A = torch.zeros((C, D // C, depth), dtype=dtype)
+    # same as in torch.nn.Conv2d
+    torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
     dims_reshape = dims.reshape((C, depth)) % (D // C)
     for c in range(C):
         for d in range(depth):
