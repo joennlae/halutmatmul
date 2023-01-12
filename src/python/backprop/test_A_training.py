@@ -6,7 +6,9 @@ from halutmatmul.modules import (
     halut_matmul_forward,
     create_bit_matrix,
     create_selection_matrix,
+    create_A_matrix_from_dims,
 )
+import halutmatmul.halutmatmul as hm
 
 dtype = torch.float32
 
@@ -23,10 +25,15 @@ W = torch.from_numpy(np.load(data_path + "/" + test_layer_B)).to(dtype).to(devic
 index_random = torch.randperm(I.shape[0])
 I = I[index_random]
 
+rank = np.linalg.matrix_rank(I.cpu().numpy())
+print(f"rank {rank} of {I.shape[1]}")
+
 N = I.shape[0]
-train_input = I[: N - (N // 10)]
-val_input = I[N - (N // 10) :]
-C = 64
+# train_input = I[: N - (N // 10)]
+# val_input = I[N - (N // 10) :]
+train_input = I
+val_input = I
+C = 16
 K = 16
 M = W.shape[1]
 N = I.shape[0]
@@ -44,13 +51,19 @@ depth = int(math.sqrt(K))
 A = torch.randn((C, D // C, depth), dtype=dtype).to(device)
 A = torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
 
+for c in range(C):
+    pca = torch.pca_lowrank(I[:, c * (D // C) : (c + 1) * (D // C)], niter=10)
+    print("shapes", pca[0].shape, pca[1].shape, pca[2].shape)
+    A[c] = pca[2][:, :depth]
+    print("A", A[c])
+
 
 class HalutMatmul(torch.nn.Module):
     def __init__(self, C, K, S, B, T, L, A):
         super().__init__()
         self.C = C
         self.K = K
-        self.A = torch.nn.Parameter(A, requires_grad=True)
+        self.A = torch.nn.Parameter(A, requires_grad=False)
         self.S = torch.nn.Parameter(S, requires_grad=False)
         self.B = torch.nn.Parameter(B, requires_grad=False)
         self.T = torch.nn.Parameter(T, requires_grad=True)
@@ -142,3 +155,33 @@ print("Compare", output[0], target[0])
 print("Final MSE", torch.nn.MSELoss(reduction="mean")(output, target))
 print("Final MAE", torch.nn.L1Loss(reduction="mean")(output, target))
 print("Final Huber", torch.nn.HuberLoss(reduction="mean")(output, target))
+
+halut_learned = hm.learn_halut_offline(
+    I.detach().cpu().numpy(), W.detach().cpu().numpy(), C, K
+)
+halut_lut = (
+    torch.from_numpy(halut_learned[hm.HalutOfflineStorage.LUT]).to(dtype).to(device)
+)
+halut_T = (
+    torch.from_numpy(halut_learned[hm.HalutOfflineStorage.THRESHOLDS])
+    .to(dtype)
+    .to(device)
+)
+halut_dims = (
+    torch.from_numpy(halut_learned[hm.HalutOfflineStorage.DIMS])
+    .to(torch.int32)
+    .to(device)
+)
+halut_A = create_A_matrix_from_dims(halut_dims, D, C, K, dtype=dtype).to(device)
+
+halut_learned_model = HalutMatmul(C, K, S, B, halut_T, halut_lut, halut_A)
+halut_learned_output = halut_learned_model(val_input)
+print("Learned loss", criterion(halut_learned_output, target))
+print("Learned max", torch.max(halut_learned_output), torch.max(target))
+print("Learned MSE", torch.nn.MSELoss(reduction="mean")(halut_learned_output, target))
+print("Learned MAE", torch.nn.L1Loss(reduction="mean")(halut_learned_output, target))
+print(
+    "Learned Huber", torch.nn.HuberLoss(reduction="mean")(halut_learned_output, target)
+)
+
+print("Compare", halut_learned_output[0], target[0])
