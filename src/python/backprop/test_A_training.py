@@ -19,21 +19,25 @@ data_path = "/usr/scratch2/vilan1/janniss/halut/resnet18-cifar10-halut-A-2"
 test_layer_A = "layer1.0.conv1_32_391_A.npy"
 test_layer_B = "layer1.0.conv1_32_391_B.npy"
 
+# test_layer_A = "layer4.1.conv2_32_391_A.npy"
+# test_layer_B = "layer4.1.conv2_32_391_B.npy"
+
 I = torch.from_numpy(np.load(data_path + "/" + test_layer_A)).to(dtype).to(device)
 W = torch.from_numpy(np.load(data_path + "/" + test_layer_B)).to(dtype).to(device)
 
 index_random = torch.randperm(I.shape[0])
 I = I[index_random]
 
-rank = np.linalg.matrix_rank(I.cpu().numpy())
-print(f"rank {rank} of {I.shape[1]}")
+# rank = np.linalg.matrix_rank(I.cpu().numpy())
+# print(f"rank {rank} of {I.shape[1]}")
 
 N = I.shape[0]
 # train_input = I[: N - (N // 10)]
 # val_input = I[N - (N // 10) :]
 train_input = I
 val_input = I
-C = 16
+
+C = 64
 K = 16
 M = W.shape[1]
 N = I.shape[0]
@@ -51,11 +55,62 @@ depth = int(math.sqrt(K))
 A = torch.randn((C, D // C, depth), dtype=dtype).to(device)
 A = torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
 
+A_inv = torch.zeros((C, depth, D // C), dtype=dtype).to(device)
 for c in range(C):
     pca = torch.pca_lowrank(I[:, c * (D // C) : (c + 1) * (D // C)], niter=10)
     print("shapes", pca[0].shape, pca[1].shape, pca[2].shape)
     A[c] = pca[2][:, :depth]
     print("A", A[c])
+    how_close = torch.matmul(pca[2][:, :depth], pca[2][:, :depth].t())
+    print("how_close", how_close)
+    print("how_close", torch.max(torch.abs(how_close - torch.eye(D // C).to(device))))
+    print("pca[2]", pca[2])
+    how_close_3 = torch.matmul(pca[2], pca[2].t())
+    print("how_close_3", how_close_3)
+    print(
+        "how_close_3", torch.max(torch.abs(how_close_3 - torch.eye(D // C).to(device)))
+    )
+    A_inv[c] = torch.pinverse(pca[2][:, :depth])
+    print("how_close", torch.matmul(A[c], A_inv[c]) - torch.eye(D // C).to(device))
+
+
+I_reshaped = I.T.reshape((C, -1, I.shape[0])).transpose(1, 2)
+input_tilde = (
+    torch.bmm(I_reshaped, A).transpose(1, 2).reshape((C * int(math.sqrt(K)), -1)).T
+)
+print("input_tilde", input_tilde.shape)
+A_inv_used = A.transpose(1, 2)
+# A_inv_used = A_inv
+weight_tilde = torch.bmm(A_inv_used, W.reshape((C, -1, M))).reshape(
+    (C * int(math.sqrt(K)), -1)
+)
+print("weight_tilde", weight_tilde.shape)
+output_tilde = torch.matmul(input_tilde, weight_tilde)
+print("output_tilde", output_tilde.shape)
+
+result = torch.matmul(I, W)
+print("result", result.shape)
+print("result MAE", torch.nn.L1Loss()(result, output_tilde))
+print("result MSE", torch.nn.MSELoss()(result, output_tilde))
+print("result RMSE", torch.sqrt(torch.nn.MSELoss()(result, output_tilde)))
+print("result MAPE", torch.mean(torch.abs(result - output_tilde) / result))
+print("result Huber", torch.nn.HuberLoss()(result, output_tilde))
+
+halut_learned_init = hm.learn_halut_offline(
+    input_tilde.detach().cpu().numpy(), weight_tilde.detach().cpu().numpy(), C, K
+)
+halut_lut_init = (
+    torch.from_numpy(halut_learned_init[hm.HalutOfflineStorage.LUT])
+    .to(dtype)
+    .to(device)
+)
+halut_T_init = (
+    torch.from_numpy(halut_learned_init[hm.HalutOfflineStorage.THRESHOLDS])
+    .to(dtype)
+    .to(device)
+)
+L = halut_lut_init
+T = halut_T_init
 
 
 class HalutMatmul(torch.nn.Module):
@@ -63,7 +118,7 @@ class HalutMatmul(torch.nn.Module):
         super().__init__()
         self.C = C
         self.K = K
-        self.A = torch.nn.Parameter(A, requires_grad=False)
+        self.A = torch.nn.Parameter(A, requires_grad=True)
         self.S = torch.nn.Parameter(S, requires_grad=False)
         self.B = torch.nn.Parameter(B, requires_grad=False)
         self.T = torch.nn.Parameter(T, requires_grad=True)
@@ -84,12 +139,13 @@ class HalutMatmul(torch.nn.Module):
 
 
 # train
-batch_size = 1024 * 4
+batch_size = 1024 * 2
 epochs = 100
 model = HalutMatmul(C, K, S, B, T, L, A)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.nn.HuberLoss(reduction="mean")
-criterion = torch.nn.MSELoss(reduction="mean")
+criterion = torch.nn.L1Loss(reduction="mean")
+# criterion = torch.nn.MSELoss(reduction="mean")
 
 train_dataset = torch.utils.data.TensorDataset(train_input)
 data_loader_train = torch.utils.data.DataLoader(
