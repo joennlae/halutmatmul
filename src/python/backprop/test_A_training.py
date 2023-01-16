@@ -52,8 +52,9 @@ L = torch.randn((M, C, K), dtype=dtype).to(device)
 L = torch.nn.init.kaiming_uniform_(L, a=math.sqrt(5))
 
 depth = int(math.sqrt(K))
-A = torch.randn((C, D // C, depth), dtype=dtype).to(device)
-A = torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
+# A = torch.randn((C, D // C, depth), dtype=dtype).to(device)
+# A = torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
+A = torch.empty((C, D // C, depth), dtype=dtype).to(device)
 
 A_inv = torch.zeros((C, depth, D // C), dtype=dtype).to(device)
 for c in range(C):
@@ -139,13 +140,13 @@ class HalutMatmul(torch.nn.Module):
 
 
 # train
-batch_size = 1024 * 2
+batch_size = 256
 epochs = 100
 model = HalutMatmul(C, K, S, B, T, L, A)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0004)
 criterion = torch.nn.HuberLoss(reduction="mean")
 criterion = torch.nn.L1Loss(reduction="mean")
-# criterion = torch.nn.MSELoss(reduction="mean")
+criterion = torch.nn.MSELoss(reduction="mean")
 
 train_dataset = torch.utils.data.TensorDataset(train_input)
 data_loader_train = torch.utils.data.DataLoader(
@@ -241,3 +242,29 @@ print(
 )
 
 print("Compare", halut_learned_output[0], target[0])
+
+for t in [4, 6, 7, 8, 10, 16, 32]:
+    # convert to empty type as empty_strided is not supported
+    scale = torch.max(I) - torch.min(I)
+    scale = scale / (2**t - 1)
+    I_quant = torch.fake_quantize_per_tensor_affine(
+        I, scale, 0, quant_min=-(2 ** (t - 1)), quant_max=2 ** (t - 1) - 1
+    )
+    W_quant = torch.fake_quantize_per_tensor_affine(
+        W, scale, 0, quant_min=-(2 ** (t - 1)), quant_max=2 ** (t - 1) - 1
+    )
+
+    result = I_quant.mm(W_quant)
+    result_scale_back = result
+    print(
+        f"MSE INT{t}",
+        torch.nn.MSELoss(reduction="mean")(result_scale_back, target),
+    )
+    print(
+        f"MAE INT{t}",
+        torch.nn.L1Loss(reduction="mean")(result_scale_back, target),
+    )
+    print(
+        f"Huber INT{t}",
+        torch.nn.HuberLoss(reduction="mean")(result_scale_back, target),
+    )
