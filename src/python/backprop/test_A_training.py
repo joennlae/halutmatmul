@@ -1,12 +1,18 @@
 import math
+from functools import partial
+
 import numpy as np
 import torch
 import torch.utils.data
+from ray import tune
+from ray.tune import CLIReporter
+from ray.tune.schedulers import ASHAScheduler
+
 from halutmatmul.modules import (
-    halut_matmul_forward,
+    create_A_matrix_from_dims,
     create_bit_matrix,
     create_selection_matrix,
-    create_A_matrix_from_dims,
+    halut_matmul_forward,
 )
 import halutmatmul.halutmatmul as hm
 
@@ -115,15 +121,15 @@ T = halut_T_init
 
 
 class HalutMatmul(torch.nn.Module):
-    def __init__(self, C, K, S, B, T, L, A):
+    def __init__(self, C, K, S, B, T, L, A, a_grad=True, t_grad=True, l_grad=True):
         super().__init__()
         self.C = C
         self.K = K
-        self.A = torch.nn.Parameter(A, requires_grad=True)
+        self.A = torch.nn.Parameter(A, requires_grad=a_grad)
         self.S = torch.nn.Parameter(S, requires_grad=False)
         self.B = torch.nn.Parameter(B, requires_grad=False)
-        self.T = torch.nn.Parameter(T, requires_grad=True)
-        self.L = torch.nn.Parameter(L, requires_grad=True)
+        self.T = torch.nn.Parameter(T, requires_grad=t_grad)
+        self.L = torch.nn.Parameter(L, requires_grad=l_grad)
 
     def forward(self, I):
         return halut_matmul_forward(
@@ -192,12 +198,148 @@ def evaluate(model, criterion, data_loader, device):
             loss = criterion(output, target)
             total_loss += loss.item()
     print("Average loss evaluate: {}".format(total_loss / len(data_loader)))
+    return total_loss / len(data_loader)
 
 
-for i in range(epochs):
-    train_one_epoch(model, criterion, optimizer, data_loader_train, device, i)
-    lr_scheduler.step()
-    evaluate(model, criterion, data_loader_val, device)
+def train(
+    model,
+    criterion,
+    optimizer,
+    data_loader_train,
+    data_loader_val,
+    device,
+    epochs,
+    lr_scheduler,
+    is_plateu=False,
+):
+    for i in range(epochs):
+        train_one_epoch(model, criterion, optimizer, data_loader_train, device, i)
+        if is_plateu:
+            lr_scheduler.step(evaluate(model, criterion, data_loader_val, device))
+        else:
+            lr_scheduler.step()
+        evaluate(model, criterion, data_loader_val, device)
+
+
+# train(model, criterion,
+# optimizer, data_loader_train, data_loader_val, device, epochs, lr_scheduler)
+
+configs = {
+    "lr": tune.grid_search([0.0005]), # tune.uniform(0.0001, 0.001)
+    "batch_size": tune.grid_search([2048]),
+    "epochs": tune.grid_search([100]),
+    "optimizer": tune.grid_search(["adam"]), # sgd
+    "criterion": tune.grid_search(["mse"]), # mae, huber
+    "lr_scheduler": tune.grid_search(["cosine"]), # plateau, step
+    "learn_tensors": tune.grid_search(
+        [
+            [True, False, True],
+        ]
+    ),
+}
+
+
+def train_with_tune(config):
+    I = torch.from_numpy(np.load(data_path + "/" + test_layer_A)).to(dtype).to(device)
+    train_input = I
+    val_input = I
+    model = HalutMatmul(C, K, S, B, T, L, A, *config["learn_tensors"])
+    batch_size = config["batch_size"]
+    train_dataset = torch.utils.data.TensorDataset(train_input)
+    data_loader_train = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True
+    )
+    val_dataset = torch.utils.data.TensorDataset(val_input)
+    data_loader_val = torch.utils.data.DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False
+    )
+
+    epochs = config["epochs"]
+    if config["optimizer"] == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=config["lr"])
+    elif config["optimizer"] == "adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
+
+    if config["lr_scheduler"] == "plateau":
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer=optimizer, mode="min", factor=0.1, patience=10
+        )
+    elif config["lr_scheduler"] == "step":
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer=optimizer, step_size=epochs // 4, gamma=0.1
+        )
+    elif config["lr_scheduler"] == "cosine":
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer, T_max=epochs
+        )
+
+    if config["criterion"] == "mse":
+        criterion = torch.nn.MSELoss(reduction="mean")
+    elif config["criterion"] == "l1":
+        criterion = torch.nn.L1Loss(reduction="mean")
+    elif config["criterion"] == "huber":
+        criterion = torch.nn.HuberLoss(reduction="mean")
+
+    train(
+        model,
+        criterion,
+        optimizer,
+        data_loader_train,
+        data_loader_val,
+        device,
+        epochs,
+        lr_scheduler,
+        is_plateu=config["lr_scheduler"] == "plateau",
+    )
+
+    mse = evaluate(model, torch.nn.MSELoss(reduction="mean"), data_loader_val, device)
+    mae = evaluate(model, torch.nn.L1Loss(reduction="mean"), data_loader_val, device)
+    huber = evaluate(
+        model, torch.nn.HuberLoss(reduction="mean"), data_loader_val, device
+    )
+    tune.report(mse=mse, mae=mae, huber=huber)
+
+
+reporter = CLIReporter(
+    parameter_columns=[
+        "lr",
+        "batch_size",
+        "epochs",
+        "optimizer",
+        "criterion",
+        "lr_scheduler",
+        "learn_tensors",
+    ],
+    metric_columns=["mse", "mae", "huber"],
+)
+scheduler = ASHAScheduler(
+    max_t=200,
+    grace_period=10,
+    reduction_factor=2,
+    brackets=1,
+    metric="mse",
+    mode="min",
+)
+
+analysis = tune.run(
+    partial(train_with_tune),
+    resources_per_trial={"gpu": 0.3},
+    config=configs,
+    scheduler=scheduler,
+    num_samples=3,
+    progress_reporter=reporter,
+)
+
+best_trial = analysis.get_best_trial("mse", "min", "last")
+print("Best trial config: {}".format(best_trial.config))  # type: ignore
+print("Best trial final validation loss: {}".format(best_trial.last_result["mse"]))  # type: ignore
+print("Best trial final validation MAE: {}".format(best_trial.last_result["mae"]))  # type: ignore
+print(
+    "Best trial final validation Huber"
+    ": {}".format(best_trial.last_result["huber"])  # type: ignore
+)
+print("Best trial directory: {}".format(best_trial.logdir))  # type: ignore
+
 
 print("Final results", model.A, model.T, model.L)
 print("Final max", torch.max(model.A), torch.max(model.T), torch.max(model.L))
