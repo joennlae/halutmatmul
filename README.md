@@ -6,6 +6,7 @@
 [![Linting](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml)
 [![MyPy](https://github.com/joennlae/halutmatmul/actions/workflows/python_mypy.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_mypy.yaml)
 [![C++ build](https://github.com/joennlae/halutmatmul/actions/workflows/cpp_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/cpp_testing.yaml)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fjoennlae%2Fhalutmatmul.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fjoennlae%2Fhalutmatmul?ref=badge_shield)
 
 ### Hardware CI
 
@@ -156,3 +157,6 @@ Some definitions about the forward path.
 ### Links
 
 * [Addendum](docs/addendum.md)
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fjoennlae%2Fhalutmatmul.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fjoennlae%2Fhalutmatmul?ref=badge_large)
