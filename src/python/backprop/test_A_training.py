@@ -64,22 +64,24 @@ A = torch.empty((C, D // C, depth), dtype=dtype).to(device)
 
 A_inv = torch.zeros((C, depth, D // C), dtype=dtype).to(device)
 for c in range(C):
+    shift = I[:, c * (D // C) : (c + 1) * (D // C)].mean(dim=(-2,), keepdim=True)
+    print("shift", shift.shape, shift)
     pca = torch.pca_lowrank(I[:, c * (D // C) : (c + 1) * (D // C)], niter=10)
-    print("shapes", pca[0].shape, pca[1].shape, pca[2].shape)
+    svd = torch.linalg.svd(I[:, c * (D // C) : (c + 1) * (D // C)], full_matrices=False)
+    print("svd check", torch.matmul(svd[2], svd[2].t()))
+    print("small check", torch.matmul(svd[2][:, :depth], svd[2][:, :depth].t()))
     A[c] = pca[2][:, :depth]
-    print("A", A[c])
     how_close = torch.matmul(pca[2][:, :depth], pca[2][:, :depth].t())
     print("how_close", how_close)
-    print("how_close", torch.max(torch.abs(how_close - torch.eye(D // C).to(device))))
-    print("pca[2]", pca[2])
-    how_close_3 = torch.matmul(pca[2], pca[2].t())
-    print("how_close_3", how_close_3)
-    print(
-        "how_close_3", torch.max(torch.abs(how_close_3 - torch.eye(D // C).to(device)))
-    )
     A_inv[c] = torch.pinverse(pca[2][:, :depth])
-    print("how_close", torch.matmul(A[c], A_inv[c]) - torch.eye(D // C).to(device))
-
+    pseudo_inverse_2 = torch.pinverse(svd[2][:, :depth])
+    print("check inverse svd", torch.matmul(svd[2][:, :depth], pseudo_inverse_2))
+    print("check inverse pca", torch.matmul(A[c], A_inv[c]).to(device))
+    print(
+        "weights",
+        W[c * (D // C) : (c + 1) * (D // C)].shape,
+        torch.abs(W[c * (D // C) : (c + 1) * (D // C)]).mean(dim=(-1,), keepdim=True),
+    )
 
 I_reshaped = I.T.reshape((C, -1, I.shape[0])).transpose(1, 2)
 input_tilde = (
@@ -225,12 +227,12 @@ def train(
 # optimizer, data_loader_train, data_loader_val, device, epochs, lr_scheduler)
 
 configs = {
-    "lr": tune.grid_search([0.0005]), # tune.uniform(0.0001, 0.001)
+    "lr": tune.grid_search([0.0005]),  # tune.uniform(0.0001, 0.001)
     "batch_size": tune.grid_search([2048]),
     "epochs": tune.grid_search([100]),
-    "optimizer": tune.grid_search(["adam"]), # sgd
-    "criterion": tune.grid_search(["mse"]), # mae, huber
-    "lr_scheduler": tune.grid_search(["cosine"]), # plateau, step
+    "optimizer": tune.grid_search(["adam"]),  # sgd
+    "criterion": tune.grid_search(["mse"]),  # mae, huber
+    "lr_scheduler": tune.grid_search(["cosine"]),  # plateau, step
     "learn_tensors": tune.grid_search(
         [
             [True, False, True],
@@ -372,6 +374,28 @@ halut_dims = (
     .to(device)
 )
 halut_A = create_A_matrix_from_dims(halut_dims, D, C, K, dtype=dtype).to(device)
+
+A_inv = torch.zeros((C, depth, D // C), dtype=dtype).to(device)
+for i in range(C):
+    A_inv[i] = torch.pinverse(halut_A[i])
+
+I_reshaped = I.T.reshape((C, -1, I.shape[0])).transpose(1, 2)
+input_tilde = (
+    torch.bmm(I_reshaped, A).transpose(1, 2).reshape((C * int(math.sqrt(K)), -1)).T
+)
+print("input_tilde", input_tilde.shape)
+A_inv_used = A_inv
+weight_tilde = torch.bmm(A_inv_used, W.reshape((C, -1, M))).reshape(
+    (C * int(math.sqrt(K)), -1)
+)
+print("weight_tilde", weight_tilde.shape)
+output_tilde = torch.matmul(input_tilde, weight_tilde)
+
+print("result MAE", torch.nn.L1Loss()(result, output_tilde))
+print("result MSE", torch.nn.MSELoss()(result, output_tilde))
+print("result RMSE", torch.sqrt(torch.nn.MSELoss()(result, output_tilde)))
+print("result MAPE", torch.mean(torch.abs(result - output_tilde) / result))
+print("result Huber", torch.nn.HuberLoss()(result, output_tilde))
 
 halut_learned_model = HalutMatmul(C, K, S, B, halut_T, halut_lut, halut_A)
 halut_learned_output = halut_learned_model(val_input)
