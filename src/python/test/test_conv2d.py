@@ -52,7 +52,7 @@ def conv2d_helper(
         bias=bias,
         groups=groups,
         split_factor=1,
-        use_A=use_A
+        use_A=use_A,
     )
     input_a = halutmatmul_module.transform_input(input_learn)
     input_b = halutmatmul_module.transform_weight(weights)
