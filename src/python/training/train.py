@@ -212,14 +212,14 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
-            preprocessing = T.Compose(
-                [
-                    T.RandomCrop(32, padding=4),
-                    T.RandomHorizontalFlip(),
-                    T.ToTensor(),
-                    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-                ]
-            )
+            # preprocessing = T.Compose(
+            #     [
+            #         T.RandomCrop(32, padding=4),
+            #         T.RandomHorizontalFlip(),
+            #         T.ToTensor(),
+            #         T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            #     ]
+            # )
             dataset = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=True,
@@ -258,12 +258,12 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
-            preprocessing = T.Compose(
-                [
-                    T.ToTensor(),
-                    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-                ]
-            )
+            # preprocessing = T.Compose(
+            #     [
+            #         T.ToTensor(),
+            #         T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            #     ]
+            # )
             dataset_test = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=False,
@@ -395,8 +395,8 @@ def main(args, gradient_accumulation_steps=1):
             "relative_position_bias_table",
         ]:
             custom_keys_weight_decay.append((key, args.transformer_embedding_decay))
-    if args.cifar10:
-        args.weight_decay = 5e-4
+    # if args.cifar10:
+    #     args.weight_decay = 5e-4
     parameters = utils_train.set_weight_decay(
         model,
         args.weight_decay,

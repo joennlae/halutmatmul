@@ -419,12 +419,12 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-better-3"
-    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 20
-    BATCH_SIZE = 48
+    MODEL_NAME_EXTENSION = "cifar10-halut-old-kaiming-2"
+    TRAIN_EPOCHS = 16  # imagenet 2, cifar10 20
+    BATCH_SIZE = 32
     LR = 0.01  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 8
-    GRADIENT_ACCUMULATION_STEPS = 1
+    GRADIENT_ACCUMULATION_STEPS = 4
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
