@@ -248,7 +248,7 @@ def run_retraining(
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
         opt_state_dict["param_groups"][0]["lr"] = lr  # imagenet 0.001, cifar10 0.01
-        checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
+        # checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
         # args_checkpoint.lr_scheduler = "steplr"
 
         print(
@@ -419,12 +419,12 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-old-kaiming-2"
-    TRAIN_EPOCHS = 16  # imagenet 2, cifar10 20
+    MODEL_NAME_EXTENSION = "cifar10-halut-plateaulr"
+    TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
     LR = 0.01  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 8
-    GRADIENT_ACCUMULATION_STEPS = 4
+    GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
