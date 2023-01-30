@@ -436,8 +436,8 @@ def main(args, gradient_accumulation_steps=1):
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
     args.lr_scheduler = args.lr_scheduler.lower()
-    # if args.cifar10:
-    #     args.lr_scheduler = "cosineannealinglr"
+    if args.cifar10:
+        args.lr_scheduler = "plateau"
     if args.lr_scheduler == "steplr":
         main_lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
@@ -449,6 +449,10 @@ def main(args, gradient_accumulation_steps=1):
     elif args.lr_scheduler == "exponentiallr":
         main_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer, gamma=args.lr_gamma
+        )
+    elif args.lr_scheduler == "plateau":
+        main_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=args.lr_gamma, patience=4
         )
     else:
         raise RuntimeError(
@@ -586,7 +590,11 @@ def main(args, gradient_accumulation_steps=1):
         writer.add_scalar("train/loss", loss_train, epoch)
         writer.add_scalar("train/lr", lr_train, epoch)
         writer.add_scalar("train/imgs", imgs_train, epoch)
-        lr_scheduler.step()
+        if args.lr_scheduler == "plateau":
+            # pylint: disable=too-many-function-args
+            lr_scheduler.step(loss_train)
+        else:
+            lr_scheduler.step()
         acc, acc5, loss = evaluate(model, criterion, data_loader_test, device=device)
         writer.add_scalar("test/acc", acc, epoch)
         writer.add_scalar("test/acc5", acc5, epoch)
@@ -630,6 +638,9 @@ def main(args, gradient_accumulation_steps=1):
             utils_train.save_on_master(
                 checkpoint, os.path.join(args.output_dir, "checkpoint.pth")
             )
+        print("optimizer", optimizer.param_groups[0]["lr"])
+        if optimizer.param_groups[0]["lr"] < args.lr * 1e-2:
+            break
 
     if args.distributed:
         torch.distributed.barrier()
