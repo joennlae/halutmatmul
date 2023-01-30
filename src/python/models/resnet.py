@@ -59,14 +59,14 @@ def conv3x3(
         bias=False,
         dilation=dilation,
         split_factor=4,
-        use_A=True,
+        use_A=False,
     )
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> HalutConv2d:
     """1x1 convolution"""
     return HalutConv2d(
-        in_planes, out_planes, kernel_size=1, stride=stride, bias=False, use_A=True
+        in_planes, out_planes, kernel_size=1, stride=stride, bias=False, use_A=False
     )
 
 
@@ -250,7 +250,7 @@ class ResNet(nn.Module):
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = HalutLinear(
-            channels[3] * block.expansion, num_classes, split_factor=1, use_A=True
+            channels[3] * block.expansion, num_classes, split_factor=1, use_A=False
         )
         # nn.Linear(512 * block.expansion, num_classes)
 
