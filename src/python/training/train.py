@@ -11,6 +11,7 @@ import torch
 import torch.utils.data
 import torchvision
 from torch import nn
+import torch.distributed as dist
 from torch.utils.data.dataloader import default_collate
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms.functional import InterpolationMode
@@ -44,6 +45,7 @@ def train_one_epoch(
     accum_iter = gradient_accumulation_steps
     optimizer.zero_grad()
     loss_total = 0
+    reported_loss = 0
 
     # prev_lut = None
     metric_logger = utils_train.MetricLogger(delimiter="  ")
@@ -74,6 +76,7 @@ def train_one_epoch(
             scaler.step(optimizer)
             scaler.update()
         else:
+            reported_loss = loss.item()
             loss = loss / accum_iter
             loss.backward()
 
@@ -103,7 +106,7 @@ def train_one_epoch(
         # pylint: disable=unbalanced-tuple-unpacking
         acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
         batch_size = image.shape[0]
-        metric_logger.update(loss=loss_total, lr=optimizer.param_groups[0]["lr"])
+        metric_logger.update(loss=reported_loss, lr=optimizer.param_groups[0]["lr"])
         metric_logger.meters["acc1"].update(acc1.item(), n=batch_size)
         metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
         metric_logger.meters["img/s"].update(batch_size / (time.time() - start_time))
@@ -452,7 +455,7 @@ def main(args, gradient_accumulation_steps=1):
         )
     elif args.lr_scheduler == "plateau":
         main_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=args.lr_gamma, patience=4
+            optimizer, mode="min", factor=args.lr_gamma, patience=4, verbose=True
         )
     else:
         raise RuntimeError(
@@ -605,8 +608,6 @@ def main(args, gradient_accumulation_steps=1):
                 model_ema, criterion, data_loader_test, device=device, log_suffix="EMA"
             )
         if args.output_dir:
-            if args.distributed and utils_train.get_rank() > 0:
-                pass
             checkpoint = {
                 "model": model_without_ddp.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -638,8 +639,21 @@ def main(args, gradient_accumulation_steps=1):
             utils_train.save_on_master(
                 checkpoint, os.path.join(args.output_dir, "checkpoint.pth")
             )
-        print("optimizer", optimizer.param_groups[0]["lr"])
-        if optimizer.param_groups[0]["lr"] < args.lr * 1e-2:
+        optimizer_lr_local = optimizer.param_groups[0]["lr"]
+        if args.distributed:
+            dist.barrier()
+            optimizer_lr_all = [
+                torch.zeros((1), dtype=torch.float64, device=device)
+                for _ in range(utils_train.get_world_size())
+            ]
+            dist.all_gather(
+                optimizer_lr_all,
+                torch.tensor([optimizer_lr_local], device=device, dtype=torch.float64),
+            )
+            # optimizer_lr_all [[0.0005], [0.0050], [0.0050], [0.0050]]
+            optimizer_lr_local = optimizer_lr_all[0].item()
+        if optimizer_lr_local < args.lr * 1e-3:
+            print("learning rate too small, stop training")
             break
 
     if args.distributed:
