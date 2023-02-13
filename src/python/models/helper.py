@@ -6,9 +6,8 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset
 
 from models.resnet import END_STORE_A, END_STORE_B
-from timm.utils import accuracy
-import models.levit.utils
 from models.dscnn.dataset import AudioGenerator
+from timm.utils import accuracy
 from training import utils_train
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
@@ -258,7 +257,7 @@ def evaluate_halut_imagenet(
         )
     criterion = torch.nn.CrossEntropyLoss()
 
-    metric_logger = models.levit.utils.MetricLogger(delimiter="  ")  # type: ignore[attr-defined]
+    metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = "Test:"
 
     iterations = len(data_loader)
@@ -300,8 +299,7 @@ def evaluate_halut_imagenet(
             n_iter = n_iter + 1
 
     # gather the stats from all processes
-    # FIXME: only supporting non distributed envs for training of halut
-    # metric_logger.synchronize_between_processes()
+    metric_logger.synchronize_between_processes()
     print(
         "* Acc@1 {top1.global_avg:.3f} Acc@5 {top5.global_avg:.3f} "
         "loss {losses.global_avg:.3f}".format(
