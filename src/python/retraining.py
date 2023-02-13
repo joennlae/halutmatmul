@@ -419,10 +419,10 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-plateaulr"
+    MODEL_NAME_EXTENSION = "cifar10-halut-plateaulr-3"
     TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
-    LR = 0.01  # imagenet 0.001, cifar10 0.01
+    LR = 0.005  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 8
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")

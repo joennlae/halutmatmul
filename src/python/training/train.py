@@ -455,7 +455,7 @@ def main(args, gradient_accumulation_steps=1):
         )
     elif args.lr_scheduler == "plateau":
         main_lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=args.lr_gamma, patience=4, verbose=True
+            optimizer, mode="min", factor=0.2, patience=6, verbose=True
         )
     else:
         raise RuntimeError(
@@ -570,7 +570,7 @@ def main(args, gradient_accumulation_steps=1):
     print("Start training")
     start_time = time.time()
     best_acc = 0.0
-    writer = SummaryWriter()
+    writer = SummaryWriter(comment=os.path.basename(os.path.normpath(args.output_dir)))
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -652,7 +652,7 @@ def main(args, gradient_accumulation_steps=1):
             )
             # optimizer_lr_all [[0.0005], [0.0050], [0.0050], [0.0050]]
             optimizer_lr_local = optimizer_lr_all[0].item()
-        if optimizer_lr_local < args.lr * 1e-3:
+        if optimizer_lr_local < args.lr * 1e-4:
             print("learning rate too small, stop training")
             break
 
