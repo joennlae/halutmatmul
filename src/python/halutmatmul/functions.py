@@ -172,7 +172,7 @@ def split_lists_to_numpy(
     thresholds = []
     dims = []
     # very ugly but I inherited that structure from the original code
-    # which can be founder here:
+    # which can be found here:
     # https://github.com/dblalock/bolt
     for c in buckets:
         k = 0
