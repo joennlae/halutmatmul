@@ -126,7 +126,7 @@ class HalutMatmul:
         self.splits_lists: np.ndarray = np.array([])
 
         self.quantize_lut = quantize_lut
-        self.upcast_every = 16
+        self.upcast_every = 1
         self.upcast_every = min(self.C, self.upcast_every)
         self.offset: float = 0.0
         self.scale: float = 1.0
