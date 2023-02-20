@@ -91,19 +91,11 @@ print(
 )
 
 # manual implementation of kn2col
-kn2col_input = input.reshape(batch_size, in_channels, image_x_y * image_x_y).transpose(
-    1, 2
-)
-kn2col_input = torch.reshape(
-    kn2col_input, (batch_size, image_x_y, image_x_y, in_channels)
-)
+kn2col_input = input.movedim(1, 3)
 kn2col_kernels = torch.reshape(
     kernels, (out_channels, in_channels, kernel_size * kernel_size)
 )
-kn2col_kernels = kn2col_kernels.transpose(1, 2).transpose(0, 1)
-kn2col_kernels = torch.reshape(
-    kn2col_kernels, (kernel_size * kernel_size, out_channels, in_channels)
-).transpose(1, 2)
+kn2col_kernels = kn2col_kernels.transpose(0, 2)
 
 print("kn2col_input", kn2col_input.shape, kn2col_kernels.shape)
 
@@ -112,23 +104,47 @@ kn2col_output = torch.zeros(
     (image_x_y - 2) * (image_x_y - 2),
     out_channels,
 )
-for b in range(batch_size):
-    for k_x in range(kernel_size):
-        for k_y in range(kernel_size):
-            input_a = kn2col_input[
-                b,
-                k_x : image_x_y - (kernel_size - 1) + k_x,
-                k_y : image_x_y - (kernel_size - 1) + k_y,
-                :,
-            ].reshape((image_x_y - 2) * (image_x_y - 2), in_channels)
-            input_b = kn2col_kernels[k_x * kernel_size + k_y]
-            kn2col_output[b, :, :] += torch.matmul(input_a, input_b)
-print("kn2col_output", kn2col_output.shape, kn2col_output[0, 0], kn2col_output[0, 1])
+kn2col_output_2 = torch.zeros(
+    batch_size,
+    image_x_y * image_x_y,
+    out_channels,
+)
+# for b in range(batch_size):
+for k_x in range(kernel_size):
+    for k_y in range(kernel_size):
+        input_a = kn2col_input[
+            :,
+            k_x : image_x_y - (kernel_size - 1) + k_x,
+            k_y : image_x_y - (kernel_size - 1) + k_y,
+            :,
+        ].reshape(batch_size, (image_x_y - 2) * (image_x_y - 2), in_channels)
+        # input_a = kn2col_input[b, :, :, :].reshape(-1, in_channels)
+        input_b = kn2col_kernels[k_x * kernel_size + k_y]
+        print("input_a", input_a.shape, "input_b", input_b.shape)
+        # output_inter = torch.matmul(input_a, input_b)
+        # print("output_inter", output_inter.shape)
+        # kn2col_output[b, :, :] += output_inter.reshape(image_x_y, image_x_y, -1)[
+        #     k_x : image_x_y - (kernel_size - 1) + k_x,
+        #     k_y : image_x_y - (kernel_size - 1) + k_y,
+        #     :,
+        # ].reshape((image_x_y - 2) * (image_x_y - 2), out_channels)
+        # kn2col_output_2[b, :, :] += output_inter
+        kn2col_output[:, :, :] += torch.matmul(input_a, input_b)
 
-kn2col_output = (
-    torch.reshape(kn2col_output, (batch_size, -1, out_channels))
-    .transpose(1, 2)
-    .reshape(batch_size, out_channels, image_x_y - 2, image_x_y - 2)
+print(
+    "kn2col_output",
+    kn2col_output.shape,
+    kn2col_output[0, 0],
+    kn2col_output[0, 1],
+    kn2col_output_2.shape,
+    kn2col_output_2[0, 0],
+)
+kn2col_output_2 = torch.reshape(kn2col_output_2, (batch_size, -1, out_channels))[
+    :,
+]
+
+kn2col_output = kn2col_output.transpose(1, 2).reshape(
+    batch_size, out_channels, image_x_y - 2, image_x_y - 2
 )
 print(
     "kn2col_output",
