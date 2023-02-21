@@ -6,7 +6,7 @@ import torch
 from torch.autograd import profiler
 import numpy as np
 
-from halutmatmul.modules import ErrorTuple, error_numpy
+from halutmatmul.modules import ErrorTuple, error_numpy, HalutConv2d
 
 
 def getBack(var_grad_fn: Any, all_shapes: list) -> None:
@@ -59,10 +59,16 @@ def helper_test_module(
             shapes_normal.append(v.shape)
     print("all shapes:", len(all_shapes), "normal", len(shapes_normal))
 
-    if halutmatmul_module.loop_order == "im2col":
+    if (
+        isinstance(halutmatmul_module, HalutConv2d)
+        and halutmatmul_module.loop_order == "im2col"
+    ):
         assert len(shapes_normal) == len(all_shapes)
         assert shapes_normal == all_shapes[::-1]
-    elif halutmatmul_module.loop_order == "kn2col":
+    elif (
+        isinstance(halutmatmul_module, HalutConv2d)
+        and halutmatmul_module.loop_order == "kn2col"
+    ):
         pass
         # backprop test is not reliable for kn2col
         # sometimes one more tensor is added to the list (for whatever reason)
@@ -72,6 +78,10 @@ def helper_test_module(
         # print("normal", shapes_normal)
         # assert len(shapes_normal) * kx_x_ky == len(all_shapes)
         # assert shapes_normal == all_shapes[: len(all_shapes) // kx_x_ky][::-1]
+    else:
+        # linear
+        assert len(shapes_normal) == len(all_shapes)
+        assert shapes_normal == all_shapes[::-1]
 
     print(
         "shapes in, out_pytorch, out_halutmatmul:",
