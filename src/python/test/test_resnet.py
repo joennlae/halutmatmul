@@ -74,6 +74,7 @@ def test_cifar10_inference() -> None:
         halut_model.print_available_module()
         halut_model.activate_halut_module("fc", 16, -1)
         halut_model.activate_halut_module("layer1.1.conv2", 16, -1)
+        halut_model.activate_halut_module("layer3.1.conv1", 16, -1, 16, "kn2col")
         accuracy = halut_model.run_inference()
         accuracy = halut_model.run_inference()  # check if stored used
         assert accuracy >= 85.0
