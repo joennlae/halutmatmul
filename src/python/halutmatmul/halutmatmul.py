@@ -51,7 +51,8 @@ class HalutModuleConfig:
     C = 0
     ROWS = 1
     K = 2
-    MAX = 3
+    LOOP_ORDER = 3
+    MAX = 4
 
 
 def learn_halut_offline_report(
