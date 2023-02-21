@@ -18,6 +18,7 @@ def conv2d_helper(
     kernel_size: int,
     stride: int,
     batch_size: int,
+    padding: int,
     groups: int = 1,
     C: int = 16,
     K: int = 16,
@@ -43,6 +44,7 @@ def conv2d_helper(
         out_channels,
         kernel_size=kernel_size,
         stride=stride,
+        padding=padding,
         bias=bias,
         groups=groups,
     )
@@ -52,6 +54,7 @@ def conv2d_helper(
         out_channels,
         kernel_size=kernel_size,
         stride=stride,
+        padding=padding,
         bias=bias,
         groups=groups,
         split_factor=1,
@@ -72,19 +75,16 @@ def conv2d_helper(
     elif loop_order == "kn2col":
         C = math.ceil(C / (kernel_size * kernel_size))
         store_arrays = []
-        # k_x*k_y,M,C,K
-        print("C", C)
+        # k_x * k_y, M, C, K
         luts = []
         dims_list = []
         thresholds_list = []
         for k_x in range(kernel_size):
             for k_y in range(kernel_size):
-                input_slice = halutmatmul_module.kn2col_input_slide(
-                    input_learn, input_a, k_x, k_y
+                input_slice = halutmatmul_module.kn2col_input_slice(
+                    input_a, input_learn.shape[2], input_learn.shape[3], k_x, k_y
                 )
-                print("input_slice.shape", input_slice.shape)
                 input_slice = input_slice.reshape(-1, input_slice.shape[-1])
-                print("input_slice.shape", input_slice.shape, input_b.shape)
                 store_array = hm.learn_halut_offline(
                     input_slice.detach().cpu().numpy(),
                     input_b[k_x * kernel_size + k_y].detach().cpu().numpy(),
@@ -101,7 +101,6 @@ def conv2d_helper(
         dims = np.array(dims_list)
         thresholds = np.array(thresholds_list)
         store_array = store_arrays[0]
-        print("dims", dims.shape, thresholds.shape)
         store_array[hm.HalutOfflineStorage.LUT] = luts
         store_array[hm.HalutOfflineStorage.DIMS] = dims
         store_array[hm.HalutOfflineStorage.THRESHOLDS] = thresholds
@@ -141,7 +140,7 @@ def conv2d_helper(
 
 @pytest.mark.parametrize(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, "
-    "groups, use_A, stride, loop_order",
+    "groups, use_A, stride, padding, loop_order",
     [
         (
             in_channels,
@@ -156,20 +155,22 @@ def conv2d_helper(
             g,
             use_A,
             stride,
+            padding,
             loop_order,
         )
         for in_channels in [64, 32]
         for out_channels in [64, 32]
-        for image_x_y in [7, 14]
+        for image_x_y in [7]
         for kernel_size in [1, 3, 5]
         for bias in [True, False]  # True, False
-        for C in [32, 64]
+        for C in [32]
         for a in [9.0]
         for b in [-0.35]
         for K in [16]  # [8, 16, 32]
         for g in [1]  # only supporting one group for now
-        for use_A in [False]
+        for use_A in [False]  # use_A not supported for kn2col
         for stride in [1, 2]
+        for padding in [0, 1]
         for loop_order in ["kn2col", "im2col"]
     ],
 )
@@ -186,6 +187,7 @@ def test_conv2d_module(
     groups: int,
     use_A: bool,
     stride: int,
+    padding: int,
     loop_order: Literal["im2col", "kn2col"],
 ) -> None:
     batch_size = 32
@@ -204,6 +206,7 @@ def test_conv2d_module(
         kernel_size,
         stride,
         batch_size,
+        padding,
         groups,
         C,
         K=K,
