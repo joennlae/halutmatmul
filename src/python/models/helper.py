@@ -61,13 +61,11 @@ def write_inputs_to_disk(
                         .numpy()
                     )
                     store_layer_name = prefix[:-1]
-                    print("store_layer_name", store_layer_name)
                     store_layer_name = store_layer_name.replace("module.", "")
-                    print("store_layer_name_replace", store_layer_name)
                     # in distributed mode module. is added in the beginning
                     if store_layer_name not in store_arrays:
                         store_arrays[store_layer_name] = np.zeros(
-                            (effective_rows_stored, np_array_a.shape[1])
+                            (effective_rows_stored, *(np_array_a.shape[1:]))
                         )
                     store_arrays[store_layer_name][
                         iteration

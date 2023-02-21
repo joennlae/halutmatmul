@@ -1,6 +1,6 @@
 # pylint: disable=C0209
 import glob, re, json
-from math import ceil
+from functools import reduce
 from pathlib import Path
 from collections import OrderedDict
 from typing import Any, Callable, Dict, Literal, Optional, TypeVar, Union
@@ -17,7 +17,7 @@ from models.helper import (
 )
 import halutmatmul.halutmatmul as hm
 from halutmatmul.learn import learn_halut_multi_core_dict
-from halutmatmul.modules import ErrorTuple
+from halutmatmul.modules import ErrorTuple, HalutConv2d, HalutLinear
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -38,6 +38,17 @@ eval_func_type = Callable[
 DEFAULT_BATCH_SIZE_OFFLINE = 512
 DEFAULT_BATCH_SIZE_INFERENCE = 128
 DATA_PATH = "/scratch2/janniss/resnet_input_data"
+
+
+def get_module_by_name(
+    module: Union[torch.Tensor, torch.nn.Module], access_string: str
+):
+    """Retrieve a module nested in another by its access string.
+
+    Works even when there is a Sequential in the module.
+    """
+    names = access_string.split(sep=".")
+    return reduce(getattr, names, module)
 
 
 def editable_prefixes(model: torch.nn.Module) -> list[str]:
@@ -105,7 +116,7 @@ class HalutHelper:
         self.state_dict_base = state_dict
         self.editable_keys = editable_prefixes(self.model)
         self.learned_path = learned_path
-        self.halut_modules: Dict[str, list[int]] = dict([])
+        self.halut_modules: Dict[str, list] = dict([])
         self.data_path = data_path
         self.device = device
         self.stats: Dict[str, Any] = dict([])
@@ -122,6 +133,7 @@ class HalutHelper:
         C: int,
         rows: int,
         K: int = 16,
+        loop_order: Literal["im2col", "kn2col"] = "im2col",
     ) -> None:
         if name not in self.editable_keys:
             raise Exception(f"module {name} not in model")
@@ -129,7 +141,18 @@ class HalutHelper:
         if name in self.halut_modules.keys():
             print(f"overwrite halut layer {name}")
 
-        self.halut_modules |= dict({name: [C, rows, K]})
+        module_ref = get_module_by_name(self.model, name)
+        if isinstance(module_ref, HalutConv2d):
+            # Conv2d layer
+            module_ref.loop_order = loop_order
+            self.halut_modules |= dict({name: [C, rows, K, loop_order]})
+        elif isinstance(module_ref, HalutLinear):
+            # Linear layer
+            self.halut_modules |= dict({name: [C, rows, K]})
+        else:
+            raise Exception(
+                f"module {name} not a HALUT conv or linear layer {type(module_ref)}"
+            )
 
     def deactivate_halut_module(self, name: str) -> None:
         if name not in self.halut_modules.keys():
@@ -216,7 +239,7 @@ class HalutHelper:
 
     def run_halut_offline_training(self) -> None:
         dict_to_store: dict[str, int] = dict([])
-        dict_to_learn: dict[str, list[int]] = dict([])
+        dict_to_learn: dict[str, list] = dict([])
         for k, args in self.halut_modules.items():
             if len(self.state_dict_base[k + ".lut"].shape) > 1:
                 continue
@@ -235,6 +258,10 @@ class HalutHelper:
                 args[hm.HalutModuleConfig.ROWS],
                 args[hm.HalutModuleConfig.K],
             ]
+            if len(args) > 3:
+                # Conv2d layer
+                dict_to_learn[k].append(args[hm.HalutModuleConfig.LOOP_ORDER])
+
             paths = check_file_exists_and_return_path(
                 self.data_path, k, "input", rows=args[hm.HalutModuleConfig.ROWS]
             )
@@ -246,8 +273,16 @@ class HalutHelper:
                     dict_to_store[k] = RUN_ALL_SUBSAMPLING
                     # just needs to be bigger than in input_images / batch_size
                     # used for subsampling
+        # pylint: disable=consider-iterating-dictionary, consider-using-dict-items
+        for name in dict_to_learn.keys():
+            module = get_module_by_name(self.model, name)
+            if isinstance(module, HalutConv2d):
+                assert dict_to_learn[name][3] == module.loop_order
+                dict_to_learn[name].append(module.kernel_size)
+                dict_to_learn[name].append(module.stride)
+                dict_to_learn[name].append(module.padding)
+
         self.store_inputs(dict_to_store)
-        print(dict_to_learn, dict_to_store)
         learn_halut_multi_core_dict(
             dict_to_learn,
             data_path=self.data_path,

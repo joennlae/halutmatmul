@@ -2,13 +2,15 @@ import glob
 import os
 from math import ceil
 import re
-from typing import Callable
+from typing import Callable, Literal
 from timeit import default_timer as timer
 from multiprocessing import Process, JoinableQueue
 import numpy as np
+import torch
 
 from models.resnet import END_STORE_A, END_STORE_B
 import halutmatmul.halutmatmul as hm
+from halutmatmul.modules import HalutConv2d
 
 # https://docs.python.org/3/library/asyncio-queue.html#asyncio-queues
 
@@ -33,6 +35,10 @@ def learn_halut(
     data_path: str,
     store_path: str,
     K: int = 16,
+    loop_order: Literal["im2col", "kn2col"] = "im2col",
+    kernel_size: tuple[int, int] = (1, 1),  # only needed for kn2col
+    stride: tuple[int, int] = (1, 1),  # only needed for kn2col
+    padding: tuple[int, int] = (0, 0),  # only needed for kn2col
 ) -> None:
     print("start learning", l, C, r, K)
     files = glob.glob(data_path + f"/{l}" + END_STORE_A)
@@ -53,17 +59,55 @@ def learn_halut(
     print(
         "A input: ",
         a_numpy.shape,
-        a_numpy.shape[0] * a_numpy.shape[1] * 4 / (1024 * 1024 * 1024),
+        a_numpy.size * 4 / (1024 * 1024 * 1024),
         " GB",
     )
     b_numpy = np.load(data_path + f"/{l}" + END_STORE_B)
     print(
         "B input: ",
         b_numpy.shape,
-        b_numpy.shape[0] * b_numpy.shape[1] * 4 / (1024 * 1024),
+        b_numpy.size * 4 / (1024 * 1024),
         " MB",
     )
-    halut_numpy = hm.learn_halut_offline(a_numpy, b_numpy, C, K=K)
+    if loop_order == "im2col":
+        halut_numpy = hm.learn_halut_offline(a_numpy, b_numpy, C, K=K)
+    elif loop_order == "kn2col":
+        halut_numpy_list = []
+        lut_list = []
+        dims_list = []
+        thresholds_list = []
+        conv_layer = HalutConv2d(
+            a_numpy.shape[-1],
+            b_numpy.shape[-1],
+            kernel_size,
+            stride,
+            padding,
+        )
+        a_torch = torch.from_numpy(a_numpy)
+        for k_x in range(kernel_size[0]):
+            for k_y in range(kernel_size[1]):
+                input_slice = conv_layer.kn2col_input_slice(
+                    a_torch, a_torch.shape[1], a_torch.shape[2], k_x, k_y
+                )
+                input_slice = input_slice.reshape(-1, input_slice.shape[-1])
+                halut_numpy = hm.learn_halut_offline(
+                    input_slice.detach().cpu().numpy(),
+                    b_numpy[k_x * kernel_size[0] + k_y],
+                    C,
+                    K=K,
+                )
+                halut_numpy_list.append(halut_numpy)
+                lut_list.append(halut_numpy[hm.HalutOfflineStorage.LUT])
+                dims_list.append(halut_numpy[hm.HalutOfflineStorage.DIMS])
+                thresholds_list.append(halut_numpy[hm.HalutOfflineStorage.THRESHOLDS])
+        lut = np.array(lut_list)
+        dims = np.array(dims_list)
+        thresholds = np.array(thresholds_list)
+        halut_numpy = halut_numpy_list[0]
+        halut_numpy[hm.HalutOfflineStorage.LUT] = lut
+        halut_numpy[hm.HalutOfflineStorage.DIMS] = dims
+        halut_numpy[hm.HalutOfflineStorage.THRESHOLDS] = thresholds
+
     print(f"Store in {save_path}: {halut_numpy.nbytes / (1024 * 1024)} MB")
     _exists = os.path.exists(store_path)
     if not _exists:
@@ -87,43 +131,8 @@ def worker(name: str, queue: JoinableQueue, func: Callable) -> None:
         print(f"{name}", "Training time: %.2f s" % (end - start))
 
 
-def learn_halut_multi_core(
-    C_all: list[int],
-    layers_to_learn: list[str],
-    rows: list[int],
-    data_path: str,
-    batch_size: int,
-    store_path: str,
-) -> None:
-    WORKERS = 2
-    queue: JoinableQueue = JoinableQueue()
-
-    for l in layers_to_learn:
-        for C in C_all:
-            for r in rows:
-                params = (l, C, r, data_path, batch_size, store_path)
-                queue.put_nowait(params)
-
-    processes: list[Process] = []
-    for i in range(WORKERS):
-        process = Process(
-            target=worker,
-            args=(f"worker-{i}", queue, learn_halut),
-        )
-        process.daemon = True
-        process.start()
-        processes.append(process)
-
-    queue.join()
-
-    for process in processes:
-        process.kill()
-
-    print("====")
-
-
 def learn_halut_multi_core_dict(
-    dict_to_learn: dict[str, list[int]],
+    dict_to_learn: dict[str, list],
     data_path: str,
     store_path: str,
     amount_of_workers: int = 1,
@@ -148,8 +157,12 @@ def learn_halut_multi_core_dict(
             store_path,
             v[hm.HalutModuleConfig.K],
         )
+        if len(v) > 3:
+            for i in range(3, len(v)):
+                params += (v[i],)
+
         if amount_of_workers == 1:
-            learn_halut(*(params))
+            learn_halut(*(params))  # type: ignore
         else:
             queue.put_nowait(params)
 
