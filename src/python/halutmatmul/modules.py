@@ -582,7 +582,7 @@ class HalutConv2d(_ConvNd):
         elif self.loop_order == "kn2col":
             # batch size, in channels, height, width
             unfolded = _input.movedim(1, 3)
-            # batch size, height * width, in channels
+            # batch size, height, width, in channels
         return unfolded
 
     def transform_weight(self, weight: Tensor) -> Tensor:
@@ -595,11 +595,12 @@ class HalutConv2d(_ConvNd):
             ).transpose(0, 2)
         return weights_prepared
 
-    def get_H_W_out(self, _input: Tensor) -> tuple[int, int]:
+    def get_H_W_out(self, H_in: int, W_in: int) -> tuple[int, int]:
+        # reference: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
         H_out, W_out = (
             math.floor(
                 (
-                    _input.shape[2]
+                    H_in
                     + 2 * self.padding[0]  # type: ignore[arg-type]
                     - self.dilation[0] * (self.kernel_size[0] - 1)
                     - 1
@@ -609,20 +610,19 @@ class HalutConv2d(_ConvNd):
             ),
             math.floor(
                 (
-                    _input.shape[3]
+                    W_in
                     + 2 * self.padding[1]  # type: ignore[arg-type]
                     - self.dilation[1] * (self.kernel_size[1] - 1)
                     - 1
                 )
-                / self.stride[0]
+                / self.stride[1]
                 + 1
             ),
         )
         return H_out, W_out
 
     def transform_output(self, output: Tensor, _input: Tensor) -> Tensor:
-        # reference: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
-        H_out, W_out = self.get_H_W_out(_input)
+        H_out, W_out = self.get_H_W_out(_input.shape[2], _input.shape[3])
         if self.loop_order == "im2col":
             output = output.reshape((_input.shape[0], -1, output.size(1))).transpose(
                 1, 2
@@ -633,30 +633,33 @@ class HalutConv2d(_ConvNd):
             out = output.transpose(1, 2).reshape((_input.shape[0], -1, H_out, W_out))
         return out
 
-    def kn2col_input_slide(
-        self, _input: Tensor, input_transformed: Tensor, k_x: int, k_y: int
+    def kn2col_input_slice(
+        self, input_transformed: Tensor, H_in: int, W_in: int, k_x: int, k_y: int
     ) -> Tensor:
-        H_out, W_out = self.get_H_W_out(_input)
-        input_transformed = torch.nn.ConstantPad2d(self.padding, 0.0)(  # type: ignore
-            input_transformed
-        )
+        H_out, W_out = self.get_H_W_out(H_in, W_in)
+        if self.padding[0] > 0 or self.padding[1] > 0:  # type: ignore
+            input_transformed = torch.nn.functional.pad(
+                input_transformed,
+                (
+                    0,
+                    0,
+                    self.padding[1], # type: ignore
+                    self.padding[1],
+                    self.padding[0],
+                    self.padding[0],
+                ),
+                mode="constant",
+                value=0,
+            )
         if len(input_transformed.shape) == 3:
             input_transformed = input_transformed.unsqueeze(0)
-        print("shape", input_transformed.shape)
+        #  padding is already accounted for through H_out, W_out
         input_slice = input_transformed[
             :,
-            -self.padding[0] # type: ignore
-            + k_x : H_out * self.stride[0]
-            + k_x
-            + self.padding[0] : self.stride[0],  # type: ignore
-            -self.padding[1] # type: ignore
-            + k_y : W_out * self.stride[1]
-            + k_y
-            + self.padding[1] : self.stride[1],  # type: ignore
+            k_x : H_out * self.stride[0] + k_x : self.stride[0],  # type: ignore
+            k_y : W_out * self.stride[1] + k_y : self.stride[1],  # type: ignore
             :,
         ].reshape(-1, H_out * W_out, self.in_channels)
-
-        print("input_slice", input_slice.shape)
 
         return input_slice
 
@@ -680,7 +683,7 @@ class HalutConv2d(_ConvNd):
                     self.split_factor,
                 )
             elif self.loop_order == "kn2col":
-                H_out, W_out = self.get_H_W_out(_input)
+                H_out, W_out = self.get_H_W_out(_input.shape[2], _input.shape[3])
                 ret_tensor = torch.zeros(
                     _input.shape[0], H_out * W_out, self.out_channels
                 )
@@ -690,8 +693,12 @@ class HalutConv2d(_ConvNd):
                             raise NotImplementedError(
                                 "dilation > 1 has to be implemented"
                             )
-                        input_slice = self.kn2col_input_slide(
-                            _input, transformed_input, k_x, k_y
+                        input_slice = self.kn2col_input_slice(
+                            transformed_input,
+                            _input.shape[2],
+                            _input.shape[3],
+                            k_x,
+                            k_y,
                         )
                         input_slice = input_slice.reshape(-1, input_slice.shape[-1])
 
