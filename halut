@@ -79,9 +79,6 @@ lint_python() {
     echo "[INFO] check types with pyright"
     pyright
     echo "[DONE] check types with pyright"
-    echo "[INFO] lint c++ with clang-format"
-    ./scripts/clang-check.sh
-    echo "[DONE] lint c++ with clang-format"
 }
 
 test_python() {
