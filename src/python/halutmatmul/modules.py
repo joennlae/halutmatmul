@@ -518,6 +518,8 @@ class HalutConv2d(_ConvNd):
                 requires_grad=False,
             )
             self.weight.requires_grad = False
+            if len(self.lut.shape) > 3:
+                self.loop_order = "kn2col"
         elif any(
             k in state_dict.keys()
             for k in (
@@ -643,7 +645,7 @@ class HalutConv2d(_ConvNd):
                 (
                     0,
                     0,
-                    self.padding[1], # type: ignore
+                    self.padding[1],  # type: ignore
                     self.padding[1],
                     self.padding[0],
                     self.padding[0],
@@ -685,7 +687,11 @@ class HalutConv2d(_ConvNd):
             elif self.loop_order == "kn2col":
                 H_out, W_out = self.get_H_W_out(_input.shape[2], _input.shape[3])
                 ret_tensor = torch.zeros(
-                    _input.shape[0], H_out * W_out, self.out_channels
+                    _input.shape[0],
+                    H_out * W_out,
+                    self.out_channels,
+                    device=_input.device,
+                    dtype=_input.dtype,
                 )
                 for k_x in range(self.kernel_size[0]):
                     for k_y in range(self.kernel_size[1]):
