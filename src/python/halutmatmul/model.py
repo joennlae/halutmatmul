@@ -380,19 +380,17 @@ class HalutHelper:
         self.model.load_state_dict(state_dict_with_halut, strict=False)
         end = timer()
         print("State dict time: %.2f s" % (end - start))
-        if self.device_id == 0 or not self.distributed:
-            top_1_acc, top_5_acc = self.eval_function(
-                self.dataset,
-                self.model,
-                self.device,
-                False,
-                "",
-                None,
-                self.batch_size_inference,
-                self.num_workers,
-            )
-            self.stats["top_1_accuracy"] = top_1_acc
-            self.stats["top_5_accuracy"] = top_5_acc
-            return top_1_acc
-        else:
-            return -1
+        # if self.device_id == 0 or not self.distributed:
+        top_1_acc, top_5_acc = self.eval_function(
+            self.dataset,
+            self.model,
+            self.device,
+            False,
+            "",
+            None,
+            self.batch_size_inference,
+            self.num_workers,
+        )
+        self.stats["top_1_accuracy"] = top_1_acc
+        self.stats["top_5_accuracy"] = top_5_acc
+        return top_1_acc
