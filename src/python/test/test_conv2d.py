@@ -92,7 +92,6 @@ def conv2d_helper(
                     K=K,
                     lut_work_const=-1,
                 )
-                print("C", C)
                 luts.append(store_array[hm.HalutOfflineStorage.LUT])
                 dims_list.append(store_array[hm.HalutOfflineStorage.DIMS])
                 thresholds_list.append(store_array[hm.HalutOfflineStorage.THRESHOLDS])
