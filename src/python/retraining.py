@@ -8,6 +8,8 @@ import sys
 from typing import Any, Optional
 import pandas as pd
 import torch
+import torch.distributed as dist
+from torch.distributed.elastic.multiprocessing.errors import record
 import torchvision
 
 from training.timm_model import convert_to_halut
@@ -17,23 +19,15 @@ from training.train import load_data, main  # type: ignore[attr-defined]
 from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
 from models.resnet import resnet18
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
-from halutmatmul.model import HalutHelper
+from halutmatmul.model import HalutHelper, get_module_by_name
+from halutmatmul.modules import HalutConv2d
 
 
 def load_model(
     checkpoint_path: str,
     distributed: bool = False,
     batch_size: int = 32,
-) -> tuple[
-    str,
-    torch.nn.Module,
-    Any,
-    Any,
-    Any,
-    Any,
-    Optional[dict[str, list[int]]],
-    Any,
-]:
+) -> tuple[str, torch.nn.Module, Any, Any, Any, Any, Optional[dict[str, list]], Any,]:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     args = checkpoint["args"]
     args.batch_size = batch_size
@@ -93,6 +87,7 @@ def load_model(
     )
 
 
+@record
 def run_retraining(
     args: Any,
     test_only: bool = False,
@@ -163,47 +158,52 @@ def run_retraining(
     K = 16
     rows = -1  # subsampling
     if not test_only:
-        # TODO: make this more generic
         next_layer = layers[next_layer_idx]
         c_base = 64
+        loop_order = "im2col"
         c_ = c_base
-        if "layer2" in next_layer:
-            c_ = 2 * c_base
-        elif "layer3" in next_layer:
-            c_ = 4 * c_base
-        elif "layer4" in next_layer:
-            c_ = 8 * c_base
-        if "downsample" in next_layer:
-            c_ = c_base
+        module_ref = get_module_by_name(halut_model.model, next_layer)
+        if isinstance(module_ref, HalutConv2d):
+            inner_dim_im2col = (
+                module_ref.in_channels
+                * module_ref.kernel_size[0]
+                * module_ref.kernel_size[1]
+            )
+            inner_dim_kn2col = module_ref.in_channels
+            c_ = inner_dim_im2col // 9  # 9 = 3x3
+            if "layer3" in next_layer or "layer4" in next_layer:
+                loop_order = "kn2col"
+                c_ = inner_dim_kn2col // 8  # little lower than 9 but safer to work now
+            if "downsample" in next_layer:
+                loop_order = "im2col"
+                c_ = inner_dim_im2col // 4
+        print("module_ref", module_ref)
         if "fc" in next_layer:
             c_ = 4 * c_base  # fc.weight = [512, 10]
-        if "layer2.0.conv1" in next_layer:
-            c_ = c_base
-        if "layer3.0.conv1" in next_layer:
-            c_ = 2 * c_base
-        if "layer4.0.conv1" in next_layer:
-            c_ = 4 * c_base
-        if "layer2.0.downsample.0" in next_layer:
-            c_ = c_base // 4
-        if "layer3.0.downsample.0" in next_layer:
-            c_ = c_base // 2
-        if "layer4.0.downsample.0" in next_layer:
-            c_ = c_base
-        modules = {next_layer: [c_, rows, K]} | halut_modules
+        modules = {next_layer: [c_, rows, K, loop_order]} | halut_modules
     else:
         modules = halut_modules
     for k, v in modules.items():
-        halut_model.activate_halut_module(
-            k,
-            C=v[HalutModuleConfig.C],
-            rows=v[HalutModuleConfig.ROWS],
-            K=v[HalutModuleConfig.K],
-        )
+        if len(v) > 3:
+            halut_model.activate_halut_module(
+                k,
+                C=v[HalutModuleConfig.C],
+                rows=v[HalutModuleConfig.ROWS],
+                K=v[HalutModuleConfig.K],
+                loop_order=v[HalutModuleConfig.LOOP_ORDER],
+            )
+        else:
+            halut_model.activate_halut_module(
+                k,
+                C=v[HalutModuleConfig.C],
+                rows=v[HalutModuleConfig.ROWS],
+                K=v[HalutModuleConfig.K],
+            )
     if args.distributed:
-        torch.distributed.barrier()  # type: ignore
+        dist.barrier()
     halut_model.run_inference()
     if args.distributed:
-        torch.distributed.barrier()  # type: ignore
+        dist.barrier()
     print(halut_model.get_stats())
 
     if not test_only:
@@ -419,7 +419,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-plateaulr-3"
+    MODEL_NAME_EXTENSION = "cifar10-halut-kn2col-reversed"
     TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
     LR = 0.005  # imagenet 0.001, cifar10 0.01
@@ -528,13 +528,13 @@ if __name__ == "__main__":
             f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"  # type: ignore
         )
         if not args.single:
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
             torch.cuda.empty_cache()
             torch.cuda.set_device(args.gpu)
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
         main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
         if not args.single:
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
         # pylint: disable=line-too-long
         torch.cuda.empty_cache()
         args.checkpoint = f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}_trained.pth"  # type: ignore
@@ -544,7 +544,7 @@ if __name__ == "__main__":
                 args.checkpoint,
             )
         if not args.single:
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
         _, idx, total = run_retraining(
             args,
             test_only=True,
@@ -555,7 +555,7 @@ if __name__ == "__main__":
         )
         torch.cuda.empty_cache()
         if args.distributed:
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
         if idx < total:
             _, idx, total = run_retraining(
                 args,
@@ -566,4 +566,4 @@ if __name__ == "__main__":
             )  # do not overwrite args_checkpoint
         torch.cuda.empty_cache()
         if not args.single:
-            torch.distributed.barrier()  # type: ignore
+            dist.barrier()
