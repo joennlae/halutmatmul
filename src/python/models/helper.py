@@ -45,6 +45,22 @@ def write_inputs_to_disk(
                         total_rows_store / total_iterations
                     )
                     rows = module.input_storage_a.shape[0]  # type: ignore[index]
+                    if (
+                        isinstance(module, HalutConv2d)
+                        and module.loop_order == "kn2col"
+                    ):
+                        # batches to store now for kn2col instead of rows
+                        # TODO: could be more fine grained now subsampling is on batch level
+                        # iterations * batch_size * H_in * W_in
+                        store_ratio = total_rows_store / (
+                            total_iterations
+                            * module.input_storage_a.shape[0]  #  type: ignore[index]
+                            * module.input_storage_a.shape[1]  #  type: ignore[index]
+                            * module.input_storage_a.shape[2]  # type: ignore[index]
+                        )
+                        rows_to_store_during_current_iter = math.ceil(
+                            store_ratio * rows
+                        )
                     effective_store_per_iter = rows_to_store_during_current_iter
                     if effective_store_per_iter > rows:
                         effective_store_per_iter = rows
