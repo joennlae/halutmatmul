@@ -160,7 +160,7 @@ def run_retraining(
     if not test_only:
         next_layer = layers[next_layer_idx]
         c_base = 64
-        loop_order = "im2col"
+        loop_order = "kn2col"
         c_ = c_base
         module_ref = get_module_by_name(halut_model.model, next_layer)
         if isinstance(module_ref, HalutConv2d):
@@ -170,10 +170,13 @@ def run_retraining(
                 * module_ref.kernel_size[1]
             )
             inner_dim_kn2col = module_ref.in_channels
-            c_ = inner_dim_im2col // 9  # 9 = 3x3
             if "layer3" in next_layer or "layer4" in next_layer:
-                loop_order = "kn2col"
+                loop_order = "im2col"
+            if loop_order == "im2col":
+                c_ = inner_dim_im2col // 9  # 9 = 3x3
+            else:
                 c_ = inner_dim_kn2col // 8  # little lower than 9 but safer to work now
+
             if "downsample" in next_layer:
                 loop_order = "im2col"
                 c_ = inner_dim_im2col // 4
