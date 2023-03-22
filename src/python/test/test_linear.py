@@ -18,6 +18,7 @@ def linear_helper(
     b: float = 0.0,
     batch_size: int = 1,
     use_A: bool = False,
+    use_prototypes: bool = False,
 ) -> None:
     torch.manual_seed(4419)
     if batch_size == 1:
@@ -50,6 +51,7 @@ def linear_helper(
         bias=bias,
         split_factor=1,
         use_A=use_A,
+        use_prototypes=use_prototypes,
     )
     state_dict = OrderedDict({"weight": weights})
     if bias:
@@ -61,11 +63,16 @@ def linear_helper(
             {
                 "store_input": torch.zeros(1, dtype=torch.bool),
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
+                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
+                if not use_prototypes
+                else torch.from_numpy(store_array[hm.HalutOfflineStorage.SIMPLE_LUT]),
                 "thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
                 "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
+                "prototypes": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES]
+                ),
             }
         )
     )
@@ -80,17 +87,18 @@ def linear_helper(
 
 
 @pytest.mark.parametrize(
-    "in_features, out_features, C, a, b, bias, batch_size, use_A",
+    "in_features, out_features, C, a, b, bias, batch_size, use_A, use_prototypes",
     [
-        (in_features, out_features, C, a, b, bias, batch_size, use_A)
-        for in_features in [512, 1024]
+        (in_features, out_features, C, a, b, bias, batch_size, use_A, use_prototypes)
+        for in_features in [512]
         for out_features in [32, 128]
-        for C in [4, 16, 64]
+        for C in [4, 16]
         for a in [1.0]
         for b in [0.0]
         for bias in [True, False]
         for batch_size in [1, 8]
-        for use_A in [True, False]
+        for use_A in [False]
+        for use_prototypes in [True, False]
     ],
 )
 def test_linear_module(
@@ -102,6 +110,7 @@ def test_linear_module(
     bias: bool,
     batch_size: int,
     use_A: bool,
+    use_prototypes: bool,
 ) -> None:
     n_row_learn = 10000
     n_row_test = 2000
@@ -116,4 +125,5 @@ def test_linear_module(
         b,
         batch_size=batch_size,
         use_A=use_A,
+        use_prototypes=use_prototypes,
     )

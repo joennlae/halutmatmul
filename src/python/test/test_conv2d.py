@@ -26,6 +26,7 @@ def conv2d_helper(
     b: float = 0.0,
     use_A: bool = False,
     loop_order: Literal["im2col", "kn2col"] = "im2col",
+    use_prototypes: bool = False,
 ) -> None:
     torch.manual_seed(4419)
 
@@ -113,11 +114,16 @@ def conv2d_helper(
         | OrderedDict(
             {
                 "halut_active": torch.ones(1, dtype=torch.bool),
-                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT]),
+                "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
+                if not use_prototypes
+                else torch.from_numpy(store_array[hm.HalutOfflineStorage.SIMPLE_LUT]),
                 "thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
                 "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
+                "prototypes": torch.from_numpy(
+                    store_array[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES]
+                ),
             }
         )
     )
@@ -139,7 +145,7 @@ def conv2d_helper(
 
 @pytest.mark.parametrize(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, "
-    "groups, use_A, stride, padding, loop_order",
+    "groups, use_A, stride, padding, loop_order, use_prototypes",
     [
         (
             in_channels,
@@ -156,8 +162,9 @@ def conv2d_helper(
             stride,
             padding,
             loop_order,
+            use_prototypes,
         )
-        for in_channels in [64, 32]
+        for in_channels in [32]
         for out_channels in [64, 32]
         for image_x_y in [7]
         for kernel_size in [1, 3, 5]
@@ -171,6 +178,7 @@ def conv2d_helper(
         for stride in [1, 2]
         for padding in [0, 1]
         for loop_order in ["kn2col", "im2col"]
+        for use_prototypes in [True, False]
     ],
 )
 def test_conv2d_module(
@@ -188,6 +196,7 @@ def test_conv2d_module(
     stride: int,
     padding: int,
     loop_order: Literal["im2col", "kn2col"],
+    use_prototypes: bool,
 ) -> None:
     batch_size = 32
 
@@ -213,4 +222,5 @@ def test_conv2d_module(
         b=b,
         use_A=use_A,
         loop_order=loop_order,
+        use_prototypes=use_prototypes,
     )

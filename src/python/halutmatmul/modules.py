@@ -107,6 +107,8 @@ def halut_matmul_forward(
     K: int = 16,
     dims: Optional[torch.Tensor] = None,
     A: Optional[torch.Tensor] = None,  # [C, D // C, N]
+    prototypes: Optional[torch.Tensor] = None,
+    temperature: float = 1.0,
     split_factor: int = 4,
 ) -> torch.Tensor:
     # encoding
@@ -119,11 +121,18 @@ def halut_matmul_forward(
             torch.bmm(X_tilde, A).transpose(1, 2).reshape((C * int(math.sqrt(K)), -1)).T
         )
         h = S.mm(input_tilde.T) - T.unsqueeze(1)
+    elif prototypes is not None:  # using argmin
+        input_reshaped = input.reshape((input.shape[0], C, -1))
+        print("shapes", input_reshaped.shape, prototypes.shape)
+        mse = torch.mean(torch.square(input_reshaped.unsqueeze(2) - prototypes), dim=3)
+        print("shapes", mse.shape, input_reshaped.shape, prototypes.shape)
+        encoding_soft = torch.nn.Softmax(dim=2)(-mse / temperature)
     else:
         raise Exception("Either dims or A must be provided")
-    b = B.mm(h.relu())
-    b = b.T.reshape((-1, C, K))
-    encoding_soft = torch.nn.Softmax(dim=2)(b)
+    if prototypes is None:
+        b = B.mm(h.relu())
+        b = b.T.reshape((-1, C, K))
+        encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
     encoding_hard = torch.zeros_like(
         encoding_soft, memory_format=torch.legacy_contiguous_format
@@ -170,6 +179,7 @@ class HalutLinear(Linear):
         dtype: Union[str, Any] = None,
         split_factor: int = 1,
         use_A: bool = False,
+        use_prototypes: bool = False,
     ) -> None:
         super().__init__(
             in_features=in_features,
@@ -195,6 +205,7 @@ class HalutLinear(Linear):
         self.S = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+        self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -202,6 +213,7 @@ class HalutLinear(Linear):
 
         self.split_factor = split_factor
         self.use_A = use_A
+        self.use_prototypes = use_prototypes
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
@@ -266,6 +278,20 @@ class HalutLinear(Linear):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
+            print(
+                "set use_prototypes",
+                self.use_prototypes,
+                "to",
+                state_dict[prefix + "prototypes"],
+            )
+            if self.use_prototypes:
+                self.P = Parameter(
+                    state_dict[prefix + "prototypes"]
+                    .clone()
+                    .to(str(self.weight.device))
+                    .to(self.weight.dtype),
+                    requires_grad=True,
+                )
             self.weight.requires_grad = False
         elif any(
             k in state_dict.keys()
@@ -326,9 +352,11 @@ class HalutLinear(Linear):
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
-                self.dims if not self.use_A else None,
+                self.dims if not self.use_A and not self.use_prototypes else None,
                 self.A if self.use_A else None,
-                self.split_factor,
+                self.P if self.use_prototypes else None,
+                temperature=1.0,
+                split_factor=self.split_factor,
             )
             if self.bias is not None:
                 output += self.bias.t().repeat(*(*output.shape[:-1], 1))
@@ -409,6 +437,7 @@ class HalutConv2d(_ConvNd):
         dtype: Union[Any, None] = None,
         split_factor: int = 4,
         use_A: bool = False,
+        use_prototypes: bool = False,
         loop_order: Literal["im2col", "kn2col"] = "im2col",
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
@@ -446,11 +475,13 @@ class HalutConv2d(_ConvNd):
         self.S = Parameter(torch.zeros(1), requires_grad=False)
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.A = Parameter(torch.zeros(1), requires_grad=False)
+        self.P = Parameter(torch.zeros(1), requires_grad=False)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
         self.split_factor = split_factor
         self.use_A = use_A
+        self.use_prototypes = use_prototypes
         self.loop_order = loop_order
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
@@ -517,6 +548,14 @@ class HalutConv2d(_ConvNd):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
+            if self.use_prototypes:
+                self.P = Parameter(
+                    state_dict[prefix + "prototypes"]
+                    .clone()
+                    .to(str(self.weight.device))
+                    .to(self.weight.dtype),
+                    requires_grad=True,
+                )
             self.weight.requires_grad = False
             if len(self.lut.shape) > 3:
                 self.loop_order = "kn2col"
@@ -680,9 +719,11 @@ class HalutConv2d(_ConvNd):
                     self.B,
                     self.lut.size(1),
                     self.lut.size(2),
-                    self.dims if not self.use_A else None,
+                    self.dims if not self.use_A and not self.use_prototypes else None,
                     self.A if self.use_A else None,
-                    self.split_factor,
+                    self.P if self.use_prototypes else None,
+                    temperature=1.0,
+                    split_factor=self.split_factor,
                 )
             elif self.loop_order == "kn2col":
                 H_out, W_out = self.get_H_W_out(_input.shape[2], _input.shape[3])
@@ -717,10 +758,12 @@ class HalutConv2d(_ConvNd):
                             self.lut.size(-2),
                             self.lut.size(-1),
                             self.dims[k_x * self.kernel_size[0] + k_y]
-                            if not self.use_A
+                            if not self.use_A and not self.use_prototypes
                             else None,
                             self.A if self.use_A else None,
-                            self.split_factor,
+                            self.P if self.use_prototypes else None,
+                            temperature=1.0,
+                            split_factor=self.split_factor,
                         )
                         ret_tensor += matmul_result.reshape(
                             _input.shape[0], -1, self.out_channels

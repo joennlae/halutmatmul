@@ -3,6 +3,7 @@
 from __future__ import annotations
 from functools import reduce
 from typing import Any, Dict
+from sklearn.cluster import KMeans
 
 import numpy as np
 
@@ -28,7 +29,9 @@ class HalutOfflineStorage:
     PROTOTYPES = 3
     THRESHOLDS = 4
     DIMS = 5
-    MAX = 6
+    SIMPLE_PROTOTYPES = 6
+    SIMPLE_LUT = 7
+    MAX = 8
 
 
 class ProtoHashReport:
@@ -116,6 +119,8 @@ class HalutMatmul:
         self.optimized = run_optimized
         self.thresholds: np.ndarray = np.array([])
         self.dims: np.ndarray = np.array([])
+        self.simple_k_mean_prototypes: np.ndarray = np.array([])
+        self.simple_lut: np.ndarray = np.array([])
 
         self.encoding_function = halut_encode_opt
         self.learning_function = learn_proto_and_hash_function
@@ -247,6 +252,8 @@ class HalutMatmul:
                 self.prototypes.astype(np.float32),
                 self.thresholds.astype(np.float32),
                 self.dims.astype(np.float32),
+                self.simple_k_mean_prototypes.astype(np.float32),
+                self.simple_lut.astype(np.float32),
             ],
             dtype=object,
         )
@@ -262,6 +269,10 @@ class HalutMatmul:
         self.luts = numpy_array[HalutOfflineStorage.LUT]
 
         self.prototypes = numpy_array[HalutOfflineStorage.PROTOTYPES]
+        self.simple_k_mean_prototypes = numpy_array[
+            HalutOfflineStorage.SIMPLE_PROTOTYPES
+        ]
+        self.simple_lut = numpy_array[HalutOfflineStorage.SIMPLE_LUT]
         _, C, K = self.luts.shape
         self.C = C
         self.K = K
@@ -274,8 +285,38 @@ class HalutMatmul:
 
     def learn_offline(self, A: np.ndarray, B: np.ndarray) -> None:
         self.learn_hash_buckets_and_prototypes(A)
+        self.learn_simple_k_means_prototypes(A)
+        self.calculate_simple_lut(B)
         self._set_B(B)
         self._check_if_learned()
+
+    def learn_simple_k_means_prototypes(self, A: np.ndarray) -> None:
+        print("Learning simple k-means prototypes", A.shape)
+        assert A.shape[1] % self.C == 0
+        self.simple_k_mean_prototypes = np.zeros(
+            (self.C, self.K, A.shape[1] // self.C), dtype=np.float32
+        )
+        idx = np.arange(A.shape[0])
+        np.random.shuffle(idx)
+        AMOUNT = min(1024, A.shape[0])
+        subsampled = A[idx[:AMOUNT]]
+        subsampled = subsampled.reshape((AMOUNT, self.C, -1))
+        for c in range(self.C):
+            print("Learning simple k-means prototypes for channel {}".format(c))
+            kmeans = KMeans(n_clusters=self.K, random_state=0).fit(subsampled[:, c, :])
+            self.simple_k_mean_prototypes[c, :, :] = kmeans.cluster_centers_
+        print("Done learning simple k-means prototypes")
+
+    def calculate_simple_lut(self, B) -> None:
+        self.simple_lut = np.zeros((B.shape[1], self.C, self.K), dtype=np.float32)
+        B_reshaped = B.T.reshape((B.shape[1], self.C, -1))
+        # could of course be optimized :-)
+        for m in range(B.shape[1]):
+            for c in range(self.C):
+                for k in range(self.K):
+                    self.simple_lut[m, c, k] = np.dot(
+                        self.simple_k_mean_prototypes[c, k, :], B_reshaped[m, c, :]
+                    )
 
     def apply_matmul_e2e(
         self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None  # type: ignore
