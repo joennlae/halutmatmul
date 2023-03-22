@@ -13,15 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Lint with pylint
-      run: |
-        $CONDA/bin/conda install -c conda-forge pylint=2.15
-        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/python/*
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Lint with pylint
+        run: |
+          $CONDA/bin/conda install -c conda-forge pylint=2.15
+          $CONDA/bin/pylint --rcfile=.pylintrc --reports yes maddness/python/* src/python/*
 
   clang-format:
     needs: changes
@@ -30,11 +30,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run clang-format style check for C/C++ programs.
         uses: jidicula/clang-format-action@v4.6.2
         with:
-          clang-format-version: '12'
-          check-path: '.'
-          fallback-style: 'LLVM'
-          exclude-regex: '(lib|CMakeFiles|vendor)'
+          clang-format-version: "12"
+          check-path: "."
+          fallback-style: "LLVM"
+          exclude-regex: "(lib|CMakeFiles|vendor)"

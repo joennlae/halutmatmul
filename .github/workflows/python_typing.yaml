@@ -15,8 +15,8 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-    - uses: actions/checkout@v2
-    - name: Check types with pyright 
-      run: |
-        source /venv/bin/activate
-        pyright
+      - uses: actions/checkout@v3
+      - name: Check types with pyright
+        run: |
+          source /venv/bin/activate
+          pyright

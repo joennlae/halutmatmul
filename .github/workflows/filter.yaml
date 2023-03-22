@@ -19,22 +19,22 @@ jobs:
       algorithmic: ${{ steps.filter.outputs.algorithmic }}
       hardware: ${{ steps.filter.outputs.hardware }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: dorny/paths-filter@v2
-      id: filter
-      with:
-        filters: |
-          algorithmic:
-            - '.github/workflows/cpp_testing.yaml'
-            - '.github/workflows/gpu_tests.yaml'
-            - '.github/workflows/linting.yaml'
-            - '.github/workflows/python_mypy.yaml'
-            - '.github/workflows/python_testing.yaml'
-            - 'docs/**'
-            - 'maddness/**'
-            - 'scripts/**'
-            - 'src/**'
-          hardware:
-            - '.github/workflows/hw_linting.yaml'
-            - '.github/workflows/hw_openroad.yaml'
-            - 'hardware/**'
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            algorithmic:
+              - '.github/workflows/cpp_testing.yaml'
+              - '.github/workflows/gpu_tests.yaml'
+              - '.github/workflows/linting.yaml'
+              - '.github/workflows/python_mypy.yaml'
+              - '.github/workflows/python_testing.yaml'
+              - 'docs/**'
+              - 'maddness/**'
+              - 'scripts/**'
+              - 'src/**'
+            hardware:
+              - '.github/workflows/hw_linting.yaml'
+              - '.github/workflows/hw_openroad.yaml'
+              - 'hardware/**'

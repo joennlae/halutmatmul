@@ -13,15 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-    - name: Lint with pylint
-      run: |
-        $CONDA/bin/conda install -c conda-forge pylint=2.15.2
-        $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Lint with pylint
+        run: |
+          $CONDA/bin/conda install -c conda-forge pylint=2.15.2
+          $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
 
   python_typechecking:
     needs: changes
@@ -33,11 +33,11 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-    - uses: actions/checkout@v2
-    - name: Check types with mypy
-      run: |
-        source /venv/bin/activate
-        pyright hardware/util hardware/dv/**/*.py
+      - uses: actions/checkout@v3
+      - name: Check types with mypy
+        run: |
+          source /venv/bin/activate
+          pyright hardware/util hardware/dv/**/*.py
 
   verilator_lint_hw:
     needs: changes
@@ -49,12 +49,12 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-    - uses: actions/checkout@v2
-    - name: Lint RTL with verilator
-      run: |
-        source /venv/bin/activate
-        cd hardware
-        fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
+      - uses: actions/checkout@v3
+      - name: Lint RTL with verilator
+        run: |
+          source /venv/bin/activate
+          cd hardware
+          fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
 
   verible_lint_hw:
     needs: changes
@@ -66,9 +66,9 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-    - uses: actions/checkout@v2
-    - name: Lint RTL with verilator
-      run: |
-        source /venv/bin/activate
-        cd hardware
-        fusesoc --cores-root=. run --target=lint --tool=veriblelint halut:ip:halut_top
+      - uses: actions/checkout@v3
+      - name: Lint RTL with verilator
+        run: |
+          source /venv/bin/activate
+          cd hardware
+          fusesoc --cores-root=. run --target=lint --tool=veriblelint halut:ip:halut_top

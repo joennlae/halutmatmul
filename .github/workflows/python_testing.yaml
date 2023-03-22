@@ -19,16 +19,16 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-    - uses: actions/checkout@v2
-    - name: Download Test data
-      run: |
-        apt-get -y update
-        apt-get -y install curl
-        cd maddness && bash ./download_assets.sh && cd ..
-    - name: Test with pytest
-      run: |
-        source /venv/bin/activate
-        pip install pytest-split
-        df -h
-        du -a / | sort -n -r | head -n 10
-        pytest -srPA -k "not gpu" --splits 5 --group ${{ matrix.split }}
+      - uses: actions/checkout@v3
+      - name: Download Test data
+        run: |
+          apt-get -y update
+          apt-get -y install curl
+          cd maddness && bash ./download_assets.sh && cd ..
+      - name: Test with pytest
+        run: |
+          source /venv/bin/activate
+          pip install pytest-split
+          df -h
+          du -a / | sort -n -r | head -n 10
+          pytest -srPA -k "not gpu" --splits 5 --group ${{ matrix.split }}

@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120 # keep costs in check
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
-          python-version: '3.9'
+          python-version: "3.9"
       - uses: webfactory/ssh-agent@v0.5.4
         with:
-            ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
+          ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
       - name: Run GPU tests
         run: |
           cd .github/vast.ai
@@ -40,10 +40,10 @@ jobs:
     concurrency: vast.ai-gpu
     if: always()
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
-          python-version: '3.9'
+          python-version: "3.9"
       - name: Cleanup Vast.ai instances
         run: |
           cd .github/vast.ai
