@@ -216,6 +216,7 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
+            # https://github.com/kuangliu/pytorch-cifar/blob/49b7aa97b0c12fe0d4054e670403a16b6b834ddd/main.py#L30
             # preprocessing = T.Compose(
             #     [
             #         T.RandomCrop(32, padding=4),
@@ -224,6 +225,16 @@ def load_data(traindir, valdir, args):
             #         T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             #     ]
             # )
+            # https://github.com/akamaster/pytorch_resnet_cifar10/blob/d5489e8995e81e91ce6b1d69dcc98ad579b0b153/trainer.py#L93
+
+            preprocessing = T.Compose(
+                [
+                    T.RandomHorizontalFlip(),
+                    T.RandomCrop(32, padding=4),
+                    T.ToTensor(),
+                    T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                ]
+            )
             dataset = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=True,
@@ -262,12 +273,20 @@ def load_data(traindir, valdir, args):
                 download=True,
             )
         elif args.cifar10:
+            # https://github.com/kuangliu/pytorch-cifar/blob/49b7aa97b0c12fe0d4054e670403a16b6b834ddd/main.py#L37
             # preprocessing = T.Compose(
             #     [
             #         T.ToTensor(),
             #         T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             #     ]
             # )
+            # https://github.com/akamaster/pytorch_resnet_cifar10/blob/d5489e8995e81e91ce6b1d69dcc98ad579b0b153/trainer.py#L102
+            preprocessing = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                ]
+            )
             dataset_test = torchvision.datasets.CIFAR10(
                 root=SCRATCH_BASE + "/datasets",
                 train=False,
@@ -363,10 +382,11 @@ def main(args, gradient_accumulation_steps=1):
             progress=True, **{"is_cifar": True, "num_classes": num_classes}
         )
     elif args.cifar10:
-        # model = resnet18(
-        #     progress=True, **{"is_cifar": True, "num_classes": num_classes}
-        # )
-        model = resnet20()
+        model = resnet18(
+            progress=True, **{"is_cifar": True, "num_classes": num_classes}
+        )
+        if args.model == "resnet20":
+            model = resnet20()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         # state_dict_copy = model.state_dict().copy()
@@ -433,6 +453,10 @@ def main(args, gradient_accumulation_steps=1):
         optimizer = torch.optim.AdamW(
             parameters, lr=args.lr, weight_decay=args.weight_decay
         )
+    elif opt_name == "adam":
+        optimizer = torch.optim.Adam(
+            parameters, lr=args.lr, weight_decay=args.weight_decay
+        )
     else:
         raise RuntimeError(
             f"Invalid optimizer {args.opt}. Only SGD, RMSprop and AdamW are supported."
@@ -442,7 +466,7 @@ def main(args, gradient_accumulation_steps=1):
 
     args.lr_scheduler = args.lr_scheduler.lower()
     if args.cifar10:
-        args.lr_scheduler = "plateau"
+        args.lr_scheduler = "steplr"
     if args.lr_scheduler == "steplr":
         main_lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
