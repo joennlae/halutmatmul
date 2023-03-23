@@ -21,7 +21,7 @@ from models.resnet import resnet18
 from models.resnet20 import resnet20
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
-from halutmatmul.modules import HalutConv2d
+from halutmatmul.modules import HalutConv2d, HalutLinear
 
 
 def load_model(
@@ -61,11 +61,12 @@ def load_model(
             **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
         )
     elif args.cifar10:
-        # model = resnet18(
-        #     progress=True,
-        #     **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
-        # )
-        model = resnet20()
+        model = resnet18(
+            progress=True,
+            **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
+        )
+        if args.model == "resnet20":
+            model = resnet20()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -160,53 +161,59 @@ def run_retraining(
     K = 16
     rows = -1  # subsampling
     use_prototype = True
-    if not test_only:
-        next_layer = layers[next_layer_idx]
-        c_base = 16
-        loop_order = "im2col"
-        c_ = c_base
-        module_ref = get_module_by_name(halut_model.model, next_layer)
-        if isinstance(module_ref, HalutConv2d):
-            inner_dim_im2col = (
-                module_ref.in_channels
-                * module_ref.kernel_size[0]
-                * module_ref.kernel_size[1]
-            )
-            inner_dim_kn2col = module_ref.in_channels
-            # if "layer3" in next_layer or "layer4" in next_layer:
-            #     loop_order = "im2col"
-            if loop_order == "im2col":
-                c_ = inner_dim_im2col // 9  # 9 = 3x3
-            else:
-                c_ = inner_dim_kn2col // 8  # little lower than 9 but safer to work now
 
-            if "downsample" in next_layer:
-                loop_order = "im2col"
-                c_ = inner_dim_im2col // 4
-        print("module_ref", module_ref)
-        if "fc" in next_layer:
-            c_ = 4 * c_base  # fc.weight = [512, 10]
-        modules = {next_layer: [c_, rows, K, loop_order, use_prototype]} | halut_modules
-    else:
-        modules = halut_modules
-    for k, v in modules.items():
-        if len(v) > 3:
-            halut_model.activate_halut_module(
-                k,
-                C=v[HalutModuleConfig.C],
-                rows=v[HalutModuleConfig.ROWS],
-                K=v[HalutModuleConfig.K],
-                loop_order=v[HalutModuleConfig.LOOP_ORDER],
-                use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
-            )
+    # add all at once
+    for i in range(next_layer_idx, len(layers)):
+        if not test_only:
+            next_layer = layers[i]
+            c_base = 64
+            loop_order = "im2col"
+            c_ = c_base
+            module_ref = get_module_by_name(halut_model.model, next_layer)
+            if isinstance(module_ref, HalutConv2d):
+                inner_dim_im2col = (
+                    module_ref.in_channels
+                    * module_ref.kernel_size[0]
+                    * module_ref.kernel_size[1]
+                )
+                inner_dim_kn2col = module_ref.in_channels
+                # if "layer3" in next_layer or "layer4" in next_layer:
+                #     loop_order = "im2col"
+                if loop_order == "im2col":
+                    c_ = inner_dim_im2col // 9  # 9 = 3x3
+                else:
+                    c_ = (
+                        inner_dim_kn2col // 8
+                    )  # little lower than 9 but safer to work now
+
+                if "downsample" in next_layer:
+                    loop_order = "im2col"
+                    c_ = inner_dim_im2col // 4
+            print("module_ref", module_ref)
+            if "fc" in next_layer:
+                c_ = 4 * c_base  # fc.weight = [512, 10]
+            modules = {
+                next_layer: [c_, rows, K, loop_order, use_prototype]
+            } | halut_modules
         else:
-            halut_model.activate_halut_module(
-                k,
-                C=v[HalutModuleConfig.C],
-                rows=v[HalutModuleConfig.ROWS],
-                K=v[HalutModuleConfig.K],
-                use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
-            )
+            modules = halut_modules
+        for k, v in modules.items():
+            if len(v) > 4:
+                halut_model.activate_halut_module(
+                    k,
+                    C=v[HalutModuleConfig.C],
+                    rows=v[HalutModuleConfig.ROWS],
+                    K=v[HalutModuleConfig.K],
+                    loop_order=v[HalutModuleConfig.LOOP_ORDER],
+                    use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
+                )
+            else:
+                halut_model.activate_halut_module(
+                    k,
+                    C=v[HalutModuleConfig.C],
+                    rows=v[HalutModuleConfig.ROWS],
+                    K=v[HalutModuleConfig.K],
+                )
     if args.distributed:
         dist.barrier()
     halut_model.run_inference()
@@ -222,49 +229,81 @@ def run_retraining(
         # ugly hack to port halut active information
         model_copy.load_state_dict(checkpoint["model"])
 
-        # update optimizer with new parameters
-        custom_keys_weight_decay = []
-        if args_checkpoint.bias_weight_decay is not None:
-            custom_keys_weight_decay.append(("bias", args_checkpoint.bias_weight_decay))
-        parameters = set_weight_decay(
-            model_copy,
-            args_checkpoint.weight_decay,
-            norm_weight_decay=args_checkpoint.norm_weight_decay,
-            custom_keys_weight_decay=custom_keys_weight_decay
-            if len(custom_keys_weight_decay) > 0
-            else None,
-        )
+        params = {
+            "other": [],
+            "prototypes": [],
+            "temperature": [],
+            "luts": [],
+            "thresholds": [],
+        }
+
+        def _add_params(module, prefix=""):
+            for name, p in module.named_parameters(recurse=False):
+                if not p.requires_grad:  # removes parameter from optimizer!!
+                    # filter(lambda p: p.requires_grad, model.parameters())
+                    continue
+                if isinstance(module, (HalutConv2d, HalutLinear)):
+                    if name == "P":
+                        params["prototypes"].append(p)
+                        continue
+                    if name == "threshold":
+                        params["thresholds"].append(p)
+                        continue
+                    if name == "lut":
+                        params["luts"].append(p)
+                        continue
+                    if name == "temperature":
+                        params["temperature"].append(p)
+                        continue
+                params["other"].append(p)
+
+            for child_name, child_module in module.named_children():
+                child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+                _add_params(child_module, prefix=child_prefix)
+
+        _add_params(model)
+
+        custom_lrs = {
+            "other": lr,
+            "prototypes": 0.001,
+            "temperature": 0.1,
+            "luts": 0.001,
+            "thresholds": 0.001,
+        }
+        param_groups = []
+        # pylint: disable=consider-using-dict-items
+        for key in params:
+            if len(params[key]) > 0:
+                param_groups.append({"params": params[key], "lr": custom_lrs[key]})
+
         opt_name = args_checkpoint.opt.lower()
-        optimizer = torch.optim.SGD(
-            parameters,
-            lr=args_checkpoint.lr,
-            momentum=args_checkpoint.momentum,
-            weight_decay=args_checkpoint.weight_decay,
-            nesterov="nesterov" in opt_name,
-        )
-        opt_state_dict = optimizer.state_dict()
-        opt_state_dict["param_groups"][0]["weight_decay"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["weight_decay"]
-        opt_state_dict["param_groups"][0]["lr"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["lr"]
-        opt_state_dict["param_groups"][0]["momentum"] = checkpoint["optimizer"][
-            "param_groups"
-        ][0]["momentum"]
+        if opt_name == "sgd":
+            optimizer = torch.optim.SGD(
+                param_groups,
+                lr=args_checkpoint.lr,
+                momentum=args_checkpoint.momentum,
+                weight_decay=args_checkpoint.weight_decay,
+                nesterov="nesterov" in opt_name,
+            )
+            opt_state_dict = optimizer.state_dict()
+        elif opt_name == "adam":
+            optimizer = torch.optim.Adam(
+                param_groups,
+                lr=args_checkpoint.lr,
+                weight_decay=args_checkpoint.weight_decay,
+            )
+            opt_state_dict = optimizer.state_dict()
+        else:
+            raise ValueError("Unknown optimizer {}".format(opt_name))
 
         # freeze learning rate by increasing step size
         # TODO: make learning rate more adaptive
-        opt_state_dict["param_groups"][0]["lr"] = lr  # imagenet 0.001, cifar10 0.01
+        # imagenet 0.001, cifar10 0.01
+
+        # TODO LR scheduler
         # checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
         # args_checkpoint.lr_scheduler = "steplr"
 
-        print(
-            "LR",
-            args_checkpoint.lr,
-            lr,
-            checkpoint["optimizer"]["param_groups"][0],
-        )
         # if args_checkpoint.cifar10:
         # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         #     optimizer, T_max=train_epochs
@@ -429,9 +468,9 @@ if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
     TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
-    BATCH_SIZE = 32
-    LR = 0.005  # imagenet 0.001, cifar10 0.01
-    LR_STEP_SIZE = 8
+    BATCH_SIZE = 128
+    LR = 0.1  # imagenet 0.001, cifar10 0.01
+    LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
