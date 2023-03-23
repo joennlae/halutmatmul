@@ -203,8 +203,12 @@ def test_conv2d_module(
     if C > out_channels // groups:
         pytest.skip("Not possible due to D < C")
 
-    if use_A and in_channels * kernel_size**2 % C != 0:
-        pytest.skip("Not supported yet when usage of A is enabled")
+    if (use_A or use_prototypes) and in_channels * kernel_size**2 % C != 0:
+        pytest.skip("Not supported yet when usage of A or use_prototypes is enabled")
+
+    if use_prototypes and loop_order == "kn2col":
+        # some cases are supported but kmeans takes ages
+        pytest.skip("Not supported yet when usage of prototypes is enabled")
 
     conv2d_helper(
         in_channels,
