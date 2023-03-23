@@ -121,7 +121,7 @@ def conv2d_helper(
                     store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
                 "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
-                "prototypes": torch.from_numpy(
+                "P": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES]
                 ),
             }

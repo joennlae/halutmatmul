@@ -55,7 +55,8 @@ class HalutModuleConfig:
     ROWS = 1
     K = 2
     LOOP_ORDER = 3
-    MAX = 4
+    USE_PROTOTYPES = 4
+    MAX = 5
 
 
 def learn_halut_offline_report(
@@ -298,12 +299,14 @@ class HalutMatmul:
         )
         idx = np.arange(A.shape[0])
         np.random.shuffle(idx)
-        AMOUNT = min(1024, A.shape[0])
+        AMOUNT = min(8192, A.shape[0])
         subsampled = A[idx[:AMOUNT]]
         subsampled = subsampled.reshape((AMOUNT, self.C, -1))
         for c in range(self.C):
             print("Learning simple k-means prototypes for channel {}".format(c))
-            kmeans = KMeans(n_clusters=self.K, random_state=0).fit(subsampled[:, c, :])
+            kmeans = KMeans(
+                n_clusters=self.K, random_state=0, n_init=4, max_iter=100
+            ).fit(subsampled[:, c, :])
             self.simple_k_mean_prototypes[c, :, :] = kmeans.cluster_centers_
         print("Done learning simple k-means prototypes")
 

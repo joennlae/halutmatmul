@@ -134,6 +134,7 @@ class HalutHelper:
         rows: int,
         K: int = 16,
         loop_order: Literal["im2col", "kn2col"] = "im2col",
+        use_prototypes: bool = False,
     ) -> None:
         if name not in self.editable_keys:
             raise Exception(f"module {name} not in model")
@@ -145,9 +146,11 @@ class HalutHelper:
         if isinstance(module_ref, HalutConv2d):
             # Conv2d layer
             module_ref.loop_order = loop_order
+            module_ref.use_prototypes = use_prototypes
             self.halut_modules |= dict({name: [C, rows, K, loop_order]})
         elif isinstance(module_ref, HalutLinear):
             # Linear layer
+            module_ref.use_prototypes = use_prototypes
             self.halut_modules |= dict({name: [C, rows, K]})
         else:
             raise Exception(
@@ -352,6 +355,12 @@ class HalutHelper:
                     k
                     + ".dims": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.DIMS].astype(np.int32)
+                    ),
+                    k
+                    + ".P": torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES].astype(
+                            np.float32
+                        )
                     ),
                 }
             )

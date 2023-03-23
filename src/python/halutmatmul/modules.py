@@ -278,15 +278,9 @@ class HalutLinear(Linear):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
-            print(
-                "set use_prototypes",
-                self.use_prototypes,
-                "to",
-                state_dict[prefix + "prototypes"],
-            )
             if self.use_prototypes:
                 self.P = Parameter(
-                    state_dict[prefix + "prototypes"]
+                    state_dict[prefix + "P"]
                     .clone()
                     .to(str(self.weight.device))
                     .to(self.weight.dtype),
@@ -520,6 +514,14 @@ class HalutConv2d(_ConvNd):
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
+            if self.use_prototypes:
+                self.P = Parameter(
+                    state_dict[prefix + "P"]
+                    .clone()
+                    .to(str(self.weight.device))
+                    .to(self.weight.dtype),
+                    requires_grad=True,
+                )
             if self.use_A:
                 state_dict[prefix + "A"] = create_A_matrix_from_dims(
                     self.dims,
@@ -548,14 +550,6 @@ class HalutConv2d(_ConvNd):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
-            if self.use_prototypes:
-                self.P = Parameter(
-                    state_dict[prefix + "prototypes"]
-                    .clone()
-                    .to(str(self.weight.device))
-                    .to(self.weight.dtype),
-                    requires_grad=True,
-                )
             self.weight.requires_grad = False
             if len(self.lut.shape) > 3:
                 self.loop_order = "kn2col"
