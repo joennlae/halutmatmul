@@ -24,6 +24,7 @@ from training import presets, transforms, utils_train
 from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
+from models.resnet20 import resnet20
 
 SCRATCH_BASE = "/scratch/janniss"
 
@@ -362,9 +363,10 @@ def main(args, gradient_accumulation_steps=1):
             progress=True, **{"is_cifar": True, "num_classes": num_classes}
         )
     elif args.cifar10:
-        model = resnet18(
-            progress=True, **{"is_cifar": True, "num_classes": num_classes}
-        )
+        # model = resnet18(
+        #     progress=True, **{"is_cifar": True, "num_classes": num_classes}
+        # )
+        model = resnet20()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         # state_dict_copy = model.state_dict().copy()

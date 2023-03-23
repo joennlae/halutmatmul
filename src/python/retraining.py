@@ -18,6 +18,7 @@ from training.utils_train import save_on_master, set_weight_decay  # type: ignor
 from training.train import load_data, main  # type: ignore[attr-defined]
 from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
 from models.resnet import resnet18
+from models.resnet20 import resnet20
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
 from halutmatmul.modules import HalutConv2d
@@ -60,10 +61,11 @@ def load_model(
             **{"is_cifar": True, "num_classes": 100},  # type: ignore[arg-type]
         )
     elif args.cifar10:
-        model = resnet18(
-            progress=True,
-            **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
-        )
+        # model = resnet18(
+        #     progress=True,
+        #     **{"is_cifar": True, "num_classes": 10},  # type: ignore[arg-type]
+        # )
+        model = resnet20()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -157,10 +159,11 @@ def run_retraining(
     # C = int(args.C)
     K = 16
     rows = -1  # subsampling
+    use_prototype = True
     if not test_only:
         next_layer = layers[next_layer_idx]
-        c_base = 64
-        loop_order = "kn2col"
+        c_base = 16
+        loop_order = "im2col"
         c_ = c_base
         module_ref = get_module_by_name(halut_model.model, next_layer)
         if isinstance(module_ref, HalutConv2d):
@@ -170,8 +173,8 @@ def run_retraining(
                 * module_ref.kernel_size[1]
             )
             inner_dim_kn2col = module_ref.in_channels
-            if "layer3" in next_layer or "layer4" in next_layer:
-                loop_order = "im2col"
+            # if "layer3" in next_layer or "layer4" in next_layer:
+            #     loop_order = "im2col"
             if loop_order == "im2col":
                 c_ = inner_dim_im2col // 9  # 9 = 3x3
             else:
@@ -183,7 +186,7 @@ def run_retraining(
         print("module_ref", module_ref)
         if "fc" in next_layer:
             c_ = 4 * c_base  # fc.weight = [512, 10]
-        modules = {next_layer: [c_, rows, K, loop_order]} | halut_modules
+        modules = {next_layer: [c_, rows, K, loop_order, use_prototype]} | halut_modules
     else:
         modules = halut_modules
     for k, v in modules.items():
@@ -194,6 +197,7 @@ def run_retraining(
                 rows=v[HalutModuleConfig.ROWS],
                 K=v[HalutModuleConfig.K],
                 loop_order=v[HalutModuleConfig.LOOP_ORDER],
+                use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
             )
         else:
             halut_model.activate_halut_module(
@@ -201,6 +205,7 @@ def run_retraining(
                 C=v[HalutModuleConfig.C],
                 rows=v[HalutModuleConfig.ROWS],
                 K=v[HalutModuleConfig.K],
+                use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
             )
     if args.distributed:
         dist.barrier()
@@ -422,7 +427,7 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-kn2col-reversed"
+    MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
     TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
     LR = 0.005  # imagenet 0.001, cifar10 0.01
