@@ -108,7 +108,7 @@ def halut_matmul_forward(
     dims: Optional[torch.Tensor] = None,
     A: Optional[torch.Tensor] = None,  # [C, D // C, N]
     prototypes: Optional[torch.Tensor] = None,
-    temperature: float = 1.0,
+    temperature: torch.Tensor = torch.ones(1, dtype=torch.float16),
     split_factor: int = 4,
 ) -> torch.Tensor:
     # encoding
@@ -206,6 +206,9 @@ class HalutLinear(Linear):
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
+        self.temperature = Parameter(
+            torch.ones(1, dtype=torch.float16), requires_grad=True
+        )
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -348,7 +351,7 @@ class HalutLinear(Linear):
                 self.dims if not self.use_A and not self.use_prototypes else None,
                 self.A if self.use_A else None,
                 self.P if self.use_prototypes else None,
-                temperature=1.0,
+                temperature=self.temperature,
                 split_factor=self.split_factor,
             )
             if self.bias is not None:
@@ -469,6 +472,9 @@ class HalutConv2d(_ConvNd):
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.A = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
+        self.temperature = Parameter(
+            torch.ones(1, dtype=torch.float16), requires_grad=True
+        )
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
@@ -714,7 +720,7 @@ class HalutConv2d(_ConvNd):
                     self.dims if not self.use_A and not self.use_prototypes else None,
                     self.A if self.use_A else None,
                     self.P if self.use_prototypes else None,
-                    temperature=1.0,
+                    temperature=self.temperature,
                     split_factor=self.split_factor,
                 )
             elif self.loop_order == "kn2col":
@@ -754,7 +760,7 @@ class HalutConv2d(_ConvNd):
                             else None,
                             self.A if self.use_A else None,
                             self.P if self.use_prototypes else None,
-                            temperature=1.0,
+                            temperature=self.temperature,
                             split_factor=self.split_factor,
                         )
                         ret_tensor += matmul_result.reshape(
