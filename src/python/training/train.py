@@ -598,7 +598,16 @@ def main(args, gradient_accumulation_steps=1):
     print("Start training")
     start_time = time.time()
     best_acc = 0.0
-    writer = SummaryWriter(comment=os.path.basename(os.path.normpath(args.output_dir)))
+    writer = SummaryWriter(
+        comment=os.path.basename(os.path.normpath(args.output_dir))
+        + f"_{args.gpu}"
+        + f"_{args.world_size}"
+        + f"_{args.batch_size}"
+        + f"_{args.epochs}"
+        + f"_{args.lr}"
+        + f"_{args.lr_scheduler}"
+        + f"_{args.opt}"
+    )
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
