@@ -123,9 +123,7 @@ def halut_matmul_forward(
         h = S.mm(input_tilde.T) - T.unsqueeze(1)
     elif prototypes is not None:  # using argmin
         input_reshaped = input.reshape((input.shape[0], C, -1))
-        print("shapes", input_reshaped.shape, prototypes.shape)
         mse = torch.mean(torch.square(input_reshaped.unsqueeze(2) - prototypes), dim=3)
-        print("shapes", mse.shape, input_reshaped.shape, prototypes.shape)
         encoding_soft = torch.nn.Softmax(dim=2)(-mse / temperature)
     else:
         raise Exception("Either dims or A must be provided")
@@ -137,9 +135,13 @@ def halut_matmul_forward(
     encoding_hard = torch.zeros_like(
         encoding_soft, memory_format=torch.legacy_contiguous_format
     ).scatter_(2, index, 1.0)
-    E = encoding_hard - encoding_soft.detach() + encoding_soft
+    # E = encoding_hard - encoding_soft.detach() + encoding_soft
     # decoding
     result = torch.zeros(
+        [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
+    )
+
+    result_soft = torch.zeros(
         [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
     )
     # # for m in range(L.size(0)):
@@ -151,12 +153,21 @@ def halut_matmul_forward(
             :, (M // split_factor) * i : (M // split_factor) * (i + 1)
         ] = torch.einsum(
             "nij, kij -> nki",
-            [E, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
+            [encoding_hard, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
+        ).sum(
+            dim=2
+        )
+        result_soft[
+            :, (M // split_factor) * i : (M // split_factor) * (i + 1)
+        ] = torch.einsum(
+            "nij, kij -> nki",
+            [encoding_soft, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
         ).sum(
             dim=2
         )
     # result = torch.einsum("nij, kij -> nki", [E, L])
     # result = result.sum(dim=2)
+    result = result.detach() - result_soft.detach() + result_soft
     return result
 
 
