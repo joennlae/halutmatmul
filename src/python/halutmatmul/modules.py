@@ -228,6 +228,16 @@ class HalutLinear(Linear):
         self.use_prototypes = use_prototypes
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
+    def update_lut(self):
+        if self.halut_active and self.use_prototypes:
+            b = self.weight.transpose(1, 0)
+            b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
+            self.lut.data = torch.einsum(
+                "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
+            )
+            # clip temperature to reasonable values
+            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
+
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
@@ -492,6 +502,16 @@ class HalutConv2d(_ConvNd):
         self.use_prototypes = use_prototypes
         self.loop_order = loop_order
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
+
+    def update_lut(self):
+        if self.halut_active and self.use_prototypes:
+            b = self.transform_weight(self.weight)
+            b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
+            self.lut.data = torch.einsum(
+                "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
+            )
+            # clip temperature to reasonable values
+            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
