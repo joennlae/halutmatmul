@@ -341,6 +341,12 @@ class HalutHelper:
                     k
                     + ".lut": torch.from_numpy(
                         store_array[hm.HalutOfflineStorage.LUT].astype(np.float32)
+                    )
+                    if len(store_array[hm.HalutOfflineStorage.SIMPLE_LUT].shape) == 1
+                    else torch.from_numpy(
+                        store_array[hm.HalutOfflineStorage.SIMPLE_LUT].astype(
+                            np.float32
+                        )
                     ),
                     k + ".store_input": torch.zeros(1, dtype=torch.bool),
                     k + ".report_error": torch.ones(1, dtype=torch.bool)
