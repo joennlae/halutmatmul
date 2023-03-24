@@ -217,9 +217,7 @@ class HalutLinear(Linear):
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.temperature = Parameter(
-            torch.ones(1, dtype=torch.float16), requires_grad=True
-        )
+        self.temperature = Parameter(torch.ones(1) * 1.0, requires_grad=True)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -250,7 +248,7 @@ class HalutLinear(Linear):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=True,
+                requires_grad=False,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"]
@@ -292,6 +290,8 @@ class HalutLinear(Linear):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
+            if len(self.P.shape) > 1:
+                self.use_prototypes = True
             self.P = Parameter(
                 state_dict[prefix + "P"]
                 .clone()
@@ -483,9 +483,7 @@ class HalutConv2d(_ConvNd):
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.A = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
-        self.temperature = Parameter(
-            torch.ones(1, dtype=torch.float16), requires_grad=True
-        )
+        self.temperature = Parameter(torch.ones(1) * 1.0, requires_grad=True)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
@@ -514,7 +512,7 @@ class HalutConv2d(_ConvNd):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=True,
+                requires_grad=False,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"]
@@ -537,6 +535,8 @@ class HalutConv2d(_ConvNd):
                 .to(self.weight.dtype),
                 requires_grad=True,
             )
+            if len(self.P.shape) > 1:
+                self.use_prototypes = True
             if self.use_A:
                 state_dict[prefix + "A"] = create_A_matrix_from_dims(
                     self.dims,
