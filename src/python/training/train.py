@@ -25,6 +25,7 @@ from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
+from halutmatmul.modules import HalutConv2d, HalutLinear
 
 SCRATCH_BASE = "/scratch/janniss"
 
@@ -56,6 +57,15 @@ def train_one_epoch(
     metric_logger.add_meter(
         "img/s", utils_train.SmoothedValue(window_size=10 * accum_iter, fmt="{value}")
     )
+
+    def update_lut(module, prefix=""):
+        if isinstance(module, (HalutConv2d, HalutLinear)):
+            module.update_lut()
+            return
+
+        for child_name, child_module in module.named_children():
+            child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+            update_lut(child_module, prefix=child_prefix)
 
     header = f"Epoch: [{epoch}]"
     for i, (image, target) in enumerate(
@@ -95,6 +105,7 @@ def train_one_epoch(
             # weights update
             if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
                 optimizer.step()
+                update_lut(model)
                 optimizer.zero_grad()
                 loss_total = 0
 
@@ -129,7 +140,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix="")
     num_processed_samples = 0
     with torch.inference_mode():
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
-            image = image.half()
+            # image = image.half()
             image = image.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             output = model(image)
@@ -347,18 +358,7 @@ def main(args, gradient_accumulation_steps=1):
 
     collate_fn = None
     num_classes = len(dataset.classes)
-    mixup_transforms = []
-    if args.mixup_alpha > 0.0:
-        mixup_transforms.append(
-            transforms.RandomMixup(num_classes, p=1.0, alpha=args.mixup_alpha)
-        )
-    if args.cutmix_alpha > 0.0:
-        mixup_transforms.append(
-            transforms.RandomCutmix(num_classes, p=1.0, alpha=args.cutmix_alpha)
-        )
-    if mixup_transforms:
-        mixupcutmix = torchvision.transforms.RandomChoice(mixup_transforms)
-        collate_fn = lambda batch: mixupcutmix(*default_collate(batch))  # noqa: E731
+
     data_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -402,7 +402,7 @@ def main(args, gradient_accumulation_steps=1):
         checkpoint = torch.load(args.resume, map_location="cpu")
         # load to update halut deactivated layers
         model.load_state_dict(checkpoint["model"])
-    model.half()
+    # model.half()
     model.to(device)
 
     if args.distributed and args.sync_bn:
@@ -410,31 +410,57 @@ def main(args, gradient_accumulation_steps=1):
 
     criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
 
-    custom_keys_weight_decay = []
-    if args.bias_weight_decay is not None:
-        custom_keys_weight_decay.append(("bias", args.bias_weight_decay))
-    if args.transformer_embedding_decay is not None:
-        for key in [
-            "class_token",
-            "position_embedding",
-            "relative_position_bias_table",
-        ]:
-            custom_keys_weight_decay.append((key, args.transformer_embedding_decay))
-    # if args.cifar10:
-    #     args.weight_decay = 5e-4
-    parameters = utils_train.set_weight_decay(
-        model,
-        args.weight_decay,
-        norm_weight_decay=args.norm_weight_decay,
-        custom_keys_weight_decay=custom_keys_weight_decay
-        if len(custom_keys_weight_decay) > 0
-        else None,
-    )
+    params = {
+        "other": [],
+        "prototypes": [],
+        "temperature": [],
+        "luts": [],
+        "thresholds": [],
+    }
+
+    def _add_params(module, prefix=""):
+        for name, p in module.named_parameters(recurse=False):
+            if not p.requires_grad:  # removes parameter from optimizer!!
+                # filter(lambda p: p.requires_grad, model.parameters())
+                continue
+            if isinstance(module, (HalutConv2d, HalutLinear)):
+                if name == "P":
+                    params["prototypes"].append(p)
+                    continue
+                if name == "threshold":
+                    params["thresholds"].append(p)
+                    continue
+                if name == "lut":
+                    params["luts"].append(p)
+                    continue
+                if name == "temperature":
+                    params["temperature"].append(p)
+                    continue
+            # params["other"].append(p)
+
+        for child_name, child_module in module.named_children():
+            child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+            _add_params(child_module, prefix=child_prefix)
+
+    _add_params(model)
+
+    custom_lrs = {
+        "other": args.lr,
+        "prototypes": 0.001,
+        "temperature": 0.01,
+        "luts": 0.001,
+        "thresholds": 0.001,
+    }
+    param_groups = []
+    # pylint: disable=consider-using-dict-items
+    for key in params:
+        if len(params[key]) > 0:
+            param_groups.append({"params": params[key], "lr": custom_lrs[key]})
 
     opt_name = args.opt.lower()
     if opt_name.startswith("sgd"):
         optimizer = torch.optim.SGD(
-            parameters,
+            param_groups,
             lr=args.lr,
             momentum=args.momentum,
             weight_decay=args.weight_decay,
@@ -442,7 +468,7 @@ def main(args, gradient_accumulation_steps=1):
         )
     elif opt_name == "rmsprop":
         optimizer = torch.optim.RMSprop(
-            parameters,
+            param_groups,
             lr=args.lr,
             momentum=args.momentum,
             weight_decay=args.weight_decay,
@@ -451,11 +477,11 @@ def main(args, gradient_accumulation_steps=1):
         )
     elif opt_name == "adamw":
         optimizer = torch.optim.AdamW(
-            parameters, lr=args.lr, weight_decay=args.weight_decay
+            param_groups, lr=args.lr, weight_decay=args.weight_decay
         )
     elif opt_name == "adam":
         optimizer = torch.optim.Adam(
-            parameters, lr=args.lr, weight_decay=args.weight_decay
+            param_groups, lr=args.lr, weight_decay=args.weight_decay
         )
     else:
         raise RuntimeError(
@@ -465,8 +491,8 @@ def main(args, gradient_accumulation_steps=1):
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
     args.lr_scheduler = args.lr_scheduler.lower()
-    if args.cifar10:
-        args.lr_scheduler = "steplr"
+    # if args.cifar10:
+    #     args.lr_scheduler = "steplr"
     if args.lr_scheduler == "steplr":
         main_lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
@@ -489,31 +515,7 @@ def main(args, gradient_accumulation_steps=1):
             "are supported."
         )
 
-    if args.lr_warmup_epochs > 0:
-        if args.lr_warmup_method == "linear":
-            warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
-                optimizer,
-                start_factor=args.lr_warmup_decay,
-                total_iters=args.lr_warmup_epochs,
-            )
-        elif args.lr_warmup_method == "constant":
-            warmup_lr_scheduler = torch.optim.lr_scheduler.ConstantLR(
-                optimizer,
-                factor=args.lr_warmup_decay,
-                total_iters=args.lr_warmup_epochs,
-            )
-        else:
-            raise RuntimeError(
-                f"Invalid warmup lr method '{args.lr_warmup_method}'. Only linear and constant are supported."
-            )
-        lr_scheduler = torch.optim.lr_scheduler.SequentialLR(
-            optimizer,
-            schedulers=[warmup_lr_scheduler, main_lr_scheduler],
-            milestones=[args.lr_warmup_epochs],
-        )
-    else:
-        lr_scheduler = main_lr_scheduler
-
+    lr_scheduler = main_lr_scheduler
     model_without_ddp = model
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(
