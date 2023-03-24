@@ -299,13 +299,14 @@ class HalutMatmul:
         )
         idx = np.arange(A.shape[0])
         np.random.shuffle(idx)
-        AMOUNT = min(8192, A.shape[0])
+        AMOUNT = A.shape[0]
         subsampled = A[idx[:AMOUNT]]
         subsampled = subsampled.reshape((AMOUNT, self.C, -1))
         for c in range(self.C):
             print("Learning simple k-means prototypes for channel {}".format(c))
             kmeans = KMeans(
-                n_clusters=self.K, random_state=0, n_init=4, max_iter=100
+                n_clusters=self.K,
+                random_state=4419,
             ).fit(subsampled[:, c, :])
             self.simple_k_mean_prototypes[c, :, :] = kmeans.cluster_centers_
         print("Done learning simple k-means prototypes")
@@ -314,12 +315,15 @@ class HalutMatmul:
         self.simple_lut = np.zeros((B.shape[1], self.C, self.K), dtype=np.float32)
         B_reshaped = B.T.reshape((B.shape[1], self.C, -1))
         # could of course be optimized :-)
-        for m in range(B.shape[1]):
-            for c in range(self.C):
-                for k in range(self.K):
-                    self.simple_lut[m, c, k] = np.dot(
-                        self.simple_k_mean_prototypes[c, k, :], B_reshaped[m, c, :]
-                    )
+        # for m in range(B.shape[1]):
+        #     for c in range(self.C):
+        #         for k in range(self.K):
+        #             self.simple_lut[m, c, k] = np.dot(
+        #                 self.simple_k_mean_prototypes[c, k, :], B_reshaped[m, c, :]
+        #             )
+        self.simple_lut = np.einsum(
+            "CKd, MCd -> MCK", self.simple_k_mean_prototypes, B_reshaped
+        )
 
     def apply_matmul_e2e(
         self, A: np.ndarray, B: np.ndarray, A_learn: np.ndarray = None  # type: ignore
