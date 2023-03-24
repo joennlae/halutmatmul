@@ -163,7 +163,8 @@ def run_retraining(
     use_prototype = True
 
     # add all at once
-    for i in range(next_layer_idx, len(layers)):
+    max = len(layers) if next_layer_idx > 0 else len(layers) // 2
+    for i in range(next_layer_idx, max):
         if not test_only:
             next_layer = layers[i]
             c_base = 64
@@ -255,7 +256,8 @@ def run_retraining(
                     if name == "temperature":
                         params["temperature"].append(p)
                         continue
-                params["other"].append(p)
+
+                # params["other"].append(p)
 
             for child_name, child_module in module.named_children():
                 child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
@@ -266,7 +268,7 @@ def run_retraining(
         custom_lrs = {
             "other": lr,
             "prototypes": 0.001,
-            "temperature": 0.1,
+            "temperature": 0.01,
             "luts": 0.001,
             "thresholds": 0.001,
         }
@@ -276,21 +278,26 @@ def run_retraining(
             if len(params[key]) > 0:
                 param_groups.append({"params": params[key], "lr": custom_lrs[key]})
 
-        opt_name = args_checkpoint.opt.lower()
+        weight_decay = 0.0
+        opt_name = "adam"
+        lr_scheduler_name = "cosineannealinglr"
+        args_checkpoint.lr_scheduler = lr_scheduler_name
+        args_checkpoint.opt = opt_name
+        # opt_name = args_checkpoint.opt.lower()
         if opt_name == "sgd":
             optimizer = torch.optim.SGD(
                 param_groups,
-                lr=args_checkpoint.lr,
+                lr=lr,
                 momentum=args_checkpoint.momentum,
-                weight_decay=args_checkpoint.weight_decay,
+                weight_decay=weight_decay,
                 nesterov="nesterov" in opt_name,
             )
             opt_state_dict = optimizer.state_dict()
         elif opt_name == "adam":
             optimizer = torch.optim.Adam(
                 param_groups,
-                lr=args_checkpoint.lr,
-                weight_decay=args_checkpoint.weight_decay,
+                lr=lr,
+                weight_decay=weight_decay,
             )
             opt_state_dict = optimizer.state_dict()
         else:
@@ -305,10 +312,10 @@ def run_retraining(
         # args_checkpoint.lr_scheduler = "steplr"
 
         # if args_checkpoint.cifar10:
-        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        #     optimizer, T_max=train_epochs
-        # )
-        # checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=train_epochs
+        )
+        checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
 
         # optimizer updates
         checkpoint["optimizer"] = opt_state_dict
@@ -467,11 +474,11 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
-    TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
-    BATCH_SIZE = 128
-    LR = 0.1  # imagenet 0.001, cifar10 0.01
+    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 max 40 as we use plateaulr
+    BATCH_SIZE = 32
+    LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
-    GRADIENT_ACCUMULATION_STEPS = 1
+    GRADIENT_ACCUMULATION_STEPS = 8
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
@@ -550,6 +557,7 @@ if __name__ == "__main__":
         args_checkpoint.world_size = 1
         args_checkpoint.rank = 0
         args_checkpoint.gpu = args.cuda_id
+        args_checkpoint.device = "cuda:" + str(args.cuda_id)
     else:
         utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
         args_checkpoint, idx, total = run_retraining(
