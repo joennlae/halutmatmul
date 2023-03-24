@@ -160,7 +160,7 @@ def evaluate_distributed(
     log_suffix="",
 ):
     model.eval()
-    model.half()
+    # model.half()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
 
@@ -171,7 +171,7 @@ def evaluate_distributed(
     n_iter = 0
     with torch.inference_mode():
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
-            image = image.half()
+            # image = image.half()
             image = image.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             output = model(image)
@@ -281,8 +281,8 @@ def evaluate_halut_imagenet(
     store_arrays = {}
     with torch.inference_mode():
         for images, target in metric_logger.log_every(data_loader, 1, header):
-            if device.type == "cuda":
-                images = images.half()
+            # if device.type == "cuda":
+            # images = images.half()
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 

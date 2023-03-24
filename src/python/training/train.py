@@ -62,7 +62,7 @@ def train_one_epoch(
         metric_logger.log_every(data_loader, args.print_freq, header)
     ):
         start_time = time.time()
-        image = image.half()
+        # image = image.half()
         image, target = image.to(device), target.to(device)
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
