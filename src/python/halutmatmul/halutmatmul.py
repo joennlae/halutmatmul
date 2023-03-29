@@ -4,6 +4,7 @@ from __future__ import annotations
 from functools import reduce
 from typing import Any, Dict
 from sklearn.cluster import KMeans
+import faiss
 
 import numpy as np
 
@@ -284,11 +285,22 @@ class HalutMatmul:
     def learn_A(self, A: np.ndarray) -> None:
         self.learn_hash_buckets_and_prototypes(A)
 
-    def learn_offline(self, A: np.ndarray, B: np.ndarray) -> None:
-        self.learn_hash_buckets_and_prototypes(A)
+    def learn_offline(self, A: np.ndarray, B: np.ndarray, only_prototypes=True) -> None:
         self.learn_simple_k_means_prototypes(A)
         self.calculate_simple_lut(B)
-        self._set_B(B)
+        if not only_prototypes:
+            self.learn_hash_buckets_and_prototypes(A)
+            self._set_B(B)
+        else:
+            self.luts = np.zeros((B.shape[1], self.C, self.K), dtype=np.float32)
+            self.thresholds = np.zeros(
+                (B.shape[1], self.C), dtype=np.float32
+            )  # shape wrong but not used
+            self.dims = np.zeros(
+                (B.shape[1], self.C), dtype=np.float32
+            )  # shape wrong but not used
+            self.offset = 0
+            self.scale = 1
         self._check_if_learned()
 
     def learn_simple_k_means_prototypes(self, A: np.ndarray) -> None:
@@ -300,15 +312,69 @@ class HalutMatmul:
         idx = np.arange(A.shape[0])
         np.random.shuffle(idx)
         AMOUNT = A.shape[0]
-        subsampled = A[idx[:AMOUNT]]
+        subsampled = A[idx[:AMOUNT]].astype(np.float32)
+        # subsampled = subsampled.reshape((AMOUNT, self.C, -1))
+        # d = subsampled.shape[1] // self.C
+        # print("dims", subsampled.shape, d)
+        # print(subsampled[0])
+        # nbit = 4  # 2**nbit = K
+        # pq = faiss.ProductQuantizer(subsampled.shape[1], self.C, nbit)
+        # pq.verbose = True
+        # pq.train(subsampled)
+        # # # get_centroids
+        # # codes = pq.compute_codes(subsampled)
+        # # x2 = pq.decode(codes)
+        # # print("x2", x2[0])
+        # # diff = ((subsampled - x2) ** 2).sum() / (subsampled**2).sum()
+        # # print("diff", diff)
+        # # # rs = np.random.RandomState(123)
+        # # # centroids = rs.rand(2, 1 << nbit, 8).astype("float32")
+        # centroids = faiss.vector_to_array(pq.centroids)
+        # # print("centroids", centroids.shape, centroids[0])
+        # centroids = centroids.reshape((self.C, 1 << nbit, d))
+        # print(
+        #     "centroids",
+        #     centroids.shape,
+        #     self.simple_k_mean_prototypes.shape,
+        #     centroids[0],
+        # )
+        # self.simple_k_mean_prototypes = centroids
         subsampled = subsampled.reshape((AMOUNT, self.C, -1))
         for c in range(self.C):
             print("Learning simple k-means prototypes for channel {}".format(c))
-            kmeans = KMeans(
-                n_clusters=self.K,
-                random_state=4419,
-            ).fit(subsampled[:, c, :])
-            self.simple_k_mean_prototypes[c, :, :] = kmeans.cluster_centers_
+            # kmeans = KMeans(
+            #     n_clusters=self.K,
+            #     random_state=4419,
+            # ).fit(subsampled[:, c, :])
+
+            kmeans = faiss.Kmeans(
+                subsampled.shape[2],
+                self.K,
+                niter=150,
+                verbose=True,
+                nredo=2,
+                min_points_per_centroid=100,
+                max_points_per_centroid=2000000,
+            )
+            kmeans.train(subsampled[:, c, :])
+            centroids_kmeans = kmeans.centroids
+            print("centroids", centroids_kmeans.shape, centroids_kmeans[0])
+            if np.all(centroids_kmeans == 0):
+                print("WARNING: all centroids are zero")
+                zero_count = 0
+                for r in range(subsampled.shape[0]):
+                    if np.all(subsampled[r, c, :] == 0):
+                        zero_count += 1
+                print(
+                    "zero_count",
+                    zero_count,
+                    subsampled.shape[0] - zero_count,
+                    subsampled.shape[0],
+                )
+                # centroids[1:] = torch.nn.init.kaiming_uniform_(
+                #     torch.empty(self.K - 1, subsampled.shape[2])
+                # ).numpy()
+            self.simple_k_mean_prototypes[c] = centroids_kmeans
         print("Done learning simple k-means prototypes")
 
     def calculate_simple_lut(self, B) -> None:
