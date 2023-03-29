@@ -33,6 +33,7 @@ def load_model(
     args = checkpoint["args"]
     args.batch_size = batch_size
     args.distributed = distributed
+    args.workers = 4
     train_dir = os.path.join(args.data_path, "train")
     val_dir = os.path.join(args.data_path, "val")
     dataset, dataset_test, train_sampler, test_sampler = load_data(
@@ -163,11 +164,11 @@ def run_retraining(
     use_prototype = True
 
     # add all at once
-    max = len(layers) if next_layer_idx > 0 else len(layers) // 2
+    max = len(layers) - 1
     for i in range(next_layer_idx, max):
         if not test_only:
             next_layer = layers[i]
-            c_base = 64
+            c_base = 16
             loop_order = "im2col"
             c_ = c_base
             module_ref = get_module_by_name(halut_model.model, next_layer)
@@ -192,7 +193,7 @@ def run_retraining(
                     c_ = inner_dim_im2col // 4
             print("module_ref", module_ref)
             if "fc" in next_layer:
-                c_ = 4 * c_base  # fc.weight = [512, 10]
+                c_ = c_base  # fc.weight = [512, 10]
             modules = {
                 next_layer: [c_, rows, K, loop_order, use_prototype]
             } | halut_modules
@@ -234,8 +235,6 @@ def run_retraining(
             "other": [],
             "prototypes": [],
             "temperature": [],
-            "luts": [],
-            "thresholds": [],
         }
 
         def _add_params(module, prefix=""):
@@ -247,17 +246,11 @@ def run_retraining(
                     if name == "P":
                         params["prototypes"].append(p)
                         continue
-                    if name == "threshold":
-                        params["thresholds"].append(p)
-                        continue
-                    if name == "lut":
-                        params["luts"].append(p)
-                        continue
                     if name == "temperature":
                         params["temperature"].append(p)
                         continue
 
-                # params["other"].append(p)
+                params["other"].append(p)
 
             for child_name, child_module in module.named_children():
                 child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
@@ -266,17 +259,17 @@ def run_retraining(
         _add_params(model)
 
         custom_lrs = {
-            "other": lr,
-            "prototypes": 0.001,
-            "temperature": 0.01,
-            "luts": 0.001,
-            "thresholds": 0.001,
+            "temperature": 0.1,
         }
         param_groups = []
         # pylint: disable=consider-using-dict-items
         for key in params:
             if len(params[key]) > 0:
-                param_groups.append({"params": params[key], "lr": custom_lrs[key]})
+                # pylint: disable=consider-iterating-dictionary
+                if key in custom_lrs.keys():
+                    param_groups.append({"params": params[key], "lr": custom_lrs[key]})
+                else:
+                    param_groups.append({"params": params[key]})
 
         weight_decay = 0.0
         opt_name = "adam"
@@ -315,6 +308,9 @@ def run_retraining(
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=train_epochs
         )
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        #     optimizer, step_size=lr_step_size, gamma=0.1
+        # )
         checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
 
         # optimizer updates
@@ -474,7 +470,7 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
-    TRAIN_EPOCHS = 20  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 200  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
     LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
@@ -574,7 +570,7 @@ if __name__ == "__main__":
         args_checkpoint.gpu = args.gpu  # type: ignore
         args_checkpoint.distributed = args.distributed  # type: ignore
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
-    args_checkpoint.workers = 0  # type: ignore
+    args_checkpoint.workers = 4  # type: ignore
     args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     args_checkpoint.simulate = False  # type: ignore
     for i in range(idx, total + 1):  # type: ignore
@@ -587,6 +583,7 @@ if __name__ == "__main__":
             torch.cuda.empty_cache()
             torch.cuda.set_device(args.gpu)
             dist.barrier()
+        # args_checkpoint.test_only = True
         main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
         if not args.single:
             dist.barrier()
