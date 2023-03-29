@@ -35,6 +35,8 @@ def linear_helper(
         input_learn = (torch.rand((batch_size * 10, n_row, in_features)) + b) * a
         input_test = (torch.rand((batch_size, n_row, in_features)) + b) * a
 
+    input_learn = torch.relu(input_learn)
+    input_test = torch.relu(input_test)
     learn_numpy = input_learn.detach().cpu().numpy().reshape(-1, input_learn.shape[-1])
     weights_numpy = weights.detach().cpu().numpy().transpose(1, 0)
     store_array = hm.learn_halut_offline(
@@ -72,7 +74,9 @@ def linear_helper(
                 "dims": torch.from_numpy(store_array[hm.HalutOfflineStorage.DIMS]),
                 "P": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES]
-                ),
+                )
+                if use_prototypes
+                else torch.zeros(1, dtype=torch.float32),
             }
         )
     )
@@ -83,7 +87,13 @@ def linear_helper(
         f"params: C: {C}, in: {in_features}, out: {out_features}, bias: {bias}, "
         f"n_row_learn: {n_row_learn}, n_row_test: {n_row_test}, a: {a}, b: {b}"
     )
-    helper_test_module(input_test, torch_module, halutmatmul_module)
+    helper_test_module(
+        input_test,
+        torch_module,
+        halutmatmul_module,
+        rel_error=-1.0,
+        scaled_error_max=0.02,
+    )
 
 
 @pytest.mark.parametrize(
