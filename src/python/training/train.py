@@ -436,7 +436,7 @@ def main(args, gradient_accumulation_steps=1):
                 if name == "temperature":
                     params["temperature"].append(p)
                     continue
-            # params["other"].append(p)
+            params["other"].append(p)
 
         for child_name, child_module in module.named_children():
             child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
@@ -445,17 +445,17 @@ def main(args, gradient_accumulation_steps=1):
     _add_params(model)
 
     custom_lrs = {
-        "other": args.lr,
-        "prototypes": 0.001,
-        "temperature": 0.01,
-        "luts": 0.001,
-        "thresholds": 0.001,
+        "temperature": 0.1,
     }
     param_groups = []
     # pylint: disable=consider-using-dict-items
     for key in params:
         if len(params[key]) > 0:
-            param_groups.append({"params": params[key], "lr": custom_lrs[key]})
+            # pylint: disable=consider-iterating-dictionary
+            if key in custom_lrs.keys():
+                param_groups.append({"params": params[key], "lr": custom_lrs[key]})
+            else:
+                param_groups.append({"params": params[key]})
 
     opt_name = args.opt.lower()
     if opt_name.startswith("sgd"):
@@ -600,8 +600,6 @@ def main(args, gradient_accumulation_steps=1):
     best_acc = 0.0
     writer = SummaryWriter(
         comment=os.path.basename(os.path.normpath(args.output_dir))
-        + f"_{args.gpu}"
-        + f"_{args.world_size}"
         + f"_{args.batch_size}"
         + f"_{args.epochs}"
         + f"_{args.lr}"
@@ -737,7 +735,7 @@ def get_args_parser(add_help=True):
     parser.add_argument(
         "-j",
         "--workers",
-        default=8,
+        default=4,
         type=int,
         metavar="N",
         help="number of data loading workers (default: 16)",
