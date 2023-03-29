@@ -123,7 +123,7 @@ def halut_matmul_forward(
         h = S.mm(input_tilde.T) - T.unsqueeze(1)
     elif prototypes is not None:  # using argmin
         input_reshaped = input.reshape((input.shape[0], C, -1))
-        mse = torch.mean(torch.square(input_reshaped.unsqueeze(2) - prototypes), dim=3)
+        mse = torch.sum(torch.square(input_reshaped.unsqueeze(2) - prototypes), dim=3)
         encoding_soft = torch.nn.Softmax(dim=2)(-mse / temperature)
     else:
         raise Exception("Either dims or A must be provided")
@@ -217,7 +217,7 @@ class HalutLinear(Linear):
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1) * 1.0, requires_grad=True)
+        self.temperature = Parameter(torch.ones(1) * 0.4, requires_grad=True)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -236,7 +236,7 @@ class HalutLinear(Linear):
                 "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
             )
             # clip temperature to reasonable values
-            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
+            self.temperature.data = torch.clamp(self.temperature.data, 0.01, 1.0)
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
@@ -300,8 +300,6 @@ class HalutLinear(Linear):
                 state_dict[prefix + "S"],
                 requires_grad=False,
             )
-            if len(self.P.shape) > 1:
-                self.use_prototypes = True
             self.P = Parameter(
                 state_dict[prefix + "P"]
                 .clone()
@@ -309,6 +307,8 @@ class HalutLinear(Linear):
                 .to(self.weight.dtype),
                 requires_grad=True,
             )
+            if len(self.P.shape) > 1:
+                self.use_prototypes = True
             self.weight.requires_grad = False
         elif any(
             k in state_dict.keys()
@@ -493,7 +493,7 @@ class HalutConv2d(_ConvNd):
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.A = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1) * 1.0, requires_grad=True)
+        self.temperature = Parameter(torch.ones(1) * 0.4, requires_grad=True)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
@@ -511,7 +511,7 @@ class HalutConv2d(_ConvNd):
                 "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
             )
             # clip temperature to reasonable values
-            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
+            self.temperature.data = torch.clamp(self.temperature.data, 0.01, 1.0)
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
@@ -555,6 +555,7 @@ class HalutConv2d(_ConvNd):
                 .to(self.weight.dtype),
                 requires_grad=True,
             )
+            print("loading P", self.P.shape, self.lut.shape)
             if len(self.P.shape) > 1:
                 self.use_prototypes = True
             if self.use_A:
