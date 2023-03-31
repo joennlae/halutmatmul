@@ -33,10 +33,12 @@ dependencies:
   - matplotlib
   # for CI
   - pyright
+  # kmeans
+  - faiss-cpu
   - pip:
-    - cupy_cuda11x
-    - pytorch-nemo
-    - timm==0.5.4
-    - ray
-    - cocotb # needed for pyright
+      - cupy_cuda11x
+      - pytorch-nemo
+      - timm==0.5.4
+      - ray
+      - cocotb # needed for pyright
 prefix: /home/msc22f5/.conda/envs/halutmatmul
