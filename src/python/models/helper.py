@@ -1,5 +1,6 @@
 from typing import Optional, TypeVar, Union
 import math
+import os
 import torch
 import numpy as np
 
@@ -10,6 +11,7 @@ from models.dscnn.dataset import AudioGenerator
 from timm.utils import accuracy
 from training import utils_train
 from halutmatmul.modules import HalutConv2d, HalutLinear
+import halutmatmul.halutmatmul as hm
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -128,6 +130,38 @@ def write_inputs_to_disk(
                 store(child, prefix + name + ".")
 
     store(model)
+    del store
+
+
+def write_module_back(
+    exact_name: str,
+    module: torch.nn.Module,
+    path: str,
+) -> None:
+    def store(module: torch.nn.Module, prefix: str = "") -> None:
+        store_layer_name = prefix[:-1]
+        store_layer_name = store_layer_name.replace("module.", "")
+        if store_layer_name + END_STORE_A in os.listdir(path):
+
+            loaded = np.load(path + "/" + store_layer_name + END_STORE_A)
+            if isinstance(module, (HalutConv2d, HalutLinear)):
+                loaded[hm.HalutOfflineStorage.SIMPLE_LUT] = (
+                    module.lut.detach().cpu().numpy()
+                )
+                loaded[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES] = (
+                    module.P.detach().cpu().numpy()
+                )
+                np.save(path + "/" + store_layer_name + END_STORE_A, loaded)
+                print(
+                    "overwritten module",
+                    prefix + module._get_name(),
+                    "with updated LUT and P",
+                )
+        for name, child in module._modules.items():
+            if child is not None:
+                store(child, prefix + name + ".")
+
+    store(module, exact_name)
     del store
 
 
@@ -259,6 +293,7 @@ def evaluate_halut_imagenet(
     additional_dict: Optional[dict[str, int]] = None,
     batch_size: int = 128,
     num_workers: int = 8,
+    prev_max: float = 0.0,
 ) -> tuple[float, float]:
     data_loader = dataset
     if isinstance(data_loader, Dataset):
@@ -279,6 +314,8 @@ def evaluate_halut_imagenet(
     model.eval()
     n_iter = 0
     store_arrays = {}
+    batch_size = data_loader.batch_size  # type: ignore
+
     with torch.inference_mode():
         for images, target in metric_logger.log_every(data_loader, 1, header):
             # if device.type == "cuda":
@@ -287,9 +324,9 @@ def evaluate_halut_imagenet(
             target = target.to(device, non_blocking=True)
 
             # compute output
-            with torch.cuda.amp.autocast():  # type: ignore
-                output = model(images)
-                loss = criterion(output, target)
+            # with torch.cuda.amp.autocast():  # type: ignore
+            output = model(images)
+            loss = criterion(output, target)
 
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
@@ -311,6 +348,18 @@ def evaluate_halut_imagenet(
                     additional_dict=additional_dict,
                 )
             n_iter = n_iter + 1
+            if not is_store and prev_max > 0.0:
+                if n_iter > iterations * 0.25:
+                    if metric_logger.acc1.global_avg < prev_max - 0.2:
+                        break
+                if n_iter > iterations * 0.1:
+                    if metric_logger.acc1.global_avg < prev_max - 0.8:
+                        break
+            # if is_store and n_iter == max_iter:
+            #     break
+            # if not is_store:
+            #     if n_iter > 50:
+            #         break
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -335,6 +384,7 @@ def eval_halut_kws(
     # pylint: disable=unused-argument
     batch_size: int = 128,
     num_workers: int = 8,
+    prev_max: float = 0.0,
 ) -> tuple[float, float]:
     # data = AudioGenerator(mode, self.audio_processor, training_parameters)
     model.eval()
