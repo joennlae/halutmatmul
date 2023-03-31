@@ -71,7 +71,7 @@ class LambdaLayer(nn.Module):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option="A"):
+    def __init__(self, in_planes, planes, stride=1, option="B"):
         super(BasicBlock, self).__init__()
         self.conv1 = HalutConv2d(
             in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False

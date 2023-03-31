@@ -358,6 +358,29 @@ resnet20_layers = [
     "layer3.2.conv2",
     "linear",
 ]
+resnet20_b_layers = [
+    "layer1.0.conv1",
+    "layer1.0.conv2",
+    "layer1.1.conv1",
+    "layer1.1.conv2",
+    "layer1.2.conv1",
+    "layer1.2.conv2",
+    "layer2.0.conv1",
+    "layer2.0.conv2",
+    "layer2.0.shortcut.0",
+    "layer2.1.conv1",
+    "layer2.1.conv2",
+    "layer2.2.conv1",
+    "layer2.2.conv2",
+    "layer3.0.conv1",
+    "layer3.0.conv2",
+    "layer3.0.shortcut.0",
+    "layer3.1.conv1",
+    "layer3.1.conv2",
+    "layer3.2.conv1",
+    "layer3.2.conv2",
+    "linear",
+]
 
 """
 layer1.0.conv1   torch.Size([64, 64, 3, 3])
@@ -393,7 +416,7 @@ def get_layers(name: available_models) -> list[str]:
     elif name == "resnet18":
         return resnet18_layers
     elif name == "resnet20":
-        return resnet20_layers
+        return resnet20_b_layers
     else:
         return Exception("Model name not supported: ", name)  # type: ignore
 
