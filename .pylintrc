@@ -7,7 +7,7 @@ ignore-paths=^maddness/python/joblib/.*$,
              ^src/python/results/*$,
              ^src/python/runs/*$,
 
-ignore-patterns=.*\.json,.*\.pth,.*\.core,.*\.sh,.*\.log,.*\.txt,.*\.npy,.*\.png
+ignore-patterns=.*\.json,.*\.pth,.*\.core,.*\.sh,.*\.log,.*\.txt,.*\.npy,.*\.png,.*\.csv
 # init-hook='import sys; sys.path.append("./maddness/python/")'
 
 [FORMAT]
@@ -47,7 +47,8 @@ disable=import-error,
         unspecified-encoding,
         broad-except,
         redefined-builtin,
-        trailing-newlines
+        trailing-newlines,
+        dangerous-default-value
 
 [REPORTS]
 

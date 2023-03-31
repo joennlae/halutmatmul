@@ -2,7 +2,7 @@
 # heavily inspired from https://github.com/dblalock/bolt
 from __future__ import annotations
 from functools import reduce
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from sklearn.cluster import KMeans
 import faiss
 
@@ -53,11 +53,10 @@ class EncodingAlgorithm:
 
 class HalutModuleConfig:
     C = 0
-    ROWS = 1
-    K = 2
-    LOOP_ORDER = 3
-    USE_PROTOTYPES = 4
-    MAX = 5
+    K = 1
+    LOOP_ORDER = 2
+    USE_PROTOTYPES = 3
+    MAX = 4
 
 
 def learn_halut_offline_report(
@@ -92,6 +91,12 @@ def learn_halut_offline(
     lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
+    niter=2,
+    nredo=1,
+    min_points_per_centroid=100,
+    max_points_per_centroid=1000,
+    codebook: int = -1,
+    already_learned: Optional[Any] = None,
 ) -> np.ndarray:
     mn = HalutMatmul(
         C,
@@ -100,7 +105,17 @@ def learn_halut_offline(
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
     )
-    mn.learn_offline(A, B)
+    if already_learned is not None:
+        mn.from_numpy(already_learned)
+    mn.learn_offline(
+        A,
+        B,
+        niter=niter,
+        nredo=nredo,
+        min_points_per_centroid=min_points_per_centroid,
+        max_points_per_centroid=max_points_per_centroid,
+        codebook=codebook,
+    )
     return mn.to_numpy()
 
 
@@ -285,8 +300,25 @@ class HalutMatmul:
     def learn_A(self, A: np.ndarray) -> None:
         self.learn_hash_buckets_and_prototypes(A)
 
-    def learn_offline(self, A: np.ndarray, B: np.ndarray, only_prototypes=True) -> None:
-        self.learn_simple_k_means_prototypes(A)
+    def learn_offline(
+        self,
+        A: np.ndarray,
+        B: np.ndarray,
+        only_prototypes=True,
+        niter=2,
+        nredo=1,
+        min_points_per_centroid=100,
+        max_points_per_centroid=1000,
+        codebook: int = -1,
+    ) -> None:
+        self.learn_simple_k_means_prototypes(
+            A,
+            niter=niter,
+            nredo=nredo,
+            min_points_per_centroid=min_points_per_centroid,
+            max_points_per_centroid=max_points_per_centroid,
+            codebook=codebook,
+        )
         self.calculate_simple_lut(B)
         if not only_prototypes:
             self.learn_hash_buckets_and_prototypes(A)
@@ -303,16 +335,26 @@ class HalutMatmul:
             self.scale = 1
         self._check_if_learned()
 
-    def learn_simple_k_means_prototypes(self, A: np.ndarray) -> None:
+    def learn_simple_k_means_prototypes(
+        self,
+        A: np.ndarray,
+        niter=2,
+        nredo=1,
+        min_points_per_centroid=100,
+        max_points_per_centroid=1000,
+        codebook: int = -1,
+    ) -> None:
         print("Learning simple k-means prototypes", A.shape)
         assert A.shape[1] % self.C == 0
-        self.simple_k_mean_prototypes = np.zeros(
-            (self.C, self.K, A.shape[1] // self.C), dtype=np.float32
-        )
-        idx = np.arange(A.shape[0])
-        np.random.shuffle(idx)
-        AMOUNT = A.shape[0]
-        subsampled = A[idx[:AMOUNT]].astype(np.float32)
+        if len(self.simple_k_mean_prototypes.shape) <= 1:
+            self.simple_k_mean_prototypes = np.zeros(
+                (self.C, self.K, A.shape[1] // self.C), dtype=np.float32
+            )
+        # idx = np.arange(A.shape[0])
+        # np.random.shuffle(idx)
+        # AMOUNT = A.shape[0]
+        subsampled = A.astype(np.float32)
+        # subsampled = A[idx[:AMOUNT]].astype(np.float32)
         # subsampled = subsampled.reshape((AMOUNT, self.C, -1))
         # d = subsampled.shape[1] // self.C
         # print("dims", subsampled.shape, d)
@@ -339,8 +381,10 @@ class HalutMatmul:
         #     centroids[0],
         # )
         # self.simple_k_mean_prototypes = centroids
-        subsampled = subsampled.reshape((AMOUNT, self.C, -1))
+        subsampled = subsampled.reshape((A.shape[0], self.C, -1))
         for c in range(self.C):
+            if codebook > -1 and c != codebook:
+                continue
             print("Learning simple k-means prototypes for channel {}".format(c))
             # kmeans = KMeans(
             #     n_clusters=self.K,
@@ -350,31 +394,37 @@ class HalutMatmul:
             kmeans = faiss.Kmeans(
                 subsampled.shape[2],
                 self.K,
-                niter=150,
+                niter=niter,
                 verbose=True,
-                nredo=2,
-                min_points_per_centroid=100,
-                max_points_per_centroid=2000000,
+                nredo=nredo,
+                # seed=4419,
+                seed=np.random.randint(1, 2**31 - 1),
+                min_points_per_centroid=min_points_per_centroid,
+                max_points_per_centroid=max_points_per_centroid,
             )
             kmeans.train(subsampled[:, c, :])
             centroids_kmeans = kmeans.centroids
             print("centroids", centroids_kmeans.shape, centroids_kmeans[0])
-            if np.all(centroids_kmeans == 0):
-                print("WARNING: all centroids are zero")
-                zero_count = 0
-                for r in range(subsampled.shape[0]):
-                    if np.all(subsampled[r, c, :] == 0):
-                        zero_count += 1
-                print(
-                    "zero_count",
-                    zero_count,
-                    subsampled.shape[0] - zero_count,
-                    subsampled.shape[0],
-                )
-                # centroids[1:] = torch.nn.init.kaiming_uniform_(
-                #     torch.empty(self.K - 1, subsampled.shape[2])
-                # ).numpy()
+            # if np.all(centroids_kmeans == 0):
+            #     print("WARNING: all centroids are zero")
+            #     zero_count = 0
+            #     for r in range(subsampled.shape[0]):
+            #         if np.all(subsampled[r, c, :] == 0):
+            #             zero_count += 1
+            #     print(
+            #         "zero_count",
+            #         zero_count,
+            #         subsampled.shape[0] - zero_count,
+            #         subsampled.shape[0],
+            #     )
+            #     # centroids[1:] = torch.nn.init.kaiming_uniform_(
+            #     #     torch.empty(self.K - 1, subsampled.shape[2])
+            #     # ).numpy()
+
             self.simple_k_mean_prototypes[c] = centroids_kmeans
+            # self.simple_k_mean_prototypes[c] = np.random.random(
+            #     (self.K, subsampled.shape[2])
+            # )
         print("Done learning simple k-means prototypes")
 
     def calculate_simple_lut(self, B) -> None:

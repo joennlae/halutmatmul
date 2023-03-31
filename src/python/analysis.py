@@ -174,7 +174,6 @@ def halut_analysis_helper(
         halut_model.activate_halut_module(
             k,
             C=v[HalutModuleConfig.C],
-            rows=v[HalutModuleConfig.ROWS],
             K=v[HalutModuleConfig.K],
         )
     halut_model.run_inference()

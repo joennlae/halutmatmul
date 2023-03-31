@@ -31,6 +31,7 @@ eval_func_type = Callable[
         Optional[dict[str, int]],
         int,
         int,
+        float,
     ],
     tuple[float, float],
 ]
@@ -66,14 +67,13 @@ def check_file_exists_and_return_path(
     layers_name: str,
     _type: Union[Literal["input"], Literal["learned"]],
     C: int = 16,
-    rows: int = 256,
     K: int = 16,
 ) -> list[str]:
     files = glob.glob(base_path + "/*.npy")
     files_res = []
     if _type == "input":
-        regex_a = rf"{layers_name}.+_0_.+{END_STORE_A}"
-        regex_b = rf"{layers_name}.+_0_.+{END_STORE_B}"
+        regex_a = rf"{layers_name}{END_STORE_A}"
+        regex_b = rf"{layers_name}{END_STORE_B}"
         pattern_a = re.compile(regex_a)
         pattern_b = re.compile(regex_b)
         files_a = [x for x in files if pattern_a.search(x)]
@@ -81,7 +81,7 @@ def check_file_exists_and_return_path(
         files_res = files_a + files_b
         assert len(files_res) == 0 or len(files_res) == 2
     elif _type == "learned":
-        regex = rf"{layers_name}_{C}_{K}_{rows}-.+\.npy"
+        regex = rf"{layers_name}_{C}_{K}.npy"
         print("pattern", regex)
         pattern = re.compile(regex)
         files_res = [x for x in files if pattern.search(x)]
@@ -107,6 +107,7 @@ class HalutHelper:
         eval_function: eval_func_type = evaluate_halut_imagenet,
         distributed: bool = False,
         device_id: int = 0,
+        kmeans_options: dict[str, Any] = dict([]),
     ) -> None:
         self.model = model
         self.dataset = dataset
@@ -126,12 +127,12 @@ class HalutHelper:
         self.eval_function = eval_function
         self.distributed = distributed
         self.device_id = device_id
+        self.kmeans_options = kmeans_options
 
     def activate_halut_module(
         self,
         name: str,
         C: int,
-        rows: int,
         K: int = 16,
         loop_order: Literal["im2col", "kn2col"] = "im2col",
         use_prototypes: bool = False,
@@ -147,11 +148,11 @@ class HalutHelper:
             # Conv2d layer
             module_ref.loop_order = loop_order
             module_ref.use_prototypes = use_prototypes
-            self.halut_modules |= dict({name: [C, rows, K, loop_order]})
+            self.halut_modules |= dict({name: [C, K, loop_order]})
         elif isinstance(module_ref, HalutLinear):
             # Linear layer
             module_ref.use_prototypes = use_prototypes
-            self.halut_modules |= dict({name: [C, rows, K]})
+            self.halut_modules |= dict({name: [C, K]})
         else:
             raise Exception(
                 f"module {name} not a HALUT conv or linear layer {type(module_ref)}"
@@ -218,6 +219,7 @@ class HalutHelper:
             additional_dict,
             self.batch_size_store,
             self.num_workers,
+            0.0,
         )
 
     def run_for_input_storage_distributed(
@@ -240,42 +242,36 @@ class HalutHelper:
             device_id=self.device_id,
         )
 
-    def run_halut_offline_training(self) -> None:
+    def run_halut_offline_training(self, codebook: int = -1) -> None:
         dict_to_store: dict[str, int] = dict([])
         dict_to_learn: dict[str, list] = dict([])
         for k, args in self.halut_modules.items():
-            if len(self.state_dict_base[k + ".lut"].shape) > 1:
+            if len(self.state_dict_base[k + ".lut"].shape) > 1 and codebook == -1:
                 continue
             learned_files = check_file_exists_and_return_path(
                 self.learned_path,
                 k,
                 "learned",
                 args[hm.HalutModuleConfig.C],
-                args[hm.HalutModuleConfig.ROWS],
                 args[hm.HalutModuleConfig.K],
             )
-            if len(learned_files) == 1:
+            if len(learned_files) == 1 and codebook == -1:
                 continue
             dict_to_learn[k] = [
                 args[hm.HalutModuleConfig.C],
-                args[hm.HalutModuleConfig.ROWS],
                 args[hm.HalutModuleConfig.K],
             ]
             if len(args) > 3:
                 # Conv2d layer
                 dict_to_learn[k].append(args[hm.HalutModuleConfig.LOOP_ORDER])
 
-            paths = check_file_exists_and_return_path(
-                self.data_path, k, "input", rows=args[hm.HalutModuleConfig.ROWS]
-            )
-            # TODO: doesn't check if enough data is stored
+            paths = check_file_exists_and_return_path(self.data_path, k, "input")
             print(f"paths {paths}")
             if len(paths) != 2:
                 dict_to_store[k] = 1
-                if args[hm.HalutModuleConfig.ROWS] == -1:
-                    dict_to_store[k] = RUN_ALL_SUBSAMPLING
-                    # just needs to be bigger than in input_images / batch_size
-                    # used for subsampling
+                dict_to_store[k] = RUN_ALL_SUBSAMPLING
+                # just needs to be bigger than in input_images / batch_size
+                # used for subsampling
         # pylint: disable=consider-iterating-dictionary, consider-using-dict-items
         for name in dict_to_learn.keys():
             module = get_module_by_name(self.model, name)
@@ -291,6 +287,8 @@ class HalutHelper:
             data_path=self.data_path,
             store_path=self.learned_path,
             amount_of_workers=self.workers_offline_training,
+            kmeans_options=self.kmeans_options,
+            codebook=codebook,
         )
 
     def prepare_state_dict(self) -> "OrderedDict[str, torch.Tensor]":
@@ -304,35 +302,11 @@ class HalutHelper:
                 k,
                 "learned",
                 C=args[hm.HalutModuleConfig.C],
-                rows=args[hm.HalutModuleConfig.ROWS],
                 K=args[hm.HalutModuleConfig.K],
             )
             print("learned files", learned_files)
             if len(learned_files) == 1:
                 store_array = np.load(learned_files[0], allow_pickle=True)
-                splitted = learned_files[0].split("/")[-1]
-                configs_reg = re.findall(r"(?<=-)(\d+)", splitted)
-                n = int(configs_reg[0])
-                d = int(configs_reg[1])
-                m = store_array[hm.HalutOfflineStorage.LUT].shape[0]
-                print(f"Use Layer {k}: a: {(n, d)}, b: {(d, m)}")
-                self.stats[k + ".learned_a_shape"] = (n, d)
-                self.stats[k + ".learned_b_shape"] = (d, m)
-                self.stats[k + ".learned_n"] = n
-                self.stats[k + ".learned_m"] = m
-                self.stats[k + ".learned_d"] = d
-                self.stats[k + ".C"] = args[hm.HalutModuleConfig.C]
-                self.stats[k + ".rows"] = args[hm.HalutModuleConfig.ROWS]
-                self.stats[k + ".K"] = args[hm.HalutModuleConfig.K]
-                self.stats[k + ".stored_array_size"] = store_array.nbytes
-                self.stats[k + ".L_size"] = (
-                    store_array[hm.HalutOfflineStorage.LUT].astype(np.float32).nbytes
-                )
-                self.stats[k + ".H_size"] = (
-                    store_array[hm.HalutOfflineStorage.HASH_TABLES]
-                    .astype(np.float32)
-                    .nbytes
-                )
             else:
                 raise Exception("learned file not found!")
             additional_dict = additional_dict | dict(
@@ -385,9 +359,9 @@ class HalutHelper:
                 self.stats[k + ".scaled_shift"] = errors[ErrorTuple.SCALED_SHIFT]
         return self.stats
 
-    def run_inference(self) -> float:
+    def run_inference(self, prev_max: float = 0.0, codebook: int = -1) -> float:
         print("Start training of Halutmatmul")
-        self.run_halut_offline_training()
+        self.run_halut_offline_training(codebook=codebook)
         print("Start preparing state_dict")
         state_dict_with_halut = self.prepare_state_dict()
         print("Load state dict")
@@ -405,6 +379,7 @@ class HalutHelper:
             None,
             self.batch_size_inference,
             self.num_workers,
+            prev_max,
         )
         self.stats["top_1_accuracy"] = top_1_acc
         self.stats["top_5_accuracy"] = top_5_acc

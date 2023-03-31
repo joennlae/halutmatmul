@@ -188,7 +188,7 @@ def run_retraining(
                         inner_dim_kn2col // 8
                     )  # little lower than 9 but safer to work now
 
-                if "downsample" in next_layer:
+                if "downsample" in next_layer or "shortcut" in next_layer:
                     loop_order = "im2col"
                     c_ = inner_dim_im2col // 4
             print("module_ref", module_ref)
@@ -200,11 +200,10 @@ def run_retraining(
         else:
             modules = halut_modules
         for k, v in modules.items():
-            if len(v) > 4:
+            if len(v) > 3:
                 halut_model.activate_halut_module(
                     k,
                     C=v[HalutModuleConfig.C],
-                    rows=v[HalutModuleConfig.ROWS],
                     K=v[HalutModuleConfig.K],
                     loop_order=v[HalutModuleConfig.LOOP_ORDER],
                     use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
@@ -213,7 +212,6 @@ def run_retraining(
                 halut_model.activate_halut_module(
                     k,
                     C=v[HalutModuleConfig.C],
-                    rows=v[HalutModuleConfig.ROWS],
                     K=v[HalutModuleConfig.K],
                 )
     if args.distributed:
