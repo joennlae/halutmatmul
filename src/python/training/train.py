@@ -414,8 +414,6 @@ def main(args, gradient_accumulation_steps=1):
         "other": [],
         "prototypes": [],
         "temperature": [],
-        "luts": [],
-        "thresholds": [],
     }
 
     def _add_params(module, prefix=""):
@@ -426,12 +424,6 @@ def main(args, gradient_accumulation_steps=1):
             if isinstance(module, (HalutConv2d, HalutLinear)):
                 if name == "P":
                     params["prototypes"].append(p)
-                    continue
-                if name == "threshold":
-                    params["thresholds"].append(p)
-                    continue
-                if name == "lut":
-                    params["luts"].append(p)
                     continue
                 if name == "temperature":
                     params["temperature"].append(p)
