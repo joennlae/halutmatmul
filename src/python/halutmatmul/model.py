@@ -261,7 +261,7 @@ class HalutHelper:
                 args[hm.HalutModuleConfig.C],
                 args[hm.HalutModuleConfig.K],
             ]
-            if len(args) > 3:
+            if len(args) > 2:
                 # Conv2d layer
                 dict_to_learn[k].append(args[hm.HalutModuleConfig.LOOP_ORDER])
 
@@ -276,7 +276,7 @@ class HalutHelper:
         for name in dict_to_learn.keys():
             module = get_module_by_name(self.model, name)
             if isinstance(module, HalutConv2d):
-                assert dict_to_learn[name][3] == module.loop_order
+                assert dict_to_learn[name][2] == module.loop_order
                 dict_to_learn[name].append(module.kernel_size)
                 dict_to_learn[name].append(module.stride)
                 dict_to_learn[name].append(module.padding)

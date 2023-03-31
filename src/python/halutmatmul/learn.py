@@ -63,6 +63,7 @@ def learn_halut(
         if loop_order == "kn2col":
             raise Exception("not implemented")
 
+    halut_numpy = None
     if _exists:
         already_learned = np.load(save_path, allow_pickle=True)
         halut_numpy = hm.learn_halut_offline(
@@ -129,6 +130,8 @@ def learn_halut(
             halut_numpy[hm.HalutOfflineStorage.DIMS] = dims
             halut_numpy[hm.HalutOfflineStorage.THRESHOLDS] = thresholds
 
+    if halut_numpy is None:
+        raise Exception("halut_numpy is None")
     print(f"Store in {save_path}: {halut_numpy.nbytes / (1024 * 1024)} MB")
     _exists = os.path.exists(store_path)
     if not _exists:
@@ -180,14 +183,16 @@ def learn_halut_multi_core_dict(
             store_path,
             v[hm.HalutModuleConfig.K],
         )
-        if len(v) > 3:
-            for i in range(3, len(v)):
+        if len(v) > 2:
+            for i in range(2, len(v)):
                 params += (v[i],)
         if len(kmeans_options) > 0:
             for k in kmeans_options.keys():
                 params += (kmeans_options[k],)
-        if codebook > -1:
-            params += (codebook,)
+            if codebook > -1:
+                params += (codebook,)
+        if len(kmeans_options) == 0 and codebook > -1:
+            raise Exception("codebook is set but kmeans_options is empty")
 
         if amount_of_workers == 1:
             learn_halut(*(params))  # type: ignore

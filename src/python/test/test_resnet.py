@@ -83,9 +83,7 @@ def test_cifar10_inference() -> None:
             num_workers=2,
         )
         halut_model.print_available_module()
-        # halut_model.activate_halut_module("fc", 16, -1)
-        halut_model.activate_halut_module("layer1.1.conv2", 16, -1, use_prototypes=True)
-        # halut_model.activate_halut_module("layer3.1.conv1", 16, -1, 16, "kn2col")
+        halut_model.activate_halut_module("layer1.1.conv2", 16, use_prototypes=True)
         accuracy = halut_model.run_inference()
         accuracy = halut_model.run_inference()  # check if stored used
         assert accuracy >= 81.8
@@ -246,9 +244,7 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
                         c_ = module_ref.in_features // 4
                     # if layer == "layer1.2.conv1":
                     #     c_ = c_ * 3
-                    halut_model.activate_halut_module(
-                        layer, c_, -1, use_prototypes=True
-                    )
+                    halut_model.activate_halut_module(layer, c_, use_prototypes=True)
                     codebooks = c_
                     print(model)
                     accuracy = halut_model.run_inference(prev_max=prev_max)
@@ -283,9 +279,7 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
                     kmeans_options=kmeans_options,
                     device=device,
                 )
-                halut_model.activate_halut_module(
-                    layer, codebooks, -1, use_prototypes=True
-                )
+                halut_model.activate_halut_module(layer, codebooks, use_prototypes=True)
                 accuracy = halut_model.run_inference(prev_max=prev_max, codebook=c)
                 if accuracy > prev_max:
                     prev_max = accuracy
