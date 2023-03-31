@@ -287,7 +287,7 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
                     best_model = deepcopy(halut_model.model)
                     state_dict = best_model.state_dict()
 
-        write_module_back(layer, best_model, tmpdirname + "/.data/learned")  # type: ignore
+                write_module_back(best_model, tmpdirname + "/.data/learned")  # type: ignore
 
         torch.save(best_model.state_dict(), f"model_init_{layer}.pt")  # type: ignore
         print("data", data)

@@ -133,25 +133,23 @@ def write_inputs_to_disk(
     del store
 
 
-def write_module_back(
-    exact_name: str,
-    module: torch.nn.Module,
-    path: str,
-) -> None:
+def write_module_back(module: torch.nn.Module, store_path: str) -> None:
     def store(module: torch.nn.Module, prefix: str = "") -> None:
         store_layer_name = prefix[:-1]
         store_layer_name = store_layer_name.replace("module.", "")
-        if store_layer_name + END_STORE_A in os.listdir(path):
-
-            loaded = np.load(path + "/" + store_layer_name + END_STORE_A)
-            if isinstance(module, (HalutConv2d, HalutLinear)):
+        if isinstance(module, (HalutConv2d, HalutLinear)) and len(module.lut.shape) > 1:
+            C = module.lut.size(-2)
+            K = module.lut.size(-1)
+            save_path = store_path + f"/{store_layer_name}_{C}_{K}.npy"
+            if os.path.exists(save_path):
+                loaded = np.load(save_path, allow_pickle=True)
                 loaded[hm.HalutOfflineStorage.SIMPLE_LUT] = (
                     module.lut.detach().cpu().numpy()
                 )
                 loaded[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES] = (
                     module.P.detach().cpu().numpy()
                 )
-                np.save(path + "/" + store_layer_name + END_STORE_A, loaded)
+                np.save(save_path, loaded)
                 print(
                     "overwritten module",
                     prefix + module._get_name(),
@@ -161,7 +159,7 @@ def write_module_back(
             if child is not None:
                 store(child, prefix + name + ".")
 
-    store(module, exact_name)
+    store(module)
     del store
 
 
