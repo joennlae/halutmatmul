@@ -347,50 +347,16 @@ class HalutMatmul:
         print("Learning simple k-means prototypes", A.shape)
         assert A.shape[1] % self.C == 0
         if len(self.simple_k_mean_prototypes.shape) <= 1:
+            print("Initializing simple k-means prototypes with zero")
             self.simple_k_mean_prototypes = np.zeros(
                 (self.C, self.K, A.shape[1] // self.C), dtype=np.float32
             )
-        # idx = np.arange(A.shape[0])
-        # np.random.shuffle(idx)
-        # AMOUNT = A.shape[0]
         subsampled = A.astype(np.float32)
-        # subsampled = A[idx[:AMOUNT]].astype(np.float32)
-        # subsampled = subsampled.reshape((AMOUNT, self.C, -1))
-        # d = subsampled.shape[1] // self.C
-        # print("dims", subsampled.shape, d)
-        # print(subsampled[0])
-        # nbit = 4  # 2**nbit = K
-        # pq = faiss.ProductQuantizer(subsampled.shape[1], self.C, nbit)
-        # pq.verbose = True
-        # pq.train(subsampled)
-        # # # get_centroids
-        # # codes = pq.compute_codes(subsampled)
-        # # x2 = pq.decode(codes)
-        # # print("x2", x2[0])
-        # # diff = ((subsampled - x2) ** 2).sum() / (subsampled**2).sum()
-        # # print("diff", diff)
-        # # # rs = np.random.RandomState(123)
-        # # # centroids = rs.rand(2, 1 << nbit, 8).astype("float32")
-        # centroids = faiss.vector_to_array(pq.centroids)
-        # # print("centroids", centroids.shape, centroids[0])
-        # centroids = centroids.reshape((self.C, 1 << nbit, d))
-        # print(
-        #     "centroids",
-        #     centroids.shape,
-        #     self.simple_k_mean_prototypes.shape,
-        #     centroids[0],
-        # )
-        # self.simple_k_mean_prototypes = centroids
         subsampled = subsampled.reshape((A.shape[0], self.C, -1))
         for c in range(self.C):
             if codebook > -1 and c != codebook:
                 continue
             print("Learning simple k-means prototypes for channel {}".format(c))
-            # kmeans = KMeans(
-            #     n_clusters=self.K,
-            #     random_state=4419,
-            # ).fit(subsampled[:, c, :])
-
             kmeans = faiss.Kmeans(
                 subsampled.shape[2],
                 self.K,
@@ -404,39 +370,12 @@ class HalutMatmul:
             )
             kmeans.train(subsampled[:, c, :])
             centroids_kmeans = kmeans.centroids
-            print("centroids", centroids_kmeans.shape, centroids_kmeans[0])
-            # if np.all(centroids_kmeans == 0):
-            #     print("WARNING: all centroids are zero")
-            #     zero_count = 0
-            #     for r in range(subsampled.shape[0]):
-            #         if np.all(subsampled[r, c, :] == 0):
-            #             zero_count += 1
-            #     print(
-            #         "zero_count",
-            #         zero_count,
-            #         subsampled.shape[0] - zero_count,
-            #         subsampled.shape[0],
-            #     )
-            #     # centroids[1:] = torch.nn.init.kaiming_uniform_(
-            #     #     torch.empty(self.K - 1, subsampled.shape[2])
-            #     # ).numpy()
-
             self.simple_k_mean_prototypes[c] = centroids_kmeans
-            # self.simple_k_mean_prototypes[c] = np.random.random(
-            #     (self.K, subsampled.shape[2])
-            # )
         print("Done learning simple k-means prototypes")
 
     def calculate_simple_lut(self, B) -> None:
         self.simple_lut = np.zeros((B.shape[1], self.C, self.K), dtype=np.float32)
         B_reshaped = B.T.reshape((B.shape[1], self.C, -1))
-        # could of course be optimized :-)
-        # for m in range(B.shape[1]):
-        #     for c in range(self.C):
-        #         for k in range(self.K):
-        #             self.simple_lut[m, c, k] = np.dot(
-        #                 self.simple_k_mean_prototypes[c, k, :], B_reshaped[m, c, :]
-        #             )
         self.simple_lut = np.einsum(
             "CKd, MCd -> MCK", self.simple_k_mean_prototypes, B_reshaped
         )
@@ -508,44 +447,7 @@ class HalutMatmul:
                     offset,
                 )
         else:
-            for i, lut in enumerate(B_luts):
-                read_lut = lut.ravel()[A_raveled].reshape(A_enc.shape)
-                if self.upcast_every < 2 or not self.quantize_lut:
-                    read_lut = read_lut.sum(axis=-1)
-                else:
-                    # TODO: there is probably room for improvement here
-                    read_lut = read_lut.reshape(
-                        read_lut.shape[0], -1, self.upcast_every
-                    )
-                    if self.accumulate_how == "sum":
-                        # sum upcast_every vals, then clip to mirror saturating
-                        # unsigned addition, then sum without saturation (like u16)
-                        read_lut = read_lut.sum(2)
-                        read_lut = np.clip(read_lut, 0, 255).sum(axis=-1)
-                    elif self.accumulate_how == "mean":
-                        # mirror hierarchical avg_epu8
-                        while read_lut.shape[-1] > 2:
-                            read_lut = (
-                                read_lut[:, :, ::2] + read_lut[:, :, 1::2] + 1
-                            ) // 2
-                        read_lut = (read_lut[:, :, 0] + read_lut[:, :, 1] + 1) // 2
-                        read_lut = read_lut.sum(axis=-1)  # clipping not needed
-                        # undo biasing; if low bits are {0,0} or {1,1}, no bias
-                        # from the averaging; but if {0,1}, then rounds up by
-                        # .5; happens with prob ~=~ .5, so each avg op adds .25;
-                        # the other tricky thing here is that rounding up when
-                        # you're averaging averages biases it even farther
-                        read_lut *= self.upcast_every  # convert mean to sum
-                        # I honestly don't know why this is the formula, but wow
-                        # does it work well
-                        bias = self.C / 4 * np.log2(self.upcast_every)
-                        read_lut -= int(bias)
-                    else:
-                        raise ValueError("accumulate_how must be 'sum' or 'mean'")
-
-                if self.quantize_lut:
-                    read_lut = (read_lut / scale) + offset
-                total_result[i] = read_lut
+            raise NotImplementedError
 
         return total_result.T
 
