@@ -291,11 +291,13 @@ class HalutHelper:
             codebook=codebook,
         )
 
-    def prepare_state_dict(self) -> "OrderedDict[str, torch.Tensor]":
+    def prepare_state_dict(
+        self, codebook: int = -1
+    ) -> "OrderedDict[str, torch.Tensor]":
         additional_dict: Dict[str, torch.Tensor] = dict([])
         for k, args in self.halut_modules.items():
             # if layer is already learned, skip
-            if len(self.state_dict_base[k + ".lut"].shape) != 1:
+            if len(self.state_dict_base[k + ".lut"].shape) != 1 and codebook == -1:
                 continue
             learned_files = check_file_exists_and_return_path(
                 self.learned_path,
@@ -363,7 +365,7 @@ class HalutHelper:
         print("Start training of Halutmatmul")
         self.run_halut_offline_training(codebook=codebook)
         print("Start preparing state_dict")
-        state_dict_with_halut = self.prepare_state_dict()
+        state_dict_with_halut = self.prepare_state_dict(codebook=codebook)
         print("Load state dict")
         start = timer()
         self.model.load_state_dict(state_dict_with_halut, strict=False)
