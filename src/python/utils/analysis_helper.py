@@ -8,7 +8,7 @@ from typing import Any, Dict, Literal, OrderedDict
 import pandas as pd
 import torch
 
-available_models = Literal["resnet-50", "levit", "ds-cnn", "resnet18"]
+available_models = Literal["resnet-50", "levit", "ds-cnn", "resnet18", "resnet20"]
 
 
 def sys_info() -> None:
