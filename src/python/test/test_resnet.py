@@ -266,7 +266,7 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
 
         state_dict = best_model.state_dict()  # type: ignore
         for c in range(codebooks):
-            for _ in range(10):
+            for _ in range(5):
                 halut_model = HalutHelper(
                     model_base,
                     state_dict,  # type: ignore

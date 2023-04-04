@@ -286,7 +286,6 @@ class HalutHelper:
             dict_to_learn,
             data_path=self.data_path,
             store_path=self.learned_path,
-            amount_of_workers=self.workers_offline_training,
             kmeans_options=self.kmeans_options,
             codebook=codebook,
         )
