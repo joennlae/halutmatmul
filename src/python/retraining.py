@@ -160,7 +160,6 @@ def run_retraining(
         next_layer_idx = len(halut_modules.keys())
     # C = int(args.C)
     K = 16
-    rows = -1  # subsampling
     use_prototype = True
 
     # add all at once
@@ -194,9 +193,7 @@ def run_retraining(
             print("module_ref", module_ref)
             if "fc" in next_layer:
                 c_ = c_base  # fc.weight = [512, 10]
-            modules = {
-                next_layer: [c_, rows, K, loop_order, use_prototype]
-            } | halut_modules
+            modules = {next_layer: [c_, K, loop_order, use_prototype]} | halut_modules
         else:
             modules = halut_modules
         for k, v in modules.items():
