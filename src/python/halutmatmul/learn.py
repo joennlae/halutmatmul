@@ -159,59 +159,48 @@ def learn_halut_multi_core_dict(
     dict_to_learn: dict[str, list],
     data_path: str,
     store_path: str,
-    amount_of_workers: int = 1,
     kmeans_options: dict = {},
     codebook: int = -1,
 ) -> None:
 
-    if amount_of_workers > 1:
-        print(
-            "WARNING: will set to amount_of_workers=1 as there is a "
-            "multiprocessing bug in cpython with np.multiply."
-        )
-        amount_of_workers = 1
-
-    WORKERS = amount_of_workers
-    queue: JoinableQueue = JoinableQueue()
-
     for k, v in dict_to_learn.items():
         print("learning", k, v)
-        params = (
-            k,
-            v[hm.HalutModuleConfig.C],
-            data_path,
-            store_path,
-            v[hm.HalutModuleConfig.K],
-        )
+        conv2d_options = {
+            "loop_order": "im2col",
+            "kernel_size": (3, 3),
+            "stride": (1, 1),
+            "padding": (1, 1),
+        }
+        kmeans_options_here = {
+            "niter": 0,
+            "nredo": 1,
+            "min_points_per_centroid": 1,
+            "max_points_per_centroid": 20000,
+        }
         if len(v) > 2:
             for i in range(2, len(v)):
-                params += (v[i],)
+                conv2d_options[list(conv2d_options.keys())[i - 2]] = v[i]
         if len(kmeans_options) > 0:
-            for k in kmeans_options.keys():
-                params += (kmeans_options[k],)
-            if codebook > -1:
-                params += (codebook,)
+            for key in kmeans_options.keys():
+                kmeans_options_here[key] = kmeans_options[key]
         if len(kmeans_options) == 0 and codebook > -1:
             raise Exception("codebook is set but kmeans_options is empty")
 
-        if amount_of_workers == 1:
-            learn_halut(*(params))  # type: ignore
-        else:
-            queue.put_nowait(params)
-
-    processes: list[Process] = []
-    for i in range(WORKERS):
-        process = Process(
-            target=worker,
-            args=(f"worker-{i}", queue, learn_halut),
+        learn_halut(
+            l=k,
+            C=v[hm.HalutModuleConfig.C],
+            data_path=data_path,
+            store_path=store_path,
+            K=v[hm.HalutModuleConfig.K],
+            loop_order=conv2d_options["loop_order"],
+            kernel_size=conv2d_options["kernel_size"],
+            stride=conv2d_options["stride"],
+            padding=conv2d_options["padding"],
+            niter=kmeans_options_here["niter"],
+            nredo=kmeans_options_here["nredo"],
+            min_points_per_centroid=kmeans_options_here["min_points_per_centroid"],
+            max_points_per_centroid=kmeans_options_here["max_points_per_centroid"],
+            codebook=codebook,
         )
-        process.daemon = True
-        process.start()
-        processes.append(process)
-
-    queue.join()
-
-    for process in processes:
-        process.kill()
 
     print("==== FINISHED LEARNING (exited all tasks) =======")
