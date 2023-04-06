@@ -66,6 +66,7 @@ def train_initialization(
     K = 16
     layer_results = {}
     layers = layers[:-1]
+    # pylint: disable=unused-variable
     for idx, layer in enumerate(layers):
         model_base = deepcopy(model_copy)
         model_base.to(device)
@@ -86,10 +87,10 @@ def train_initialization(
                 if os.path.exists(learned_weights_file_path):
                     os.remove(learned_weights_file_path)
 
-            niter_to_check = 0
+            niter_to_check = 25
             if model_name == "resnet20":
                 if "layer1.1" in layer:
-                    niter_to_check = 5
+                    niter_to_check = 25
                 if "layer1.2" in layer:
                     niter_to_check = 25
                 if "layer2" in layer:
@@ -100,13 +101,15 @@ def train_initialization(
                     niter_to_check = 25
             else:
                 raise NotImplementedError
+            # niter_to_check = 10
             for _ in range(reseeding):
                 nredo = 1
                 min_points_per_centroid = 1
-                max_points_per_centroid = 10000
+                max_points_per_centroid = 20000
                 # for max_points_per_centroid in [20000]:
 
                 c_ = calculate_c(model_base, layer)
+                codebooks = c_
                 kmeans_options = {
                     "niter": niter_to_check,
                     "nredo": nredo,
@@ -126,13 +129,12 @@ def train_initialization(
                     device=device,
                 )
                 # add previous layers
-                for i in range(idx):
-                    c_ = calculate_c(model_base, layers[i])
-                    halut_model.activate_halut_module(
-                        layers[i], c_, use_prototypes=True
-                    )
-                codebooks = c_
-                accuracy = halut_model.run_inference(prev_max=prev_max)
+                # for i in range(idx):
+                #     c_ = calculate_c(model_base, layers[i])
+                #     halut_model.activate_halut_module(
+                #         layers[i], c_, use_prototypes=True
+                #     )
+                # accuracy = halut_model.run_inference(prev_max=prev_max)
 
                 halut_model.activate_halut_module(layer, c_, use_prototypes=True)
                 accuracy = halut_model.run_inference(prev_max=prev_max)
@@ -168,7 +170,7 @@ def train_initialization(
                     write_module_back(best_model, learned_path)  # type: ignore
         write_module_back(best_model, learned_path)  # type: ignore
         print("FINAL MAX", layer, prev_max)
-        state_dict_base = best_model.state_dict()  # type: ignore
+        # state_dict_base = best_model.state_dict()  # type: ignore
         layer_results[layer] = prev_max
 
     halut_model = HalutHelper(
