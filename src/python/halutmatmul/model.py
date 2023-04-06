@@ -208,7 +208,7 @@ class HalutHelper:
         additional_dict: Optional[dict[str, int]] = None,
     ) -> None:
         self.model.load_state_dict(state_dict, strict=False)
-        self.model.eval()
+        self.model.train()
 
         self.eval_function(
             self.dataset if self.dataset_train is None else self.dataset_train,

@@ -309,58 +309,55 @@ def evaluate_halut_imagenet(
 
     iterations = len(data_loader)
     # switch to evaluation mode
-    model.eval()
+    # model.eval()
+    model.train()
+    # probably switch to train mode to account for using the correct BN statistics
     n_iter = 0
     store_arrays = {}
     batch_size = data_loader.batch_size  # type: ignore
+    store_iterations = iterations # math.ceil(1024 // batch_size)
 
     if prev_max == -1.0:
         return 0.0, 0.0
 
-    with torch.inference_mode():
-        for images, target in metric_logger.log_every(data_loader, 1, header):
-            # if device.type == "cuda":
-            # images = images.half()
-            images = images.to(device, non_blocking=True)
-            target = target.to(device, non_blocking=True)
-
-            # compute output
-            # with torch.cuda.amp.autocast():  # type: ignore
-            output = model(images)
-            loss = criterion(output, target)
-
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
-
-            metric_logger.update(loss=loss.item())
-            metric_logger.meters["acc1"].update(acc1.item(), n=images.shape[0])
-            metric_logger.meters["acc5"].update(acc5.item(), n=images.shape[0])
-            if is_store:
-                print(
-                    "iteration for storage: ",
-                    images.shape,
-                    f" {n_iter + 1}/{iterations}",
-                )
-                write_inputs_to_disk(
-                    model,
-                    iteration=n_iter,
-                    total_iterations=iterations,
-                    store_arrays=store_arrays,
-                    path=data_path,
-                    additional_dict=additional_dict,
-                )
-            n_iter = n_iter + 1
-            if not is_store and prev_max > 0.0:
-                if n_iter > iterations * 0.25:
-                    if metric_logger.acc1.global_avg < prev_max - 0.2:
-                        break
-                if n_iter > iterations * 0.1:
-                    if metric_logger.acc1.global_avg < prev_max - 0.8:
-                        break
-            # if is_store and n_iter == max_iter:
-            #     break
-            # if not is_store:
-            #     if n_iter > 50:
-            #         break
+    # with torch.inference_mode():
+    for images, target in metric_logger.log_every(data_loader, 1, header):
+        # if device.type == "cuda":
+        # images = images.half()
+        images = images.to(device, non_blocking=True)
+        target = target.to(device, non_blocking=True)
+        # compute output
+        # with torch.cuda.amp.autocast():  # type: ignore
+        output = model(images)
+        loss = criterion(output, target)
+        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        metric_logger.update(loss=loss.item())
+        metric_logger.meters["acc1"].update(acc1.item(), n=images.shape[0])
+        metric_logger.meters["acc5"].update(acc5.item(), n=images.shape[0])
+        if is_store:
+            print(
+                "iteration for storage: ",
+                images.shape,
+                f" {n_iter + 1}/{iterations}",
+            )
+            write_inputs_to_disk(
+                model,
+                iteration=n_iter,
+                total_iterations=store_iterations,
+                store_arrays=store_arrays,
+                path=data_path,
+                additional_dict=additional_dict,
+            )
+        n_iter = n_iter + 1
+        # if is_store and n_iter >= store_iterations:
+        #     break
+        if not is_store and prev_max > 0.0:
+            if n_iter > iterations * 0.25:
+                if metric_logger.acc1.global_avg < prev_max - 0.2:
+                    break
+            if n_iter > iterations * 0.1:
+                if metric_logger.acc1.global_avg < prev_max - 0.8:
+                    break
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
