@@ -465,7 +465,7 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
-    TRAIN_EPOCHS = 200  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 400  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 32
     LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
@@ -579,6 +579,8 @@ if __name__ == "__main__":
             torch.cuda.set_device(args.gpu)
             dist.barrier()
         # args_checkpoint.test_only = True
+        # main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
+        # args_checkpoint.test_only = False
         main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
         if not args.single:
             dist.barrier()
