@@ -46,7 +46,6 @@ def train_one_epoch(
     # batch accumulation parameter
     accum_iter = gradient_accumulation_steps
     optimizer.zero_grad()
-    loss_total = 0
     reported_loss = 0
 
     # prev_lut = None
@@ -69,7 +68,7 @@ def train_one_epoch(
 
     header = f"Epoch: [{epoch}]"
     for i, (image, target) in enumerate(
-        metric_logger.log_every(data_loader, args.print_freq, header)
+        metric_logger.log_every(data_loader, 1, header)
     ):
         start_time = time.time()
         # image = image.half()
@@ -87,7 +86,7 @@ def train_one_epoch(
             scaler.step(optimizer)
             scaler.update()
         else:
-            reported_loss = loss.item()
+            reported_loss = loss.detach().item()
             loss = loss / accum_iter
             loss.backward()
 
@@ -97,8 +96,6 @@ def train_one_epoch(
             #     print("diff", torch.norm(diff).item())
             # prev_lut = model.module.layer1[0].conv1.lut.clone()
 
-            loss_total += loss.item()
-
             if args.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
 
@@ -107,7 +104,6 @@ def train_one_epoch(
                 optimizer.step()
                 update_lut(model)
                 optimizer.zero_grad()
-                loss_total = 0
 
         if model_ema and i % args.model_ema_steps == 0:
             model_ema.update_parameters(model)
@@ -118,6 +114,18 @@ def train_one_epoch(
         # pylint: disable=unbalanced-tuple-unpacking
         acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
         batch_size = image.shape[0]
+        print(
+            "acc1",
+            acc1.item(),
+            "acc5",
+            acc5.item(),
+            "loss",
+            loss.item(),
+            "lr",
+            optimizer.param_groups[0]["lr"],
+            "img/s",
+            batch_size / (time.time() - start_time),
+        )
         metric_logger.update(loss=reported_loss, lr=optimizer.param_groups[0]["lr"])
         metric_logger.meters["acc1"].update(acc1.item(), n=batch_size)
         metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
@@ -133,6 +141,7 @@ def train_one_epoch(
 
 
 def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix=""):
+    # TODO: sometimes it would be intersting to have that as .train
     model.eval()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
