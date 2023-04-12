@@ -437,6 +437,9 @@ def main(args, gradient_accumulation_steps=1):
                 if name == "temperature":
                     params["temperature"].append(p)
                     continue
+            if prefix in ("conv1", "linear"):
+                continue
+            print("add to other", prefix, name)
             params["other"].append(p)
 
         for child_name, child_module in module.named_children():

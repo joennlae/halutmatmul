@@ -244,8 +244,10 @@ def run_retraining(
                     if name == "temperature":
                         params["temperature"].append(p)
                         continue
-
-                params["other"].append(p)
+                if prefix in ("conv1", "linear"):
+                    continue
+                print("add to other", prefix, name)
+                params["other"].append(p)  # add batch normalization
 
             for child_name, child_module in module.named_children():
                 child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
