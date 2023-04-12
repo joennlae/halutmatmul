@@ -217,7 +217,7 @@ class HalutLinear(Linear):
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.A = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1) * 0.4, requires_grad=True)
+        self.temperature = Parameter(torch.ones(1), requires_grad=False)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -493,7 +493,7 @@ class HalutConv2d(_ConvNd):
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.A = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1) * 0.4, requires_grad=True)
+        self.temperature = Parameter(torch.ones(1), requires_grad=False)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
