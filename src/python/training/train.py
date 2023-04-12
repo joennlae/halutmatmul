@@ -246,13 +246,13 @@ def load_data(traindir, valdir, args):
             #     ]
             # )
             # https://github.com/akamaster/pytorch_resnet_cifar10/blob/d5489e8995e81e91ce6b1d69dcc98ad579b0b153/trainer.py#L93
-
+            # https://github.com/kuangliu/pytorch-cifar/issues/19
             preprocessing = T.Compose(
                 [
                     T.RandomHorizontalFlip(),
                     T.RandomCrop(32, padding=4),
                     T.ToTensor(),
-                    T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                    T.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
                 ]
             )
             dataset = torchvision.datasets.CIFAR10(
@@ -304,7 +304,7 @@ def load_data(traindir, valdir, args):
             preprocessing = T.Compose(
                 [
                     T.ToTensor(),
-                    T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                    T.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
                 ]
             )
             dataset_test = torchvision.datasets.CIFAR10(
@@ -445,9 +445,7 @@ def main(args, gradient_accumulation_steps=1):
 
     _add_params(model)
 
-    custom_lrs = {
-        "temperature": 0.1,
-    }
+    custom_lrs = {"temperature": 0.1, "prototypes": 0.005}
     param_groups = []
     # pylint: disable=consider-using-dict-items
     for key in params:
