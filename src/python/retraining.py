@@ -255,9 +255,7 @@ def run_retraining(
 
         _add_params(model)
 
-        custom_lrs = {
-            "temperature": 0.1,
-        }
+        custom_lrs = {"temperature": 0.1, "prototypes": 0.001, "other": 0.001}
         param_groups = []
         # pylint: disable=consider-using-dict-items
         for key in params:
@@ -468,10 +466,10 @@ if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
     TRAIN_EPOCHS = 400  # imagenet 2, cifar10 max 40 as we use plateaulr
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
-    GRADIENT_ACCUMULATION_STEPS = 8
+    GRADIENT_ACCUMULATION_STEPS = 4
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
