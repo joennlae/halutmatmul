@@ -639,6 +639,33 @@ def main(args, gradient_accumulation_steps=1):
         writer.add_scalar("test/acc", acc, epoch)
         writer.add_scalar("test/acc5", acc5, epoch)
         writer.add_scalar("test/loss", loss, epoch)
+        # calc temperature
+        all_temps = []
+
+        def _get_temps(module, prefix=""):
+            for name, p in module.named_parameters(recurse=False):
+                if isinstance(module, (HalutConv2d, HalutLinear)):
+                    if name == "temperature":
+                        # pylint: disable=cell-var-from-loop
+                        all_temps.append(p)
+                        continue
+
+            for child_name, child_module in module.named_children():
+                child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+                _get_temps(child_module, prefix=child_prefix)
+
+        _get_temps(model)
+        del _get_temps
+        print("all_temps", all_temps)
+        avg = 0.0
+        length = 0
+        for temp in all_temps:
+            avg += temp.item()
+            length += 1
+
+        avg_temp = avg / length
+        writer.add_scalar("train/temp", avg_temp, epoch)
+
         writer.flush()
         if model_ema:
             evaluate(
@@ -689,9 +716,9 @@ def main(args, gradient_accumulation_steps=1):
             )
             # optimizer_lr_all [[0.0005], [0.0050], [0.0050], [0.0050]]
             optimizer_lr_local = optimizer_lr_all[0].item()
-        if optimizer_lr_local < args.lr * 1e-4:
-            print("learning rate too small, stop training")
-            break
+        # if optimizer_lr_local < args.lr * 1e-4:
+        #     print("learning rate too small, stop training")
+        #     break
 
     if args.distributed:
         torch.distributed.barrier()

@@ -48,7 +48,8 @@ disable=import-error,
         broad-except,
         redefined-builtin,
         trailing-newlines,
-        dangerous-default-value
+        dangerous-default-value,
+        too-many-lines
 
 [REPORTS]
 
