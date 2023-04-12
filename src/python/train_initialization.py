@@ -2,6 +2,7 @@ import argparse
 import os
 from pathlib import Path
 from copy import deepcopy
+import subprocess
 
 import torch
 
@@ -57,20 +58,25 @@ def train_initialization(
 
     model_copy = deepcopy(model)
 
-    device = torch.device(
-        "cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu"
-    )
-    # device = torch.device("cpu")
+    if args.gpu == -1:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(
+            "cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu"
+        )
+
     layers = get_layers(model_name)  # type: ignore
 
     K = 16
     layer_results = {}
+    # layers = ["layer1.0.conv1"]
     layers = layers[:-1]
+
     # pylint: disable=unused-variable
     for idx, layer in enumerate(layers):
         model_base = deepcopy(model_copy)
         model_base.to(device)
-        prev_max = 0.0
+        prev_max = -1.0
         resampling = 1
         reseeding = 1
         best_model = None
@@ -87,34 +93,34 @@ def train_initialization(
                 if os.path.exists(learned_weights_file_path):
                     os.remove(learned_weights_file_path)
 
-            niter_to_check = 25
-            if model_name == "resnet20":
-                if "layer1.1" in layer:
-                    niter_to_check = 25
-                if "layer1.2" in layer:
-                    niter_to_check = 25
-                if "layer2" in layer:
-                    niter_to_check = 25
-                if "layer3" in layer:
-                    niter_to_check = 25
-                if "linear" in layer:
-                    niter_to_check = 25
-            else:
-                raise NotImplementedError
-            # niter_to_check = 10
+                # niter_to_check = 10
+                # kmeans_options_all = []
+                # for nredo in [1]:
+                #     for niter in [25]:
+                #         for min_points_per_centroid in [1]:
+                #             for max_points_per_centroid in [10000, 100000]:
+                #                 kmeans_options_all.append(
+                #                     {
+                #                         "niter": niter,
+                #                         "nredo": nredo,
+                #                         "min_points_per_centroid": min_points_per_centroid,
+                #                         "max_points_per_centroid": max_points_per_centroid,
+                #                     }
+                #                 )
+                # 25 iter, 20000 points
+                # for kmeans_options in kmeans_options_all:
             for _ in range(reseeding):
-                nredo = 1
-                min_points_per_centroid = 1
-                max_points_per_centroid = 20000
+                # nredo = 1
+                # min_points_per_centroid = 1
+                # max_points_per_centroid = 20000
                 # for max_points_per_centroid in [20000]:
-
                 c_ = calculate_c(model_base, layer)
                 codebooks = c_
                 kmeans_options = {
-                    "niter": niter_to_check,
-                    "nredo": nredo,
-                    "min_points_per_centroid": min_points_per_centroid,
-                    "max_points_per_centroid": max_points_per_centroid,
+                    "niter": 25,
+                    "nredo": 1,
+                    "min_points_per_centroid": 1,
+                    "max_points_per_centroid": 1024 * 8,
                 }
                 save_path = learned_path + f"/{layer}_{c_}_{K}.npy"
                 if os.path.exists(save_path):
@@ -135,10 +141,11 @@ def train_initialization(
                 #         layers[i], c_, use_prototypes=True
                 #     )
                 # accuracy = halut_model.run_inference(prev_max=prev_max)
-
                 halut_model.activate_halut_module(layer, c_, use_prototypes=True)
-                accuracy = halut_model.run_inference(prev_max=prev_max)
-                if accuracy > prev_max:
+                accuracy = halut_model.run_inference(
+                    prev_max=prev_max if args.gpu >= 0 else -1.0
+                )
+                if accuracy >= prev_max:
                     prev_max = accuracy
                     print("NEW MAX", prev_max)
                     best_model = deepcopy(halut_model.model)
