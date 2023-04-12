@@ -172,7 +172,7 @@ def learn_halut_multi_core_dict(
             "padding": (1, 1),
         }
         kmeans_options_here = {
-            "niter": 0,
+            "niter": 25,
             "nredo": 1,
             "min_points_per_centroid": 1,
             "max_points_per_centroid": 20000,
