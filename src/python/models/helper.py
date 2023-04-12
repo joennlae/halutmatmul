@@ -149,11 +149,18 @@ def write_module_back(module: torch.nn.Module, store_path: str) -> None:
                 loaded[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES] = (
                     module.P.detach().cpu().numpy()
                 )
+                print(
+                    "prototypes",
+                    module.P.detach().cpu().numpy(),
+                    module.P.detach().cpu().numpy().shape,
+                )
                 np.save(save_path, loaded)
                 print(
                     "overwritten module",
                     prefix + module._get_name(),
                     "with updated LUT and P",
+                    loaded[hm.HalutOfflineStorage.SIMPLE_LUT][0],
+                    loaded[hm.HalutOfflineStorage.SIMPLE_PROTOTYPES][0],
                 )
         for name, child in module._modules.items():
             if child is not None:
@@ -310,12 +317,16 @@ def evaluate_halut_imagenet(
     iterations = len(data_loader)
     # switch to evaluation mode
     # model.eval()
-    model.train()
+    if is_store:
+        model.train()
+    else:
+        model.train()
     # probably switch to train mode to account for using the correct BN statistics
     n_iter = 0
     store_arrays = {}
     batch_size = data_loader.batch_size  # type: ignore
-    store_iterations = iterations # math.ceil(1024 // batch_size)
+    store_iterations = iterations  # math.ceil(1024 // batch_size)
+    store_iterations = math.ceil(1024 // batch_size)
 
     if prev_max == -1.0:
         return 0.0, 0.0
@@ -349,8 +360,8 @@ def evaluate_halut_imagenet(
                 additional_dict=additional_dict,
             )
         n_iter = n_iter + 1
-        # if is_store and n_iter >= store_iterations:
-        #     break
+        if is_store and n_iter >= store_iterations:
+            break
         if not is_store and prev_max > 0.0:
             if n_iter > iterations * 0.25:
                 if metric_logger.acc1.global_avg < prev_max - 0.2:
