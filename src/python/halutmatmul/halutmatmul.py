@@ -352,25 +352,43 @@ class HalutMatmul:
                 (self.C, self.K, A.shape[1] // self.C), dtype=np.float32
             )
         subsampled = A.astype(np.float32)
-        subsampled = subsampled.reshape((A.shape[0], self.C, -1))
-        for c in range(self.C):
-            if codebook > -1 and c != codebook:
-                continue
-            print("Learning simple k-means prototypes for channel {}".format(c))
-            kmeans = faiss.Kmeans(
-                subsampled.shape[2],
-                self.K,
-                niter=niter,
-                verbose=True,
-                nredo=nredo,
-                # seed=4419,
-                seed=np.random.randint(1, 2**31 - 1),
-                min_points_per_centroid=min_points_per_centroid,
-                max_points_per_centroid=max_points_per_centroid,
+        use_kmeans = False
+        if use_kmeans:
+            subsampled = subsampled.reshape((A.shape[0], self.C, -1))
+            for c in range(self.C):
+                if codebook > -1 and c != codebook:
+                    continue
+                print("Learning simple k-means prototypes for channel {}".format(c))
+                kmeans = faiss.Kmeans(
+                    subsampled.shape[2],
+                    self.K,
+                    niter=niter,
+                    verbose=True,
+                    nredo=nredo,
+                    # seed=4419,
+                    seed=np.random.randint(1, 2**31 - 1),
+                    min_points_per_centroid=min_points_per_centroid,
+                    max_points_per_centroid=max_points_per_centroid,
+                )
+                kmeans.train(subsampled[:, c, :])
+                centroids_kmeans = kmeans.centroids
+                self.simple_k_mean_prototypes[c] = centroids_kmeans
+        else:
+            nbit = 4
+            pq = faiss.ProductQuantizer(subsampled.shape[1], self.C, nbit)
+            pq.verbose = True
+            # pylint: disable=no-value-for-parameter
+            pq.train(subsampled)
+            d = subsampled.shape[1] // self.C
+            centroids = faiss.vector_to_array(pq.centroids)
+            centroids = centroids.reshape((self.C, 1 << nbit, d))
+            print(
+                "centroids",
+                centroids.shape,
+                self.simple_k_mean_prototypes.shape,
+                centroids[0],
             )
-            kmeans.train(subsampled[:, c, :])
-            centroids_kmeans = kmeans.centroids
-            self.simple_k_mean_prototypes[c] = centroids_kmeans
+            self.simple_k_mean_prototypes = centroids
         print("Done learning simple k-means prototypes")
 
     def calculate_simple_lut(self, B) -> None:
