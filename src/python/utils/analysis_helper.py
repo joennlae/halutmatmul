@@ -416,7 +416,7 @@ def get_layers(name: available_models) -> list[str]:
     elif name == "resnet18":
         return resnet18_layers
     elif name == "resnet20":
-        return resnet20_b_layers
+        return resnet20_layers
     else:
         return Exception("Model name not supported: ", name)  # type: ignore
 
