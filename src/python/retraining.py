@@ -19,6 +19,7 @@ from training.train import load_data, main  # type: ignore[attr-defined]
 from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
 from models.resnet import resnet18
 from models.resnet20 import resnet20
+from models.resnet_georg import ResNet
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
 from halutmatmul.modules import HalutConv2d, HalutLinear
@@ -68,6 +69,8 @@ def load_model(
         )
         if args.model == "resnet20":
             model = resnet20()
+        elif args.model == "resnet20_georg":
+            model = ResNet("ResNet20")
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -244,8 +247,8 @@ def run_retraining(
                     if name == "temperature":
                         params["temperature"].append(p)
                         continue
-                if prefix in ("conv1", "linear"):
-                    continue
+                # if prefix in ("conv1", "linear"):
+                #     continue
                 print("add to other", prefix, name)
                 params["other"].append(p)  # add batch normalization
 
@@ -255,7 +258,7 @@ def run_retraining(
 
         _add_params(model)
 
-        custom_lrs = {"temperature": 0.1, "prototypes": 0.001, "other": 0.001}
+        custom_lrs = {"temperature": 0.1, "prototypes": 0.002, "other": 0.001}
         param_groups = []
         # pylint: disable=consider-using-dict-items
         for key in params:

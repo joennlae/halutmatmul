@@ -25,6 +25,7 @@ from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
+from models.resnet_georg import ResNet
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 SCRATCH_BASE = "/scratch/janniss"
@@ -59,7 +60,7 @@ def train_one_epoch(
 
     def update_lut(module, prefix=""):
         if isinstance(module, (HalutConv2d, HalutLinear)):
-            module.update_lut()
+            module.update_lut(epoch=epoch, epoch_max=args.epochs)
             return
 
         for child_name, child_module in module.named_children():
@@ -396,6 +397,8 @@ def main(args, gradient_accumulation_steps=1):
         )
         if args.model == "resnet20":
             model = resnet20()
+        elif args.model == "resnet20_georg":
+            model = ResNet("ResNet20")
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         # state_dict_copy = model.state_dict().copy()
@@ -437,8 +440,8 @@ def main(args, gradient_accumulation_steps=1):
                 if name == "temperature":
                     params["temperature"].append(p)
                     continue
-            if prefix in ("conv1", "linear"):
-                continue
+            # if prefix in ("conv1", "linear"):
+            #     continue
             print("add to other", prefix, name)
             params["other"].append(p)
 
