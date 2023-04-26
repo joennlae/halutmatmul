@@ -228,7 +228,7 @@ class HalutLinear(Linear):
         self.use_prototypes = use_prototypes
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
-    def update_lut(self):
+    def update_lut(self, epoch: int = 0, epoch_max: int = 100):
         if self.halut_active and self.use_prototypes:
             b = self.weight.transpose(1, 0)
             b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
@@ -236,7 +236,12 @@ class HalutLinear(Linear):
                 "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
             )
             # clip temperature to reasonable values
-            self.temperature.data = torch.clamp(self.temperature.data, 0.01, 1.0)
+            epoch = epoch - 376
+            epoch_max = epoch_max - 400
+            temp_annealed = 1.0 * (1 - epoch / epoch_max)
+            self.temperature.data = torch.clamp(
+                self.temperature.data, 0.1, max(temp_annealed, 0.1)
+            )
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
@@ -503,7 +508,7 @@ class HalutConv2d(_ConvNd):
         self.loop_order = loop_order
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
-    def update_lut(self):
+    def update_lut(self, epoch: int = 0, epoch_max: int = 100):
         if self.halut_active and self.use_prototypes:
             b = self.transform_weight(self.weight)
             b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
@@ -511,7 +516,12 @@ class HalutConv2d(_ConvNd):
                 "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
             )
             # clip temperature to reasonable values
-            self.temperature.data = torch.clamp(self.temperature.data, 0.01, 1.0)
+            epoch = epoch - 376
+            epoch_max = epoch_max - 400
+            temp_annealed = 1.0 * (1 - epoch / epoch_max)
+            self.temperature.data = torch.clamp(
+                self.temperature.data, 0.1, max(temp_annealed, 0.1)
+            )
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
