@@ -24,7 +24,6 @@ def conv2d_helper(
     K: int = 16,
     a: float = 1.0,
     b: float = 0.0,
-    use_A: bool = False,
     loop_order: Literal["im2col", "kn2col"] = "im2col",
     use_prototypes: bool = False,
 ) -> None:
@@ -59,7 +58,6 @@ def conv2d_helper(
         bias=bias,
         groups=groups,
         split_factor=1,
-        use_A=use_A,
         loop_order=loop_order,
     )
     input_a = halutmatmul_module.transform_input(input_learn)
@@ -145,7 +143,7 @@ def conv2d_helper(
 
 @pytest.mark.parametrize(
     "in_channels, out_channels, image_x_y, kernel_size, bias, C, K, a, b, "
-    "groups, use_A, stride, padding, loop_order, use_prototypes",
+    "groups, stride, padding, loop_order, use_prototypes",
     [
         (
             in_channels,
@@ -158,7 +156,6 @@ def conv2d_helper(
             a,
             b,
             g,
-            use_A,
             stride,
             padding,
             loop_order,
@@ -174,7 +171,6 @@ def conv2d_helper(
         for b in [-0.35]
         for K in [16]  # [8, 16, 32]
         for g in [1]  # only supporting one group for now
-        for use_A in [False]  # use_A not supported for kn2col
         for stride in [1, 2]
         for padding in [0, 1]
         for loop_order in ["kn2col", "im2col"]
@@ -192,7 +188,6 @@ def test_conv2d_module(
     a: float,
     b: float,
     groups: int,
-    use_A: bool,
     stride: int,
     padding: int,
     loop_order: Literal["im2col", "kn2col"],
@@ -203,7 +198,7 @@ def test_conv2d_module(
     if C > out_channels // groups:
         pytest.skip("Not possible due to D < C")
 
-    if (use_A or use_prototypes) and in_channels * kernel_size**2 % C != 0:
+    if (use_prototypes) and in_channels * kernel_size**2 % C != 0:
         pytest.skip("Not supported yet when usage of A or use_prototypes is enabled")
 
     if use_prototypes and loop_order == "kn2col":
@@ -224,7 +219,6 @@ def test_conv2d_module(
         K=K,
         a=a,
         b=b,
-        use_A=use_A,
         loop_order=loop_order,
         use_prototypes=use_prototypes,
     )

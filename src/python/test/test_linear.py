@@ -17,7 +17,6 @@ def linear_helper(
     a: float = 1.0,
     b: float = 0.0,
     batch_size: int = 1,
-    use_A: bool = False,
     use_prototypes: bool = False,
 ) -> None:
     torch.manual_seed(4419)
@@ -52,7 +51,6 @@ def linear_helper(
         out_features=out_features,
         bias=bias,
         split_factor=1,
-        use_A=use_A,
         use_prototypes=use_prototypes,
     )
     state_dict = OrderedDict({"weight": weights})
@@ -97,9 +95,9 @@ def linear_helper(
 
 
 @pytest.mark.parametrize(
-    "in_features, out_features, C, a, b, bias, batch_size, use_A, use_prototypes",
+    "in_features, out_features, C, a, b, bias, batch_size, use_prototypes",
     [
-        (in_features, out_features, C, a, b, bias, batch_size, use_A, use_prototypes)
+        (in_features, out_features, C, a, b, bias, batch_size, use_prototypes)
         for in_features in [512]
         for out_features in [32, 128]
         for C in [4, 16]
@@ -107,7 +105,6 @@ def linear_helper(
         for b in [0.0]
         for bias in [True, False]
         for batch_size in [1, 8]
-        for use_A in [False]
         for use_prototypes in [True, False]
     ],
 )
@@ -119,7 +116,6 @@ def test_linear_module(
     b: float,
     bias: bool,
     batch_size: int,
-    use_A: bool,
     use_prototypes: bool,
 ) -> None:
     n_row_learn = 10000
@@ -134,6 +130,5 @@ def test_linear_module(
         a,
         b,
         batch_size=batch_size,
-        use_A=use_A,
         use_prototypes=use_prototypes,
     )

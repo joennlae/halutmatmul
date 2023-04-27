@@ -48,7 +48,6 @@ halutmatmul_module = HalutConv2d(
     stride=stride,
     groups=groups,
     split_factor=4,
-    use_A=False,
 )
 input_a = halutmatmul_module.transform_input(input_learn)
 input_b = halutmatmul_module.transform_weight(weights)
