@@ -196,7 +196,6 @@ def train_decision_tree(
         module = get_module_by_name(halut_model.model, l)
         if isinstance(module, (HalutConv2d, HalutLinear)):
             centroids.append(module.P.detach().cpu().numpy())
-    print(centroids, len(centroids), centroids[0].shape)
 
     rows = []
     max_depth = 4
@@ -242,35 +241,88 @@ def train_decision_tree(
 
         C = mapping.shape[1]
         trees = []
+        levels = 3
+        for i in range(levels):
+            trees.append([])
+        level_thresholds = [0, 3, 9, 16]
         for c in range(C):
             counted = np.bincount(mapping[:, c])
-            print(counted)
-            decision_tree = tree.DecisionTreeClassifier(
-                max_depth=max_depth,
-                min_samples_leaf=1,
-                min_samples_split=2,
-                max_features=None,
-                criterion="gini",
-            )
-            decision_tree.fit(
-                input_layer[:, c],
-                mapping[:, c],
-            )
-            print(decision_tree.score(input_layer[:, c], mapping[:, c]))
-            print(decision_tree.get_depth())
-            print(decision_tree.get_n_leaves())
-            numpy_tree = tree_to_numpy(decision_tree, depth=max_depth)
-            print(numpy_tree)
-            trees.append(torch.from_numpy(numpy_tree))
-            # print(tree.export_text(decision_tree=decision_tree))
+            for i in range(levels):
+                level_classes = np.argsort(counted)[::-1][  # type: ignore
+                    level_thresholds[i] : level_thresholds[i + 1]
+                ]
+                print(
+                    f"classes for level {i}",
+                    counted,
+                    level_classes,
+                    counted[level_classes],
+                )
+                print(level_classes)
+                inverted_mask = np.isin(mapping[:, c], level_classes, invert=True)
+                mapping_for_level = mapping[:, c].copy()
+                mapping_for_level[inverted_mask] = -1
+                input_tree = input_layer[:, c]
+                if i > 0:
+                    selection_classes = np.argsort(counted)[::-1][  # type: ignore
+                        level_thresholds[i] :
+                    ]
+                    selection_mask = np.isin(
+                        mapping[:, c], selection_classes, invert=False
+                    )
+                    mapping_for_level = mapping[:, c].copy()
+                    mapping_for_level = mapping_for_level[selection_mask]
+                    if i < levels - 1:
+                        next_level_classes = np.argsort(counted)[::-1][  # type: ignore
+                            level_thresholds[i + 1] : level_thresholds[i + 2]
+                        ]
+                        inverted_mask = np.isin(
+                            mapping_for_level, next_level_classes, invert=True
+                        )
+                        mapping_for_level[inverted_mask] = -1
+                    print(
+                        "selected rows",
+                        np.sum(selection_mask),
+                        "out of",
+                        mapping.shape[0],
+                    )
+                    input_tree = input_tree[selection_mask]
+
+                print(mapping_for_level.shape, mapping_for_level[:10])
+
+                decision_tree = tree.DecisionTreeClassifier(
+                    max_depth=max_depth,
+                    min_samples_leaf=1,
+                    min_samples_split=2,
+                    max_features=None,
+                    criterion="gini",
+                )
+                decision_tree.fit(
+                    input_tree,
+                    mapping_for_level,
+                )
+                print(decision_tree.score(input_tree, mapping_for_level))
+                print(decision_tree.get_depth())
+                print(decision_tree.get_n_leaves())
+                numpy_tree = tree_to_numpy(decision_tree, depth=max_depth)
+                # print(numpy_tree)
+                trees[i].append(torch.from_numpy(numpy_tree))
+                # print(tree.export_text(decision_tree=decision_tree))
         total_prediction = np.zeros(mapping.shape, dtype=np.int64)
-        trees = torch.vstack(trees)
-        print("shape of stacked trees", trees.shape)
+        for i in range(levels):
+            trees[i] = torch.vstack(trees[i])
         for c in range(C):
-            predict = apply_decision_tree_torch(
-                torch.from_numpy(input_layer[:, c]), trees[c]
+            predict_all_levels = (
+                torch.zeros((input_layer.shape[0]), dtype=torch.int64) - 1
             )
-            total_prediction[:, c] = predict
+            for i in range(levels):
+                predict = apply_decision_tree_torch(
+                    torch.from_numpy(input_layer[:, c]), trees[i][c]
+                )
+                minus_one_mask = predict_all_levels == -1
+                predict_all_levels = torch.where(
+                    minus_one_mask, predict, predict_all_levels
+                )
+            total_prediction[:, c] = predict_all_levels
         print(total_prediction, total_prediction.shape)
         print(mapping, mapping.shape)
         selected_centroids2 = np.zeros(input_layer.shape)
@@ -294,7 +346,10 @@ def train_decision_tree(
         ]
         print("Row", row)
         rows.append(row)
-        state_dict_to_add[l + ".DT"] = trees
+        trees_torch = torch.zeros((levels, trees[0].shape[0], trees[0].shape[1]))
+        for i in range(levels):
+            trees_torch[i] = trees[i]
+        state_dict_to_add[l + ".DT"] = trees_torch
     print(rows)
 
     with open(f"result_{max_depth}.csv", "w") as f:
