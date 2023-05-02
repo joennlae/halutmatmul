@@ -148,9 +148,21 @@ def halut_matmul_forward(
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
     if decision_trees is not None:
         index = torch.zeros_like(index)
+        levels = decision_trees.shape[0]
+
         for c in range(C):
-            predict = apply_decision_tree_torch(input_reshaped[:, c], decision_trees[c])
-            index[:, c, :] = predict.unsqueeze(1)
+            prediction_all_levels = (
+                torch.zeros(input_reshaped.shape[0], dtype=torch.int64) - 1
+            )
+            for level in range(levels):
+                predict = apply_decision_tree_torch(
+                    input_reshaped[:, c], decision_trees[level][c]
+                )
+                minus_one_mask = prediction_all_levels == -1
+                prediction_all_levels = torch.where(
+                    minus_one_mask, predict, prediction_all_levels
+                )
+            index[:, c, :] = prediction_all_levels.unsqueeze(1)
 
     encoding_hard = torch.zeros_like(
         encoding_soft, memory_format=torch.legacy_contiguous_format

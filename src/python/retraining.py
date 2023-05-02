@@ -77,7 +77,14 @@ def load_model(
             args.model, pretrained=True, num_classes=num_classes
         )
         convert_to_halut(model)
-    model.load_state_dict(checkpoint["model"])
+    manipulated_state_dict = checkpoint["model"]
+    for k in manipulated_state_dict.keys():
+        if ".S" in k or ".B" in k:
+            manipulated_state_dict[k] = torch.zeros(1, dtype=torch.bool)
+    new_state_dict = model.state_dict()
+    new_state_dict.update(checkpoint["model"])
+
+    model.load_state_dict(new_state_dict, strict=False)
 
     halut_modules = (
         checkpoint["halut_modules"] if "halut_modules" in checkpoint else None
