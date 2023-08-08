@@ -326,7 +326,7 @@ def evaluate_halut_imagenet(
     store_arrays = {}
     batch_size = data_loader.batch_size  # type: ignore
     store_iterations = iterations  # math.ceil(1024 // batch_size)
-    store_iterations = math.ceil(1024 // batch_size)
+    # store_iterations = math.ceil(1024 // batch_size)
 
     if prev_max == -1.0:
         return 0.0, 0.0
