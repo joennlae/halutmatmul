@@ -1,3 +1,6 @@
+[mypy]
+ignore_missing_imports = True
+
 [pytest]
 minversion = 6.0.0
 

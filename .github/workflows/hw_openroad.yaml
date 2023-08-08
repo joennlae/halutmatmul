@@ -6,72 +6,6 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  asap7:
-    needs: changes
-    if: ${{ needs.changes.outputs.hardware == 'true' }}
-    runs-on: ubuntu-latest
-    concurrency: vast.ai-hw
-    timeout-minutes: 180 # keep costs in check
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-        with:
-          python-version: "3.9"
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
-      - name: Run Synth+PAR OpenROAD on vast.ai servers
-        run: |
-          cd .github/vast.ai
-          pip install requests
-          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
-          mkdir .ssh
-          python vast_ai_helper.py --hardware --image joennlae/halutmatmul-conda-hw:latest
-      # scp copy + execution of synth + par is done in vast_ai_helper.py
-      - uses: webiny/action-post-run@2.0.1
-        id: cleanup-gpu
-        name: Cleanup GPU Post
-        with:
-          run: |
-            python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
-      - name: Untar report
-        run: |
-          cd .github/vast.ai
-          ls
-          tar -xvf report.tar.gz
-      - uses: actions/upload-artifact@v3
-        with:
-          name: asap-7-openroad-report
-          path: flow_reports
-      - name: Pushes current reports to repo
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-        with:
-          source-directory: ".github/vast.ai/flow_reports"
-          destination-github-username: "joennlae"
-          destination-repository-name: "halutmatmul-openroad-reports"
-          user-email: openroad@reports.ch
-          target-branch: main
-          target-directory: "latest/asap7/"
-      - name: Get Time
-        id: time
-        uses: nanzm/get-time-action@v1.1
-        with:
-          timeZone: 0
-          format: "YYYY-MM-DD-HH-mm-ss"
-      - name: Pushes current reports to repo
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
-        with:
-          source-directory: ".github/vast.ai/flow_reports"
-          destination-github-username: "joennlae"
-          destination-repository-name: "halutmatmul-openroad-reports"
-          user-email: openroad@reports.ch
-          target-branch: main
-          target-directory: "history/asap7/${{ steps.time.outputs.time }}/"
-
   nangate45:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
@@ -147,20 +81,89 @@ jobs:
           target-branch: main
           target-directory: "history/nangate45/${{ steps.time.outputs.time }}/"
 
-  cleanup:
-    name: Cleanup check
-    needs: asap7
-    runs-on: ubuntu-latest
-    concurrency: vast.ai-hw
-    if: always()
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-        with:
-          python-version: "3.9"
-      - name: Cleanup Vast.ai instances
-        run: |
-          cd .github/vast.ai
-          pip install requests
-          ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
-          python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
+  # needs to much memory so it is run on a large machine (was run)
+  # asap7:
+  #   needs: changes
+  #   if: ${{ needs.changes.outputs.hardware == 'true' }}
+  #   runs-on: ubuntu-latest
+  #   concurrency: vast.ai-hw
+  #   timeout-minutes: 180 # keep costs in check
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v3
+  #       with:
+  #         python-version: "3.9"
+  #     - uses: webfactory/ssh-agent@v0.5.4
+  #       with:
+  #         ssh-private-key: ${{ secrets.VAST_AI_SSH_KEY }}
+  #     - name: Run Synth+PAR OpenROAD on vast.ai servers
+  #       run: |
+  #         cd .github/vast.ai
+  #         pip install requests
+  #         ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+  #         mkdir .ssh
+  #         python vast_ai_helper.py --hardware --image joennlae/halutmatmul-conda-hw:latest
+  #     # scp copy + execution of synth + par is done in vast_ai_helper.py
+  #     - uses: webiny/action-post-run@2.0.1
+  #       id: cleanup-gpu
+  #       name: Cleanup GPU Post
+  #       with:
+  #         run: |
+  #           python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
+  #     - name: Untar report
+  #       run: |
+  #         cd .github/vast.ai
+  #         ls
+  #         tar -xvf report.tar.gz
+  #     - uses: actions/upload-artifact@v3
+  #       with:
+  #         name: asap-7-openroad-report
+  #         path: flow_reports
+  #     - name: Pushes current reports to repo
+  #       uses: cpina/github-action-push-to-another-repository@main
+  #       env:
+  #         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+  #       with:
+  #         source-directory: ".github/vast.ai/flow_reports"
+  #         destination-github-username: "joennlae"
+  #         destination-repository-name: "halutmatmul-openroad-reports"
+  #         user-email: openroad@reports.ch
+  #         target-branch: main
+  #         target-directory: "latest/asap7/"
+  #     - name: Get Time
+  #       id: time
+  #       uses: nanzm/get-time-action@v1.1
+  #       with:
+  #         timeZone: 0
+  #         format: "YYYY-MM-DD-HH-mm-ss"
+  #     - name: Pushes current reports to repo
+  #       uses: cpina/github-action-push-to-another-repository@main
+  #       env:
+  #         SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
+  #       with:
+  #         source-directory: ".github/vast.ai/flow_reports"
+  #         destination-github-username: "joennlae"
+  #         destination-repository-name: "halutmatmul-openroad-reports"
+  #         user-email: openroad@reports.ch
+  #         target-branch: main
+  #         target-directory: "history/asap7/${{ steps.time.outputs.time }}/"
+
+
+  # only needed for asap7
+  # cleanup:
+  #   name: Cleanup check
+  #   needs: asap7
+  #   runs-on: ubuntu-latest
+  #   concurrency: vast.ai-hw
+  #   if: always()
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-python@v3
+  #       with:
+  #         python-version: "3.9"
+  #     - name: Cleanup Vast.ai instances
+  #       run: |
+  #         cd .github/vast.ai
+  #         pip install requests
+  #         ./vast.py set api-key ${{ secrets.VAST_AI_API_KEY }}
+  #         python vast_ai_helper.py --cleanup --image joennlae/halutmatmul-conda-hw:latest
