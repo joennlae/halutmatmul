@@ -30,7 +30,7 @@ dependencies:
   - seaborn
   - matplotlib
   # typing
-  - pyright
+  - mypy
   # kmeans
   - faiss-cpu=1.7.3 # https://github.com/facebookresearch/faiss/issues/2890
   # ci

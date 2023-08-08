@@ -74,11 +74,11 @@ compare_conda_env() {
 lint_python() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
-    pylint --rcfile=.pylintrc maddness/python/* src/python/*
+    pylint maddness/python/* src/python/*
     echo "[DONE] lint python with pylint"
-    echo "[INFO] check types with pyright"
-    pyright
-    echo "[DONE] check types with pyright"
+    echo "[INFO] check types with mypy"
+    mypy
+    echo "[DONE] check types with mypy"
 }
 
 test_python() {
@@ -92,11 +92,11 @@ test_python() {
 lint_hw() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
-    pylint --rcfile=.pylintrc hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
+    pylint hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
     echo "[DONE] lint python with pylint"
-    echo "[INFO] check types with pyright"
-    pyright hardware/util hardware/dv/**/*.py
-    echo "[DONE] check types with pyright"
+    echo "[INFO] check types with mypy"
+    mypy hardware/util hardware/dv/**/*.py
+    echo "[DONE] check types with mypy"
     echo "[INFO] linting RTL with verilator"
     fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
     echo "[DONE] linting RTL with verilator"
