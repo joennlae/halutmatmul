@@ -295,7 +295,7 @@ class ResNet(nn.Module):
 
         out_channels_pilot = 16
         in_planes_features = out_channels_pilot
-        out_planes_features = block_cfgs[-1][1] * block_class.expansion_factor
+        out_planes_features = block_cfgs[-1][1] * block_class.expansion_factor  # type: ignore
         out_channels_features = out_planes_features
         self.act_type = nn.ReLU if activation.lower() == "relu" else nn.ReLU6
 
@@ -304,8 +304,8 @@ class ResNet(nn.Module):
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None
         )
         self.features = self._make_features(
-            block_cfgs,
-            block_class,
+            block_cfgs,  # type: ignore
+            block_class,  # type: ignore
             in_planes_features,
             out_planes_features,
             n_groups,

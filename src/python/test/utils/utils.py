@@ -44,7 +44,7 @@ def helper_test_module(
     loss_torch.backward()
     loss_halut.backward()
 
-    all_shapes = []
+    all_shapes = []  # type: ignore
     getBack(loss_torch.grad_fn, [])
     getBack(loss_halut.grad_fn, all_shapes)
 

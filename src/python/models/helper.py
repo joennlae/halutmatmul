@@ -56,9 +56,9 @@ def write_inputs_to_disk(
                         # iterations * batch_size * H_in * W_in
                         store_ratio = total_rows_store / (
                             total_iterations
-                            * module.input_storage_a.shape[0]  #  type: ignore[index]
-                            * module.input_storage_a.shape[1]  #  type: ignore[index]
-                            * module.input_storage_a.shape[2]  # type: ignore[index]
+                            * module.input_storage_a.shape[0]  # type: ignore
+                            * module.input_storage_a.shape[1]  # type: ignore
+                            * module.input_storage_a.shape[2]  # type: ignore
                         )
                         rows_to_store_during_current_iter = math.ceil(
                             store_ratio * rows
@@ -200,11 +200,11 @@ def evaluate_distributed(
 ):
     model.eval()
     # model.half()
-    metric_logger = utils_train.MetricLogger(delimiter="  ")
+    metric_logger = utils_train.MetricLogger(delimiter="  ")  # type: ignore
     header = f"Test: {log_suffix}"
 
     iterations = len(data_loader)
-    store_arrays = {}
+    store_arrays = {}  # type: ignore
     criterion = torch.nn.CrossEntropyLoss()
     num_processed_samples = 0
     n_iter = 0
@@ -216,7 +216,7 @@ def evaluate_distributed(
             output = model(image)
             loss = criterion(output, target)
             # pylint: disable=unbalanced-tuple-unpacking
-            acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = utils_train.accuracy(output, target, topk=(1, 5))  # type: ignore
             # FIXME need to take into account that the datasets
             # could have been padded in distributed setup
             batch_size = image.shape[0]
@@ -245,7 +245,9 @@ def evaluate_distributed(
             n_iter = n_iter + 1
     # gather the stats from all processes
 
-    num_processed_samples = utils_train.reduce_across_processes(num_processed_samples)
+    num_processed_samples = utils_train.reduce_across_processes(  # type: ignore
+        num_processed_samples
+    )
     if (
         hasattr(data_loader.dataset, "__len__")
         and len(data_loader.dataset) != num_processed_samples  # type: ignore
@@ -311,7 +313,7 @@ def evaluate_halut_imagenet(
         )
     criterion = torch.nn.CrossEntropyLoss()
 
-    metric_logger = utils_train.MetricLogger(delimiter="  ")
+    metric_logger = utils_train.MetricLogger(delimiter="  ")  # type: ignore
     header = "Test:"
 
     iterations = len(data_loader)
@@ -323,7 +325,7 @@ def evaluate_halut_imagenet(
         model.train()
     # probably switch to train mode to account for using the correct BN statistics
     n_iter = 0
-    store_arrays = {}
+    store_arrays = {}  # type: ignore
     batch_size = data_loader.batch_size  # type: ignore
     store_iterations = iterations  # math.ceil(1024 // batch_size)
     # store_iterations = math.ceil(1024 // batch_size)
@@ -398,7 +400,7 @@ def eval_halut_kws(
     # data = AudioGenerator(mode, self.audio_processor, training_parameters)
     model.eval()
 
-    store_arrays = {}
+    store_arrays = {}  # type: ignore
     with torch.no_grad():
         inputs_, labels_ = data[0]
         inputs = torch.Tensor(inputs_[:, None, :, :]).to(device)

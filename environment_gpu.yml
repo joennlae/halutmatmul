@@ -8,7 +8,7 @@ dependencies:
   - python=3.9
   # IDE deps
   - black
-  - pylint
+  - pylint=2.17
   - pytest
   - pre-commit
   - pytest-xdist

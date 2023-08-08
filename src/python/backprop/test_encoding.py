@@ -283,6 +283,7 @@ def annotate_heatmap(
 
     # Set default alignment to center, but allow it to be
     # overwritten by textkw.
+    # pylint: disable=use-dict-literal
     kw = dict(horizontalalignment="center", verticalalignment="center")
     kw.update(textkw)
 
