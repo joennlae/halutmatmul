@@ -11,7 +11,7 @@ jobs:
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.oi/joennlae/halutmatmul-conda-hw:latest
+      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
       run:
         shell: bash -el {0}
