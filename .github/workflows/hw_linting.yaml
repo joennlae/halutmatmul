@@ -28,7 +28,7 @@ jobs:
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: joennlae/halutmatmul-conda-hw:latest
+      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
       run:
         shell: bash -el {0}
@@ -44,7 +44,7 @@ jobs:
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: joennlae/halutmatmul-conda-hw:latest
+      image: ghrc.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
       run:
         shell: bash -el {0}
@@ -61,7 +61,7 @@ jobs:
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: joennlae/halutmatmul-conda-hw:latest
+      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
       run:
         shell: bash -el {0}
