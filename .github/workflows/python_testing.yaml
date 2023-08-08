@@ -28,7 +28,6 @@ jobs:
       - name: Test with pytest
         run: |
           source /venv/bin/activate
-          pip install pytest-split
           df -h
           du -a / | sort -n -r | head -n 10
           pytest -srPA -k "not gpu" --splits 5 --group ${{ matrix.split }}

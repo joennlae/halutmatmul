@@ -35,6 +35,8 @@ dependencies:
   - pyright
   # kmeans
   - faiss-cpu
+  # ci
+  - pytest-split
   - pip:
       - cupy_cuda11x
       - pytorch-nemo
