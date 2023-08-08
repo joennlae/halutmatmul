@@ -6,10 +6,10 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  lint_python:
+  Lint Python:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
-    name: Python Lint
+    name: Linting Python with PyLint
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
           $CONDA/bin/conda install -c conda-forge pylint=2.15.2
           $CONDA/bin/pylint --rcfile=.pylintrc --reports yes hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
 
-  python_typechecking:
+  Typechecking Python:
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
@@ -34,12 +34,12 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Check types with mypy
+      - name: Check types with pyright
         run: |
           source /venv/bin/activate
           pyright hardware/util hardware/dv/**/*.py
 
-  verilator_lint_hw:
+  HW Lint Verilator:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
@@ -56,7 +56,7 @@ jobs:
           cd hardware
           fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
 
-  verible_lint_hw:
+  HW Lint verilate:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Lint RTL with verilator
+      - name: Lint RTL with verilate
         run: |
           source /venv/bin/activate
           cd hardware
