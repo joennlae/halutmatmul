@@ -1,21 +1,19 @@
 repos:
-# inspiration https://rednafi.github.io/digressions/python/2020/04/06/python-precommit.html
-- repo: https://github.com/PyCQA/pylint
-  rev: v2.15.2
-  hooks:
-    - id: pylint
-      types: [python]
-      args:
-          [
+  # inspiration https://rednafi.github.io/digressions/python/2020/04/06/python-precommit.html
+  - repo: https://github.com/PyCQA/pylint
+    rev: v2.15.2
+    hooks:
+      - id: pylint
+        types: [python]
+        args: [
             "-rn",
             "-sn",
-            "--rcfile=.pylintrc",
             # "maddness/python/*",
             # "src/python/*"
           ]
-      exclude: .vscode/|joblib|vast.ai|vendor
+        exclude: .vscode/|joblib|vast.ai|vendor
 
-- repo: https://github.com/jorisroovers/gitlint
-  rev:  v0.17.0
-  hooks:
-    - id: gitlint
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.17.0
+    hooks:
+      - id: gitlint
