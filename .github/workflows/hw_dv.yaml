@@ -6,7 +6,7 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  RTL Simulations:
+  rtl-simulations:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest

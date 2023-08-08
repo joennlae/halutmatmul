@@ -6,7 +6,7 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  lint_python:
+  lint-python:
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     name: Python Lint
