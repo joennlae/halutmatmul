@@ -10,7 +10,7 @@ jobs:
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
     container:
-      image: joennlae/halutmatmul-conda-gpu:latest
+      image: ghcr.io/joennlae/halutmatmul-conda-gpu:latest
     defaults:
       run:
         shell: bash -el {0}

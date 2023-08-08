@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3:latest AS build
+FROM condaforge/mambaforge:latest AS build
 # ref https://pythonspeed.com/articles/conda-docker-image-size/
 # archive https://web.archive.org/web/20220426133333/https://pythonspeed.com/articles/conda-docker-image-size/
 
@@ -6,12 +6,13 @@ FROM continuumio/miniconda3:latest AS build
 # curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
 
 # dockerhub: joennlae/halutmatmul-conda-gpu
+# ghcr: ghcr.io/joennlae/halutmatmul-conda-gpu
+# https://github.com/features/packages
 
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Create the environment:
 COPY environment_gpu.yml .
-RUN conda install mamba -c conda-forge
 RUN mamba env create --file environment_gpu.yml --name halutmatmul_gpu
 
 # Install conda-pack:
