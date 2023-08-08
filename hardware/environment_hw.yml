@@ -7,10 +7,10 @@ dependencies:
   - python=3.10
   # IDE deps
   - black
-  - pylint
+  - pylint=2.17
   - pytest
   - pre-commit
-  - pyright 
+  - mypy
   - pytest-xdist
   - numpy # mypy
   # HW deps
@@ -28,9 +28,9 @@ dependencies:
   # report
   - pandas
   - pip:
-    - git+https://github.com/joennlae/edalize.git@openroad-flow-script # git+https://github.com/lowRISC/edalize.git@ot-0.1 # edalize
-    - git+https://github.com/lowRISC/fusesoc.git@ot-0.1 # fusesoc
-    - cocotb # for UVM
-    - anytree
-    - hjson # vendor.py
+      - git+https://github.com/joennlae/edalize.git@openroad-flow-script # git+https://github.com/lowRISC/edalize.git@ot-0.1 # edalize
+      - git+https://github.com/lowRISC/fusesoc.git@ot-0.1 # fusesoc
+      - cocotb # for UVM
+      - anytree
+      - hjson # vendor.py
 prefix: /scratch/janniss/conda/halutmatmul_hw

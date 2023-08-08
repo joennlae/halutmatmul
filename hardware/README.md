@@ -38,7 +38,7 @@ This is a problem with our old CentOS versions mainly inside IIS computing infra
 #### Build GCC toolchain if needed
 ```bash
 # build toolchain if gcc version too old
-https://github.com/joennlae/gcc-toolchain-builder.git
+git clone https://github.com/joennlae/gcc-toolchain-builder.git
 cd gcc-toolchain-builder
 # default path ${HOME}/.local
 ./build-native-toolchain.sh
@@ -47,6 +47,7 @@ cd gcc-toolchain-builder
 ### Install GLIBC
 
 ```bash
+# be sure to deactivate conda env
 ./scripts/install_glibc.sh
 ```
 
