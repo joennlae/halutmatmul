@@ -1,11 +1,12 @@
 import argparse
-import os
+import struct
 import csv
 from pathlib import Path
 from copy import deepcopy
 
 import torch
 import numpy as np
+from torch import nn
 from sklearn import tree
 from sklearn.tree import _tree
 import numba
@@ -367,6 +368,246 @@ def train_decision_tree(
     halut_model.run_inference()
 
 
+def int_to_bin(n):
+    return bin(n)
+
+
+def float_to_bin(value):  # For testing.
+    """Convert float to 64-bit binary string."""
+    [d] = struct.unpack(">Q", struct.pack(">d", value))
+    return "{:016b}".format(d)
+
+
+def hamming_distance(bin_0, bin_1):
+    return sum(c1 != c2 for c1, c2 in zip(bin_0, bin_1))
+
+
+def moonshot_approach(
+    args: argparse.Namespace,
+):
+    BATCH_SIZE = 64
+    (
+        model_name,
+        model,
+        state_dict_base,
+        data_loader_train,
+        _,
+        _,
+        halut_modules,
+        _,
+    ) = load_model(args.checkpoint, distributed=False, batch_size=BATCH_SIZE)
+
+    learned_path = args.learned
+    if model_name not in learned_path.lower():
+        learned_path += "/" + model_name
+    Path(learned_path).mkdir(parents=True, exist_ok=True)
+
+    halut_data_path = args.halutdata
+    if model_name not in halut_data_path.lower():
+        halut_data_path += "/" + model_name
+    Path(halut_data_path).mkdir(parents=True, exist_ok=True)
+
+    if args.gpu == -1:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(
+            "cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu"
+        )
+
+    model_base = deepcopy(model)
+    halut_model = HalutHelper(
+        model_base,
+        state_dict_base,  # type: ignore
+        data_loader_train,
+        data_path=halut_data_path,
+        learned_path=learned_path,
+        device=device,
+    )
+    # criterion = nn.CrossEntropyLoss()
+    # evaluate(model, criterion, data_loader_val, device=device)
+    # state_dict_to_add = halut_model.model.state_dict()
+
+    modules = halut_modules
+    for k, v in modules.items():  # type: ignore
+        if len(v) > 3:
+            halut_model.activate_halut_module(
+                k,
+                C=v[HalutModuleConfig.C],
+                K=v[HalutModuleConfig.K],
+                loop_order=v[HalutModuleConfig.LOOP_ORDER],
+                use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
+            )
+        else:
+            halut_model.activate_halut_module(
+                k,
+                C=v[HalutModuleConfig.C],
+                K=v[HalutModuleConfig.K],
+            )
+
+    layers = get_and_print_layers_to_use_halut(halut_model.model)
+    layers_now = layers[:1]  # layers[:-1]  # layers[:2]
+    dict_to_store = {}
+    for l in layers_now:
+        dict_to_store[l] = RUN_ALL_SUBSAMPLING
+
+    # halut_model.store_inputs(dict_to_store)
+    # load data
+    centroids = []
+    for l in layers_now:
+        module = get_module_by_name(halut_model.model, l)
+        if isinstance(module, (HalutConv2d, HalutLinear)):
+            centroids.append(module.P.detach().cpu().numpy())
+
+    print("Centroids", [c.shape for c in centroids])
+
+    for idx, l in enumerate(layers_now):
+        stored_paths = check_file_exists_and_return_path(halut_data_path, l, "input")
+        print("paths for layer", l, stored_paths)
+        if len(stored_paths) != 2:
+            raise Exception("not stored")
+        layer_input = np.load(stored_paths[0])
+        input_layer = layer_input
+        centroids_layer = centroids[idx]
+        input_layer = input_layer.reshape(
+            (-1, centroids_layer.shape[0], centroids_layer.shape[2])
+        )
+        input_layer = input_layer[: 1024 * 1024]
+        mse = np.zeros(
+            (input_layer.shape[0], input_layer.shape[1], centroids_layer.shape[1])
+        )
+        splitter = 32
+        num_splits = input_layer.shape[0] // splitter
+        assert input_layer.shape[0] % splitter == 0
+        for i in range(splitter):
+            mse[i * num_splits : (i + 1) * num_splits, :, :] = np.sum(
+                np.square(
+                    np.expand_dims(
+                        input_layer[i * num_splits : (i + 1) * num_splits], 2
+                    )
+                    - centroids_layer
+                ),
+                axis=3,
+            )
+        mapping = np.argmin(mse, axis=2)
+        print(l, mapping, mapping.shape)
+
+        selected_centroids = np.zeros(input_layer.shape)
+        for c in range(mapping.shape[1]):
+            selected_centroids[:, c, :] = centroids_layer[c, mapping[:, c], :]
+        mse = selected_centroids - input_layer
+        print(centroids_layer.shape, input_layer.shape, mapping.shape)
+        print("MSE: ", np.sum(np.abs(mse)))
+        C = mapping.shape[1]
+        for c in range(C):
+            counted = np.bincount(mapping[:, c])
+            print("Counted", counted)
+
+        print(centroids_layer.shape)
+
+        C = 0
+        # normalize
+        maxes = np.max(centroids_layer, axis=2)
+        mins = np.min(centroids_layer, axis=2)
+        print("Maxes", maxes.shape)
+        max = np.max(maxes)
+        print("Mins", mins.shape)
+        min = np.min(mins)
+        min = 0.0
+        print("Max", max, "Min", min, maxes[0], mins[0])
+        scale = 2 * max / 256
+        print("Scale", scale)
+
+        centroids_layer_norm = np.clip(np.round(centroids_layer / scale), -128, 127)
+        centroids_layer_norm = centroids_layer_norm.astype(np.int8)
+        for k in range(16):
+            print(
+                "C",
+                C,
+                "k",
+                k,
+                bin(centroids_layer_norm[C, k, 0]).replace("0b", "").zfill(8),
+            )
+            print(
+                "C",
+                C,
+                "k",
+                k,
+                centroids_layer_norm[C, k, 1],
+                type(centroids_layer_norm[C, k, 1]),
+            )
+
+        # transform input to 8bit
+        input_layer_norm = np.clip(np.round(input_layer / scale), -128, 127)
+        input_layer_norm = input_layer_norm.astype(np.int8)
+        print(input_layer_norm.shape, input_layer_norm[0], centroids_layer_norm[0])
+        int8_mse = np.zeros(
+            (input_layer.shape[0], input_layer.shape[1], centroids_layer.shape[1])
+        )
+        splitter = 32
+        num_splits = input_layer_norm.shape[0] // splitter
+        assert input_layer_norm.shape[0] % splitter == 0
+
+        for i in range(splitter):
+            int8_mse[i * num_splits : (i + 1) * num_splits, :, :] = np.sum(
+                np.abs(
+                    np.expand_dims(
+                        input_layer_norm[i * num_splits : (i + 1) * num_splits], 2
+                    )
+                    - centroids_layer_norm
+                ),
+                axis=3,
+            )
+
+        print("int8_mse", int8_mse.shape, int8_mse[0])
+        int8_mapping = np.argmin(int8_mse, axis=2)
+        print(l, int8_mapping, int8_mapping.shape)
+
+        print("Mapping the same?", np.allclose(int8_mapping, mapping))
+        print("difference", np.sum(np.abs(int8_mapping - mapping).astype(np.bool_)))
+
+        int8_hamming = np.zeros(
+            (input_layer.shape[0], input_layer.shape[1], centroids_layer.shape[1])
+        )
+        C = mapping.shape[1]
+        for i in range(splitter):
+            unpacked = np.unpackbits(
+                np.bitwise_xor(
+                    np.expand_dims(
+                        input_layer_norm[i * num_splits : (i + 1) * num_splits],
+                        2,
+                    ),
+                    centroids_layer_norm,
+                ).view(np.uint8),
+                axis=3,
+            )
+            # pylint: disable=too-many-function-args
+            unpacked = unpacked.reshape(  # type: ignore
+                unpacked.shape[0], unpacked.shape[1], unpacked.shape[2], 9, 8  # type: ignore
+            )
+            unpacked = unpacked[:, :, :, :, :4]
+            unpacked = unpacked.reshape(
+                unpacked.shape[0], unpacked.shape[1], unpacked.shape[2], 9 * 4
+            )
+
+            int8_hamming[i * num_splits : (i + 1) * num_splits, :, :] = np.sum(
+                unpacked,
+                axis=3,
+            )
+
+        print("int8_hamming", int8_hamming.shape, int8_hamming[0])
+        int8_hamming_mapping = np.argmin(int8_hamming, axis=2)
+        print(l, int8_hamming_mapping, int8_hamming_mapping.shape)
+
+        print("Mapping the same?", np.allclose(int8_hamming_mapping, mapping))
+        print(
+            "difference",
+            np.sum(np.abs(int8_hamming_mapping - mapping).astype(np.bool_)),
+        )
+
+        # hamming distance encoding
+        # new_mapping =
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument("gpu", metavar="N", type=int, help="id of cuda_card", default=0)
@@ -392,4 +633,5 @@ if __name__ == "__main__":
         help="check_point_path",
     )
     args = parser.parse_args()
-    train_decision_tree(args)
+    # train_decision_tree(args)
+    moonshot_approach(args)
