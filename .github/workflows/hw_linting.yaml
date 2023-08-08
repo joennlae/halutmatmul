@@ -6,7 +6,7 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  lint_python:
+  lint-python:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     name: Linting Python with PyLint
@@ -23,7 +23,7 @@ jobs:
           $CONDA/bin/conda install -c conda-forge pylint=2.15.2
           $CONDA/bin/pylint --reports yes hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
 
-  typechecking_python:
+  typechecking-python:
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
           source /venv/bin/activate
           mypy hardware/util hardware/dv/**/*.py
 
-  hw_lint_verilator:
+  hw-lint-verilator:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
@@ -56,7 +56,7 @@ jobs:
           cd hardware
           fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
 
-  hw_lint_verilate:
+  hw-lint-verilate:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
