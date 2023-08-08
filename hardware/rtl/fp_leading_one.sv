@@ -11,13 +11,13 @@
 // src: https://github.com/pulp-platform/fpu/blob/master/hdl/fpu_v0.1/fpu_ff.sv
 
 module fp_leading_one #(
-  parameter int unsigned LEN = 32
-) (
-  input logic [LEN-1:0] in_i,
+    parameter int unsigned LEN = 32
+  ) (
+    input logic [LEN-1:0] in_i,
 
-  output logic [$clog2(LEN)-1:0] first_one_o,
-  output logic                   no_ones_o
-);
+    output logic [$clog2(LEN)-1:0] first_one_o,
+    output logic                   no_ones_o
+  );
 
   localparam int unsigned NUM_LEVELS = $clog2(LEN);
 
@@ -91,7 +91,7 @@ module fp_leading_one #(
           end
         end
       end
-      //------------------------------------------------------------
+    //------------------------------------------------------------
     end
   endgenerate
 
