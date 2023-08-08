@@ -192,10 +192,10 @@ def learn_halut_multi_core_dict(
             data_path=data_path,
             store_path=store_path,
             K=v[hm.HalutModuleConfig.K],
-            loop_order=conv2d_options["loop_order"],
-            kernel_size=conv2d_options["kernel_size"],
-            stride=conv2d_options["stride"],
-            padding=conv2d_options["padding"],
+            loop_order=conv2d_options["loop_order"],  # type: ignore
+            kernel_size=conv2d_options["kernel_size"],  # type: ignore
+            stride=conv2d_options["stride"],  # type: ignore
+            padding=conv2d_options["padding"],  # type: ignore
             niter=kmeans_options_here["niter"],
             nredo=kmeans_options_here["nredo"],
             min_points_per_centroid=kmeans_options_here["min_points_per_centroid"],

@@ -58,7 +58,7 @@ def test_cifar10_inference() -> None:
         )
 
         # CIFAR transformation
-        preprocessing = presets.ClassificationPresetEval(
+        preprocessing = presets.ClassificationPresetEval(  # type: ignore
             crop_size=32,
             resize_size=32,
             interpolation=InterpolationMode("bilinear"),
@@ -71,7 +71,7 @@ def test_cifar10_inference() -> None:
             download=True,
         )
 
-        model = resnet18(progress=True, **{"is_cifar": True, "num_classes": 10})
+        model = resnet18(progress=True, **{"is_cifar": True, "num_classes": 10})  # type: ignore
 
         halut_model = HalutHelper(
             model,
@@ -134,7 +134,7 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
         state_dict = torch.load(script_dir + "/" + "resnet20.th", map_location="cpu")
 
         # CIFAR transformation
-        preprocessing = presets.ClassificationPresetEval(
+        preprocessing = presets.ClassificationPresetEval(  # type: ignore
             crop_size=32,
             resize_size=32,
             interpolation=InterpolationMode("bilinear"),

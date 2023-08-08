@@ -241,7 +241,7 @@ def train_decision_tree(
         print(np.sum(np.abs(mse)))
 
         C = mapping.shape[1]
-        trees = []
+        trees = []  # type: ignore
         levels = 3
         for i in range(levels):
             trees.append([])

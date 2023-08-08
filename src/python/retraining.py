@@ -210,16 +210,16 @@ def run_retraining(
             if len(v) > 3:
                 halut_model.activate_halut_module(
                     k,
-                    C=v[HalutModuleConfig.C],
-                    K=v[HalutModuleConfig.K],
-                    loop_order=v[HalutModuleConfig.LOOP_ORDER],
-                    use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],
+                    C=v[HalutModuleConfig.C],  # type: ignore
+                    K=v[HalutModuleConfig.K],  # type: ignore
+                    loop_order=v[HalutModuleConfig.LOOP_ORDER],  # type: ignore
+                    use_prototypes=v[HalutModuleConfig.USE_PROTOTYPES],  # type: ignore
                 )
             else:
                 halut_model.activate_halut_module(
                     k,
-                    C=v[HalutModuleConfig.C],
-                    K=v[HalutModuleConfig.K],
+                    C=v[HalutModuleConfig.C],  # type: ignore
+                    K=v[HalutModuleConfig.K],  # type: ignore
                 )
     if args.distributed:
         dist.barrier()
@@ -236,7 +236,7 @@ def run_retraining(
         # ugly hack to port halut active information
         model_copy.load_state_dict(checkpoint["model"])
 
-        params = {
+        params = {  # type: ignore
             "other": [],
             "prototypes": [],
             "temperature": [],
@@ -365,7 +365,7 @@ def model_analysis(args: Any) -> None:
 
     total_params = 0
     prev_params = 0
-    all_results = {}
+    all_results = {}  # type: ignore
     print("model", model)
     for k, v in state_dict.items():
         layer = ".".join(k.split(".")[:-1])
