@@ -32,7 +32,7 @@ dependencies:
   - seaborn
   - matplotlib
   # for CI
-  - pyright
+  - mypy
   # kmeans
   - faiss-cpu=1.7.3 # https://github.com/facebookresearch/faiss/issues/2890
   # ci
@@ -42,5 +42,5 @@ dependencies:
       - pytorch-nemo
       - timm==0.5.4
       - ray
-      - cocotb # needed for pyright
+      - cocotb # needed for mypy
 prefix: /home/msc22f5/.conda/envs/halutmatmul
