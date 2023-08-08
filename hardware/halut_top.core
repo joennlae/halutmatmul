@@ -11,13 +11,13 @@ filesets:
       - lowrisc:prim:onehot
     files:
       - rtl/halut_pkg.sv
+      - rtl/fp_defs_pkg.sv
       - rtl/halut_matmul.sv
       - rtl/halut_decoder_x.sv
       - rtl/halut_encoder_4.sv
       - rtl/halut_decoder.sv
       - rtl/halut_encoder.sv
       - rtl/fp_16_comparision.sv
-      - rtl/fp_defs_pkg.sv
       - rtl/fp_add.sv
       - rtl/fp_leading_one.sv
       - rtl/fp_norm.sv
@@ -44,23 +44,23 @@ filesets:
     files:
       - lint/veriblelint/verible.waiver # : {file_type: veribleLintWaiver}
     file_type: veribleLintWaiver
-  
+
   openroad_base_files:
     files:
-      - flow/OpenROAD/flow/Makefile : {file_type: Makefile}
+      - flow/OpenROAD/flow/Makefile: { file_type: Makefile }
     depend:
       - halut:util:sv2v
       - halut:util:report
 
   openroad_asap7_files:
     files:
-      - flow/asap7/config.mk : {file_type: configFile}
-      - flow/asap7/constraint.sdc : {file_type: SDC}
+      - flow/asap7/config.mk: { file_type: configFile }
+      - flow/asap7/constraint.sdc: { file_type: SDC }
 
   openroad_nangate45_files:
     files:
-      - flow/nangate45/config.mk : {file_type: configFile}
-      - flow/nangate45/constraint.sdc : {file_type: SDC}
+      - flow/nangate45/config.mk: { file_type: configFile }
+      - flow/nangate45/constraint.sdc: { file_type: SDC }
 
   export_design_files:
     depend:
@@ -70,7 +70,6 @@ parameters:
   SYNTHESIS:
     datatype: bool
     paramtype: vlogdefine
-
 
 targets:
   default: &default_target
@@ -143,7 +142,7 @@ targets:
     toplevel: halut_decoder_x # not used
     default_tool: export
 
-  openroad_asap7_encoder_4: 
+  openroad_asap7_encoder_4:
     <<: *openroad_asap7
     toplevel: halut_encoder_4
 
@@ -151,7 +150,7 @@ targets:
     <<: *openroad_nangate45
     toplevel: halut_encoder_4
 
-  openroad_asap7_decoder: 
+  openroad_asap7_decoder:
     <<: *openroad_asap7
     toplevel: halut_decoder
 
@@ -159,7 +158,7 @@ targets:
     <<: *openroad_nangate45
     toplevel: halut_decoder
 
-  openroad_asap7_fp_16_32_adder: 
+  openroad_asap7_fp_16_32_adder:
     <<: *openroad_asap7
     toplevel: fp_16_32_adder
 
@@ -167,7 +166,7 @@ targets:
     <<: *openroad_nangate45
     toplevel: fp_16_32_adder
 
-  openroad_asap7_encoder: 
+  openroad_asap7_encoder:
     <<: *openroad_asap7
     toplevel: halut_encoder
 

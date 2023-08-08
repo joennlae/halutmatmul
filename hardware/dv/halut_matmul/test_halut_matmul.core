@@ -8,8 +8,8 @@ filesets:
       - halut:test:util
       - halut:ip:halut_top
     files:
-      - Makefile : { file_type: Makefile}
-      - test_halut_matmul.py : { file_type: Cocotb }
+      - Makefile: { file_type: Makefile }
+      - test_halut_matmul.py: { file_type: Cocotb }
   sv2v:
     depend:
       - halut:util:sv2v

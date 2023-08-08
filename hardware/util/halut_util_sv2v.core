@@ -9,7 +9,7 @@ description: "Script to convert SystemVerilog files to Verilog with sv2v"
 filesets:
   files_sv2v_in_place:
     files:
-      - sv2v_in_place.py : { copyto: util/sv2v_in_place.py }
+      - sv2v_in_place.py: { copyto: util/sv2v_in_place.py }
 
 scripts:
   sv2v_in_place:
@@ -41,7 +41,6 @@ scripts:
       - --define=NUM_C=32
       - --define=ASAP7_USELVT=ONLY_SET_WHEN_OS_SET
       - --define=ASAP7_USESLVT=ONLY_SET_WHEN_OS_SET
-
 
 targets:
   default:
