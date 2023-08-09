@@ -1,6 +1,9 @@
 from test.test_linear import test_linear_module
 from test.test_conv2d import test_conv2d_module
-from test.test_resnet import test_cifar10_inference_resnet20, test_cifar10_inference
+from test.test_resnet import (
+    test_cifar10_inference_resnet20,
+    test_cifar10_inference_resnet18,
+)
 from utils.analysis_helper import resnet20_layers, resnet20_b_layers
 
 if __name__ == "__main__":
@@ -15,4 +18,4 @@ if __name__ == "__main__":
     # acc = test_cifar10_inference_resnet20("layer2.0.conv1")
     # print(acc)
     # test_cifar10_inference_resnet20("layer1.0.conv2")
-    test_cifar10_inference()
+    test_cifar10_inference_resnet18()

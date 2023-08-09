@@ -47,7 +47,8 @@ def download_weights(
     print("\n")
 
 
-def test_cifar10_inference() -> None:
+@pytest.mark.heavy
+def test_cifar10_inference_resnet18() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
         print("created temporary directory", tmpdirname)
         download_weights(tmpdirname, is_ci=True)

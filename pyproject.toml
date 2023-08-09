@@ -5,6 +5,10 @@ files = ["maddness/python", "src/python"]
 [tool.pytest.ini_options]
 pythonpath = ["src/python"]
 
+markers = [
+  "heavy", # should be run independent in CI
+]
+
 minversion = "6.0.0"
 
 testpaths = ["src/python/test"]
