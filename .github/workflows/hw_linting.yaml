@@ -37,7 +37,7 @@ jobs:
       - name: Check types with mypy
         run: |
           source /venv/bin/activate
-          mypy hardware/util hardware/dv/**/*.py
+          mypy --install-types --non-interactive hardware/util hardware/dv/**/*.py
 
   hw-lint-verilator:
     needs: changes
