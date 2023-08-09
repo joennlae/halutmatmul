@@ -10,12 +10,14 @@ dependencies:
   - pylint=2.17
   - pytest
   - pre-commit
-  - mypy
+  - mypy=1.4
   - pytest-xdist
   - numpy # mypy
   # HW deps
   - zachjs-sv2v
   - openroad
+  # libfmt deps for openroad
+  - fmt=8
   - yosys
   - verilator
   - verible
