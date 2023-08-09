@@ -29,10 +29,6 @@ jobs:
     name: E2E test using ResNet18
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        split: [1, 2, 3, 4, 5]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/joennlae/halutmatmul-conda-gpu:latest
