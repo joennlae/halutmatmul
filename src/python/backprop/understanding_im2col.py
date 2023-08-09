@@ -29,7 +29,7 @@ for b in range(batch_size):
                 for i_c in range(in_channels):
                     for k_x in range(kernel_size):
                         for k_y in range(kernel_size):
-                            sum += (
+                            sum += (  # type: ignore
                                 input[b, i_c, o_x + k_x, o_y + k_y]
                                 * kernels[o_c, i_c, k_x, k_y]
                             )
@@ -139,9 +139,7 @@ print(
     kn2col_output_2.shape,
     kn2col_output_2[0, 0],
 )
-kn2col_output_2 = torch.reshape(kn2col_output_2, (batch_size, -1, out_channels))[
-    :,
-]
+kn2col_output_2 = torch.reshape(kn2col_output_2, (batch_size, -1, out_channels))[:,]
 
 kn2col_output = kn2col_output.transpose(1, 2).reshape(
     batch_size, out_channels, image_x_y - 2, image_x_y - 2

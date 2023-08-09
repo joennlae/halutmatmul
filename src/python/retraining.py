@@ -70,7 +70,7 @@ def load_model(
         if args.model == "resnet20":
             model = resnet20()
         elif args.model == "resnet20_georg":
-            model = ResNet("ResNet20")
+            model = ResNet("ResNet20")  # type: ignore
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -292,7 +292,7 @@ def run_retraining(
             )
             opt_state_dict = optimizer.state_dict()
         elif opt_name == "adam":
-            optimizer = torch.optim.Adam(
+            optimizer = torch.optim.Adam(  # type: ignore
                 param_groups,
                 lr=lr,
                 weight_decay=weight_decay,

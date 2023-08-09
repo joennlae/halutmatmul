@@ -152,8 +152,8 @@ batch_size = 256
 epochs = 100
 model = HalutMatmul(C, K, S, B, T, L, A)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0004)
-criterion = torch.nn.HuberLoss(reduction="mean")
-criterion = torch.nn.L1Loss(reduction="mean")
+# criterion = torch.nn.HuberLoss(reduction="mean")
+# criterion = torch.nn.L1Loss(reduction="mean")
 criterion = torch.nn.MSELoss(reduction="mean")
 
 train_dataset = torch.utils.data.TensorDataset(train_input)
@@ -413,10 +413,10 @@ for t in [4, 6, 7, 8, 10, 16, 32]:
     # convert to empty type as empty_strided is not supported
     scale = torch.max(I) - torch.min(I)
     scale = scale / (2**t - 1)
-    I_quant = torch.fake_quantize_per_tensor_affine(
+    I_quant = torch.fake_quantize_per_tensor_affine(  # type: ignore
         I, scale, 0, quant_min=-(2 ** (t - 1)), quant_max=2 ** (t - 1) - 1
     )
-    W_quant = torch.fake_quantize_per_tensor_affine(
+    W_quant = torch.fake_quantize_per_tensor_affine(  # type: ignore
         W, scale, 0, quant_min=-(2 ** (t - 1)), quant_max=2 ** (t - 1) - 1
     )
 

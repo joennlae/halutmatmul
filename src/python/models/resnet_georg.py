@@ -40,7 +40,6 @@ from halutmatmul.modules import HalutConv2d, HalutLinear
 
 class DownsampleBranch(nn.Module):
     def __init__(self, in_planes: int, out_planes: int, stride: int):
-
         super(DownsampleBranch, self).__init__()
 
         self.conv = HalutConv2d(
@@ -49,7 +48,6 @@ class DownsampleBranch(nn.Module):
         self.bn = nn.BatchNorm2d(out_planes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
         x = self.conv(x)
         x = self.bn(x)
 
@@ -57,7 +55,6 @@ class DownsampleBranch(nn.Module):
 
 
 class BasicBlock(nn.Module):
-
     expansion_factor: int = 1
 
     def __init__(
@@ -70,7 +67,6 @@ class BasicBlock(nn.Module):
         downsample: Union[torch.nn.Module, None] = None,
         act_type=nn.ReLU,
     ):
-
         super(BasicBlock, self).__init__()
 
         if n_groups > 1 or group_capacity > 1:
@@ -127,7 +123,6 @@ class BasicBlock(nn.Module):
 
 
 class NonResidualBlock(BasicBlock):
-
     expansion_factor: int = 1
 
     # this block is only for test purposes; nothing residual about it
@@ -146,7 +141,6 @@ class NonResidualBlock(BasicBlock):
 
 
 class BottleneckBlock(nn.Module):
-
     # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
     # while original implementation places the stride at the first 1x1 convolution(self.conv1)
     # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
@@ -165,7 +159,6 @@ class BottleneckBlock(nn.Module):
         downsample: Union[torch.nn.Module, None] = None,
         act_type=nn.ReLU,
     ):
-
         super(BottleneckBlock, self).__init__()
 
         self.downsample = downsample  # if ``None``, this will be the identity function
@@ -204,7 +197,6 @@ class BottleneckBlock(nn.Module):
         self.relu3 = act_type(inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
         # downsampling/skip branch
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -286,7 +278,6 @@ class ResNet(nn.Module):
         pretrained: Union[bool, str] = False,
         activation: str = "relu",
     ):
-
         super(ResNet, self).__init__()
 
         block_class = _CONFIGS[config]["block_class"]
@@ -322,15 +313,14 @@ class ResNet(nn.Module):
             self._initialize_weights(seed)
 
     def _make_pilot(self, out_channels_pilot: int) -> nn.Sequential:
-
         modules = []
         modules += [
             HalutConv2d(
                 3, out_channels_pilot, kernel_size=3, stride=1, padding=1, bias=False
             )
         ]
-        modules += [nn.BatchNorm2d(out_channels_pilot)]
-        modules += [self.act_type(inplace=True)]
+        modules += [nn.BatchNorm2d(out_channels_pilot)]  # type: ignore
+        modules += [self.act_type(inplace=True)]  # type: ignore
 
         return nn.Sequential(*modules)
 
@@ -352,7 +342,6 @@ class ResNet(nn.Module):
             n_groups: int,
             group_capacity: int,
         ) -> Tuple[nn.Sequential, int]:
-
             blocks = []
 
             # build first block in the sequence (possibly use non-identity skip branch)
@@ -411,7 +400,6 @@ class ResNet(nn.Module):
         return nn.Sequential(*block_seqs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
         x = self.pilot(x)
         if self.maxpool:
             x = self.maxpool(x)
@@ -426,12 +414,10 @@ class ResNet(nn.Module):
         return x
 
     def _initialize_weights(self, seed: int = -1):
-
         if seed >= 0:
             torch.manual_seed(seed)
 
         for m in self.modules():
-
             if isinstance(m, (HalutConv2d, HalutLinear)):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
 
