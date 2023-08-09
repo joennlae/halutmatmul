@@ -4,13 +4,13 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.8
   # IDE deps
   - black
   - pylint=2.17
   - pytest
   - pre-commit
-  - mypy=1.4
+  - mypy>=1.4
   - pytest-xdist
   - numpy # mypy
   # HW deps
