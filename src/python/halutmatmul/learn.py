@@ -162,7 +162,6 @@ def learn_halut_multi_core_dict(
     kmeans_options: dict = {},
     codebook: int = -1,
 ) -> None:
-
     for k, v in dict_to_learn.items():
         print("learning", k, v)
         conv2d_options = {
