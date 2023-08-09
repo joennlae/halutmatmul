@@ -133,7 +133,7 @@ def halut_matmul_forward(
 ) -> torch.Tensor:
     # encoding
     input_reshaped = input.reshape((input.shape[0], C, -1))
-    if dims is not None:
+    if dims is not None:  # default maddness
         h = S.mm(input[:, dims].T) - T.unsqueeze(1)
     elif prototypes is not None:  # using argmin
         # input_reshaped = input.reshape((input.shape[0], C, -1))
@@ -167,13 +167,10 @@ def halut_matmul_forward(
     encoding_hard = torch.zeros_like(
         encoding_soft, memory_format=torch.legacy_contiguous_format
     ).scatter_(2, index, 1.0)
+    E = encoding_hard - encoding_soft.detach() + encoding_soft
 
     # decoding
     result = torch.zeros(
-        [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
-    )
-
-    result_soft = torch.zeros(
         [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
     )
     # split_factor only need for memory usage reduction
@@ -184,21 +181,10 @@ def halut_matmul_forward(
             :, (M // split_factor) * i : (M // split_factor) * (i + 1)
         ] = torch.einsum(
             "nij, kij -> nki",
-            [encoding_hard, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
+            [E, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
         ).sum(
             dim=2
         )
-        result_soft[
-            :, (M // split_factor) * i : (M // split_factor) * (i + 1)
-        ] = torch.einsum(
-            "nij, kij -> nki",
-            [encoding_soft, L[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
-        ).sum(
-            dim=2
-        )
-    # result = torch.einsum("nij, kij -> nki", [E, L])
-    # result = result.sum(dim=2)
-    result = result.detach() - result_soft.detach() + result_soft
     return result
 
 
@@ -294,7 +280,7 @@ class HalutLinear(Linear):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"]
@@ -310,13 +296,14 @@ class HalutLinear(Linear):
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
-            self.DT = Parameter(
-                state_dict[prefix + "DT"]
-                .clone()
-                .to(str(self.weight.device))
-                .to(self.weight.dtype),
-                requires_grad=False,
-            )
+            if prefix + "DT" in state_dict.keys():
+                self.DT = Parameter(
+                    state_dict[prefix + "DT"]
+                    .clone()
+                    .to(str(self.weight.device))
+                    .to(self.weight.dtype),
+                    requires_grad=False,
+                )
             if len(self.DT.shape) > 1:
                 self.use_decision_tree = True
             self.P = Parameter(
@@ -328,6 +315,21 @@ class HalutLinear(Linear):
             )
             if len(self.P.shape) > 1:
                 self.use_prototypes = True
+            if not self.use_prototypes and not self.use_decision_tree:
+                state_dict[prefix + "B"] = create_bit_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device))
+                self.B = Parameter(
+                    state_dict[prefix + "B"],
+                    requires_grad=False,
+                )
+                state_dict[prefix + "S"] = create_selection_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device))
+                self.S = Parameter(
+                    state_dict[prefix + "S"],
+                    requires_grad=False,
+                )
             self.weight.requires_grad = False
         elif any(
             k in state_dict.keys()
@@ -583,18 +585,34 @@ class HalutConv2d(_ConvNd):
             )
             if len(self.P.shape) > 1:
                 self.use_prototypes = True
-            self.DT = Parameter(
-                state_dict[prefix + "DT"]
-                .clone()
-                .to(str(self.weight.device))
-                .to(self.weight.dtype),
-                requires_grad=False,
-            )
+            if prefix + "DT" in state_dict.keys():
+                self.DT = Parameter(
+                    state_dict[prefix + "DT"]
+                    .clone()
+                    .to(str(self.weight.device))
+                    .to(self.weight.dtype),
+                    requires_grad=False,
+                )
             if len(self.DT.shape) > 1:
                 self.use_decision_tree = True
             self.weight.requires_grad = False
             if len(self.lut.shape) > 3:
                 self.loop_order = "kn2col"
+            if not self.use_prototypes and not self.use_decision_tree:
+                state_dict[prefix + "B"] = create_bit_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device))
+                self.B = Parameter(
+                    state_dict[prefix + "B"],
+                    requires_grad=False,
+                )
+                state_dict[prefix + "S"] = create_selection_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device))
+                self.S = Parameter(
+                    state_dict[prefix + "S"],
+                    requires_grad=False,
+                )
         elif any(
             k in state_dict.keys()
             for k in (

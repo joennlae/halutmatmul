@@ -2,16 +2,18 @@
 ignore_missing_imports = true
 files = ["maddness/python", "src/python"]
 
-[tool.pytest]
+[tool.pytest.ini_options]
+pythonpath = ["src/python"]
+
 minversion = "6.0.0"
 
-testpaths = "maddness/python/tests src/python/test"
+testpaths = ["src/python/test"]
 
 python_files = "test*.py"
 
-addopts = "-nauto --strict-markers --strict-config"
+addopts = "-nauto --strict-markers --strict-config -v"
 
-# always run in parallel (requires pytest-xdist, see test-requirements.txt)
+# always run in parallel (requires pytest-xdist to be installed)
 # and enable strict mode: require all markers
 # to be defined and raise on invalid config values
 # treat xpasses as test failures so they get converted to regular tests as soon as possible

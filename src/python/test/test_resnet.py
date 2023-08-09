@@ -6,6 +6,7 @@ import tempfile
 import requests
 import torchvision
 import torch
+import pytest
 from torchvision import transforms as T
 from torchvision.transforms.functional import InterpolationMode
 
@@ -117,6 +118,7 @@ def download_weights_resnet20(
 
 
 # pylint: disable=unused-argument
+@pytest.mark.skip(reason="not a ci test :-)")
 def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
     with tempfile.TemporaryDirectory(dir="/scratch2/janniss/tmp/") as tmpdirname:
         print("created temporary directory", tmpdirname)
@@ -160,8 +162,8 @@ def test_cifar10_inference_resnet20(layer: str = "layer1.0.conv2") -> float:
         state_dict = state_dict["model"]
 
         data = []
-        device = torch.device("cuda:" + str(3) if torch.cuda.is_available() else "cpu")
-        # device = torch.device("cpu")
+        # device = torch.device("cuda:" + str(3) if torch.cuda.is_available() else "cpu")
+        device = torch.device("cpu")
         model.to(device=device)
         prev_max = 0.0
         resampling = 1
