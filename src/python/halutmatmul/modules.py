@@ -695,8 +695,8 @@ class HalutConv2d(_ConvNd):
         H_out, W_out = (
             math.floor(
                 (
-                    H_in
-                    + 2 * self.padding[0]  # type: ignore[arg-type]
+                    H_in  # type: ignore
+                    + 2 * self.padding[0]
                     - self.dilation[0] * (self.kernel_size[0] - 1)
                     - 1
                 )
@@ -705,8 +705,8 @@ class HalutConv2d(_ConvNd):
             ),
             math.floor(
                 (
-                    W_in
-                    + 2 * self.padding[1]  # type: ignore[arg-type]
+                    W_in  # type: ignore
+                    + 2 * self.padding[1]
                     - self.dilation[1] * (self.kernel_size[1] - 1)
                     - 1
                 )

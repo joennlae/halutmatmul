@@ -18,6 +18,7 @@ T_co = TypeVar("T_co", covariant=True)
 MAX_ROWS_FOR_SUBSAMPLING = 1024 * 128 * 8
 RUN_ALL_SUBSAMPLING = 4419 * 4419
 
+
 # pylint: disable=W0212
 def write_inputs_to_disk(
     model: torch.nn.Module,
@@ -65,7 +66,7 @@ def write_inputs_to_disk(
                         )
                     effective_store_per_iter = rows_to_store_during_current_iter
                     if effective_store_per_iter > rows:
-                        effective_store_per_iter = rows
+                        effective_store_per_iter = rows  # type: ignore
                     effective_rows_stored = effective_store_per_iter * total_iterations
                     # subsampling
                     idx = np.arange(rows)
