@@ -19,4 +19,4 @@ jobs:
       - name: Check types with mypy
         run: |
           source /venv/bin/activate
-          mypy
+          mypy --install-types --non-interactive
