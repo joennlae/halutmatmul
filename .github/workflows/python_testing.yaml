@@ -1,4 +1,4 @@
-name: Pytest
+name: Pytest Testing
 # https://autobencoder.com/2020-08-24-conda-actions/
 on: [push]
 
@@ -6,6 +6,7 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
   test-python:
+    name: HalutConv2d and HalutLinear tests
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     strategy:
@@ -20,14 +21,27 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Download Test data
-        run: |
-          apt-get -y update
-          apt-get -y install curl
-          cd maddness && bash ./download_assets.sh && cd ..
       - name: Test with pytest
         run: |
           source /venv/bin/activate
-          df -h
-          du -a / | sort -n -r | head -n 10
-          pytest -srPA -k "not gpu" --splits 5 --group ${{ matrix.split }}
+          pytest -srPA -m "not heavy" -k "not gpu" --splits 5 --group ${{ matrix.split }}
+  e2e-python:
+    name: E2E test using ResNet18
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        split: [1, 2, 3, 4, 5]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/joennlae/halutmatmul-conda-gpu:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v3
+      - name: E2E test using ResNet18
+        run: |
+          source /venv/bin/activate
+          pytest -srPA -m "heavy"
