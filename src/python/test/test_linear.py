@@ -39,8 +39,14 @@ def linear_helper(
     learn_numpy = input_learn.detach().cpu().numpy().reshape(-1, input_learn.shape[-1])
     weights_numpy = weights.detach().cpu().numpy().transpose(1, 0)
     store_array = hm.learn_halut_offline(
-        learn_numpy, weights_numpy, C=C, lut_work_const=-1
+        learn_numpy,
+        weights_numpy,
+        C=C,
+        lut_work_const=-1,
+        only_prototypes=use_prototypes,
     )
+
+    print("store_array", store_array[hm.HalutOfflineStorage.DIMS].shape)
 
     torch_module = torch.nn.Linear(
         in_features=in_features, out_features=out_features, bias=bias
