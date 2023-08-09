@@ -97,7 +97,7 @@ def learn_halut_offline(
     max_points_per_centroid=1000,
     codebook: int = -1,
     already_learned: Optional[Any] = None,
-    only_prototypes: bool = False, # use to only learn prototype for non maddness versions
+    only_prototypes: bool = False,  # use to only learn prototype for non maddness versions
 ) -> np.ndarray:
     mn = HalutMatmul(
         C,
@@ -130,7 +130,6 @@ class HalutMatmul:
         quantize_lut: bool = False,
         run_optimized: bool = True,
     ) -> None:
-
         self.C = C
         self.K = K
         self.prototypes: np.ndarray = np.array([])
@@ -306,7 +305,7 @@ class HalutMatmul:
         self,
         A: np.ndarray,
         B: np.ndarray,
-        only_prototypes=True,
+        only_prototypes=False,  # default learn prototypes + maddness
         niter=2,
         nredo=1,
         min_points_per_centroid=100,

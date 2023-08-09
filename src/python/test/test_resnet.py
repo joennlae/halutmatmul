@@ -26,7 +26,6 @@ def download_weights(
     is_ci: bool = False,
     url: str = "https://github.com/joennlae/PyTorch_CIFAR10/raw/ver2022/resnet18.pth",
 ) -> None:
-
     # Streaming, so we can iterate over the response.
     # pylint: disable=missing-timeout
     r = requests.get(url, stream=True)
@@ -84,7 +83,7 @@ def test_cifar10_inference() -> None:
             num_workers=2,
         )
         halut_model.print_available_module()
-        halut_model.activate_halut_module("layer1.1.conv2", 16, use_prototypes=True)
+        halut_model.activate_halut_module("layer1.1.conv2", 16, use_prototypes=False)
         accuracy = halut_model.run_inference()
         accuracy = halut_model.run_inference()  # check if stored used
         assert accuracy >= 81.8
@@ -95,7 +94,6 @@ def download_weights_resnet20(
     is_ci: bool = False,
     url: str = "https://github.com/joennlae/PyTorch_CIFAR10/raw/ver2022/resnet18.pth",
 ) -> None:
-
     # Streaming, so we can iterate over the response.
     # pylint: disable=missing-timeout
     r = requests.get(url, stream=True)
