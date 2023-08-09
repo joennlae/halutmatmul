@@ -84,7 +84,9 @@ def test_cifar10_inference_resnet18() -> None:
             num_workers=2,
         )
         halut_model.print_available_module()
-        halut_model.activate_halut_module("layer1.1.conv2", 16, use_prototypes=False)
+        # uses to much ram for CI use later layer as they are smaller in size for learning
+        # halut_model.activate_halut_module("layer1.1.conv2", 16, use_prototypes=False)
+        halut_model.activate_halut_module("layer4.1.conv2", 16, use_prototypes=False)
         accuracy = halut_model.run_inference()
         accuracy = halut_model.run_inference()  # check if stored used
         assert accuracy >= 81.8
