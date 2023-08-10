@@ -30,59 +30,11 @@ conda activate halutmatmul_hw
 conda env create -f environment_hw.yml --prefix /scratch/janniss/conda/halutmatmul_hw
 ```
 
-### If you have a too old GLIBC version
-
-This is a problem with our old CentOS versions mainly inside IIS computing infrastructure. We will build our own toolchain, update make + install a new version of GLIBC and then patch with patchelf.
-
-
-#### Build GCC toolchain if needed
-```bash
-# build toolchain if gcc version too old
-git clone https://github.com/joennlae/gcc-toolchain-builder.git
-cd gcc-toolchain-builder
-# default path ${HOME}/.local
-./build-native-toolchain.sh
-```
-
-### Install GLIBC
-
-```bash
-# be sure to deactivate conda env
-./scripts/install_glibc.sh
-```
-
-### Patchelf conda installed binaries
-
-```bash
-patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64:/lib64 --set-interpreter ~/.local/custom_glibc/lib/ld-linux-x86-64.so.2 /scratch/janniss/conda/halutmatmul_hw/bin/zachjs-sv2v
-
-patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter ~/.local/custom_glibc/lib/ld-linux-x86-64.so.2 /scratch/janniss/conda/halutmatmul_hw/bin/verible-verilog-format
-
-patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter ~/.local/custom_glibc/lib/ld-linux-x86-64.so.2 /scratch/janniss/conda/halutmatmul_hw/bin/verible-verilog-lint
-
-patchelf --set-rpath ~/.local/custom_glibc/lib:~/.local/lib64 --set-interpreter ~/.local/custom_glibc/lib/ld-linux-x86-64.so.2 /scratch/janniss/conda/halutmatmul_hw/bin/verible-verilog-syntax
-```
-
 ### VSCode setup
 
-Two extensions are recommended:
+One extensions are recommended:
 
-* [Verilog-HDL/SystemVerilog/Bluespec SystemVerilog](https://marketplace.visualstudio.com/items?itemName=mshr-h.VerilogHDL)
-* [SystemVerilog and Verilog Formatter](https://marketplace.visualstudio.com/items?itemName=bmpenuelas.systemverilog-formatter-vscode)
 * [WaveTrace](https://marketplace.visualstudio.com/items?itemName=wavetrace.wavetrace)
-
-Be sure to update the `.vscode` file with your own verilator path:
-
-`/scratch2/janniss/conda/halutmatmul_hw/bin/verilator` -> `verilator` or your custom path
-```json
-{
-  // the default with verilator 
-  "verilog.linting.linter": "verilator",
-  "verilog.linting.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/",
-  "verilog.linting.verilator.runAtFileLocation": false,
-  "verilog.linting.verilator.arguments": "--language 1800-2012 --Wall -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_prim_pkg_0.1/prim_pkg.sv hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv hardware/rtl/halut_pkg.sv",
-}
-```
 
 
 ## Vendored IP
