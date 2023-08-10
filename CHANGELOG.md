@@ -1,0 +1,421 @@
+## 0.0.1 (2023-08-10)
+
+### Feat
+
+- **env**: update conda env
+- **docker**: add `libfmt` deps for openroad + fix mpyp version
+- **env**: fix `faiss` to 1.7.3 until conda fixed
+- **sampling**: sample over total input instead of only 1024 sample
+- **hamming**: moonshot approach using hamming distance, not working
+- **dt**: multi level tree support elsewhere
+- **dt**: add multi-level trees
+- **dt**: add `torch` decision tree computation support
+- **dt**: add decision trees to conv2d + linear and remove `A`
+- **centroid**: centorid mapping tests
+- **georg**: add `resnet` used by `quantlab`
+- **temp**: add `temperature` annealing
+- **init**: update train initialization script
+- **retraining**: change `lr` + batch size
+- **tensorboard**: add `temperature` logging to tensorboard
+- **optimizer**: add all batch norms to optimizer, exclude conv1
+- **resnet20**: return layers for resnet20 a option
+- **train**: change cifar10 normalization
+- **sampling**: switch model to `.train()` for sampling (due to BN)
+- **resnet**: change to option `A`
+- **halut**: change `temperature` to 1 and no gradient
+- **model**: change default model mode to eval
+- **learn**: change default niter to 25
+- **pq**: add simple `faiss` pq as option to generate kmean clusters
+- **init**: change to train instead of eval due to BN + subsample > 1024
+- **init**: uncomment add multiple layers + kmeans hyperpara change
+- **retraining**: change to 400 epochs + test before
+- **init**: add `train_initalization`
+- **resnet20**: add `resnet20` to available modules
+- **argmin**: update write offline numpy representation back
+- **argmin**: incremental codebook initialization in prepare
+- **argmin**: add incremental initilization with kmeans
+- **argmin**: add initialization write back function
+- **argmin**: update conda env with `faiss`
+- **resnet20**: change to option B
+- **argmin**: pass down `kmeans` args + cleanup row parameter
+- **argmin**: adapt `retraining` script + fix 4 workers
+- **argmin**: cleanup `train` script
+- **argmin**: set default temp to `0.4` and update `clamp`
+- **argmin**: add `faiss` kmeans learning to halut
+- **argmin**: increase subsampling amount
+- **argmin**: add simple `mse` tst
+- **argming**: add a simple `kmeans` test
+- **retraining**: add `half` split + update to latest `retraining`
+- **train**: make `tensorboard` naming more verbose
+- **train**: add `update_lut` + optimizer `param_groups` + cleanup
+- **argmin**: add `update_lut` function + clamp `temperature`
+- **halut**: more data for `kmeans` + optimize `lut` calc
+- **backprop**: optimize gradient backprop
+- **lut**: update `lut` test calculations
+- **training**: change to `FP32` training for better adam convergence
+- **retraining**: replace all at once + introduce dependent lrs
+- **cifar10**: add `original` preprocessing for `cifar10`
+- **argmin**: add `temperature` as learnable parameter
+- **resnet20**: add `resnet20` and `argmin` to retraining
+- **resnet20**: add `resnet20` model
+- **argmin**: rename `prototypes` to `P`
+- **argmin**: add `argmin` `prototype` based encoding
+- **results**: update results
+- **retraining**: implement `kn2col`-`im2col` training
+- **results**: update results
+- **retraining**: `kn2col` retraining + cleanup + debug
+- **kn2col**: update `subsampling` to work with `kn2col`
+- **kn2col**: correct GPU allocation + `loop_order` on init
+- **results**: update results
+- **kn2col**: `e2e` integration + update automated offline learning
+- **kn2col**: rename api + add `padding` support
+- **kn2col**: add `kn2col` option to `HalutConv2d`
+- **kn2col**: update and simplify data movement for `kn2col` poc
+- **results**: update `results`
+- **retraining**: add `PlateauLR` based retraining
+- **train**: fix reported `loss` + `distributed` lr based stop
+- **retraining**: add `plateau` learning rate scheduler
+- **A**: remove `A` matrix from `resnet`
+- **im2col**: add `kn2col` approach
+- **results**: update `results`
+- **im2col**: add `resnet18` im2col test and compare with `im2row`
+- **im2col**: basic `im2col` understanding + testing
+- **A**: add some more PCA comparisions
+- **A**: add hyperparameter search using `ray.tune`
+- **A**: add `INT4, INT8...` fake quantization comparision
+- **A**: add init using pseudo inv of `A` for maddness offline
+- **A**: add `halut` comparision + `PCA` as initialization for `A`
+- **A**: train `A` with actual data
+- **A**: first `A` training POC
+- **halut**: add `kaiming_uniform` init to `A`
+- **train**: integrate `tensorboard`
+- **retraining**: cifar-10 specific updates + cleanup
+- **train**: add checkpointing mechanism
+- **train**: add `CIFAR-10` SoA transformations from kuangliu
+- **train**: make `scratch` path more adaptable
+- **results**: update results
+- **retraining**: update `single` retraining + remove cuda:0 alloc
+- **A**: activate use_A for resnet
+- **halut**: update bias if condition
+- **retraining**: fix typo + if condition
+- **modules**: deactive `grad` for `weights` and `bias`
+- **resnet**: update `resnet` with `use_A`
+- **retraining**: parametrize retraining + fix `optimizer`
+- **retraining**: update `batch_size` to 8
+- **retraining**: add `gradient` accumulation for smaller batches
+- **distributed**: update `distributed` subsampling
+- **distributed**: add `untested` distributed `subsampling`
+- **halut**: add `split_factor` + `use_A` to model conversion
+- **subsampling**: api updates
+- **subsampling**: `subsampling` is default + fixes
+- **profiling**: better `profiling` of `HalutConv2D`
+- **retraining**: allow for self made `cifar10` again
+- **A**: `HalutConv2d` + `tests` work
+- **A**: `HatutLinear` + `tests` work incl. gradients
+- **retraining**: change `max` rows for subsampling
+- **A**: add `A` matrix skeleton
+- **retraining**: `imagenet` training + `torchvision` or `timm`
+- **timm**: add inital `timm` wrapper for `halut`
+- **data**: update `results`
+- **retraining**: add `table` generation to `retraining` analysis
+- **results**: update `results`
+- **encoding**: update `encoding` analysis
+- **retraining**: add more `empty_cache` to `retraining``
+- **encoding**: update `results`
+- **encoding**: add `encoding` analysis
+- **retraining**: update `retraining`, batch_size, LR
+- **train**: update `train` script that it uses `half` precision
+- **backprop**: update path by splitting `einsum` by 4x
+- **backprop**: some correctness tests
+- **profiling**: add `backward` to profiling + results (comments)
+- **retraining**: also report the last layer in the end
+- **profile**: make it more consistent
+- **profiling**: initial profiling infrastructure for PyTorch
+- **retraining**: update `retraining` to fix FC training
+- **halut**: optimize offline training time by removing debugging
+- **retraining**: allow for non distributed training
+- **backprop**: update `retraining` to fix linting
+- **backprop**: same `compression` retraining
+- **backprop**: update `results` adding `profiling` results
+- **backprop**: add `profiler` to profile new operator
+- **backprop**: updating `starter`
+- **backprop**: test out new ideas using indicies for `S`
+- **backprop**: add `parameter` analysis + fix `retraining`
+- **backprop**: update `results`
+- **backprop**: add `S` and `B` to `state_dict` -> PyTorch eats it
+- **backprop**: move `S` and `B` to `gpu` when needed
+- **backprop**: `S` and `B` gen out of `forward` + `dtype` aware
+- **backprop**: move `S` ad `B` matrix to `gpu` when needed
+- **backprop**: update `optimizer` after layer is replaced
+- **results**: update `results`
+- **backprop**: correctly process `store_input`
+- **backprop**: activate `require_grad` for `LUT` and `thresholds`
+- **backprop**: `HalutConv2d` works with new path
+- **backprop**: update `HalutModelHelper` to pass thres + dims
+- **backprop**: new `backprop` added to `HalutLinear` and `HalutConv2d`
+- **backprop**: maddness legacy threshold and dimensions return
+- **backprop**: cleanup after presentation
+- **backprop**: full `backprop` path works with STE for `argmax`
+- **backprop**: `backprop` works to `LUT` and `encoding` output
+- **decision_tree**: remove loop over `C` in decision tree traversal
+- **decision_tree**: pass all input rows at the same time
+- **decision_tree**: working POC of `matmul` based `decision-tree`
+- **backprop**: use `torch.where` for binary thresholding
+- **backprop**: use `torch.nn.Embedding` for threshold_table
+- **backprop**: reduce loops from `encoding` in pytorch
+- **backprop**: do `encoding` with `pytorch` functions (simple)
+- **backprop**: example using `torch.nn.EmbeddingBag` for LUT `decode`
+- **backprop**: adapt learning rate after replacing layer
+- **backprop**: fix `cpu` test + `retraining` script cleanup
+- **backprop**: `Conv2D` custom backprop works
+- **backprop**: update `retraining` + deactivate custom `optimizer`
+- **backprop**: add `prototypes` to `state_dict`
+- **backprop**: lint + add `halut` to `conv2d` custom path
+- **backprop**: add `linear` and `conv2d` `autograd.Function`
+- **backprop**: test `tensordot` lut calculation also in `pytorch`
+- **backprop**: add way simpler lut calculation
+- **backprop**: add simple `linear` example with custom backward path
+- **analysis**: add additional `hardware` analysis
+- **analysis**: add `hardware` `subunit` analysis script
+- **analysis**: add `power` analysis latex table script
+- **sweep**: add `data` extraction function to `run_sweep`
+- **env**: add `verible-verilog-lint` to `patchelf` script
+- **results**: update `results` subrepo
+- **retraining**: update `retraining` + change `nccl` timeout
+- **sweep**: update `regex` to handle multiple space offsets
+- **sweep**: update `run_sweep` script
+- **retraining**: `CIFAR100/10` works + added `subsampling`
+- **hw**: update `run_sweep` script
+- **iis**: add `checkStorage` script for `iis` servers
+- **retraining**: update helpers
+- **retraining**: update `HalutLinear` + `HalutConv2d` for retraining
+- **env**: update `gpu` environement
+- **retraining**: add `retraining` script + basic retraining works
+- **resnet**: add `resnet18` and `resnet34` to the models
+- **retraining**: add `train.py` to train a `resnet18` from scratch
+- **asap7**: adding custom `asap7` clk_gating cell `ICG*`
+- **env**: remvoe `pytorch` beta dependencies due to new release
+- **openroad**: update `rev` to branch
+- **vast.ai**: update concurrecy for ci tests
+- **openroad**: add `asap7` fixes to `OpenROAD`
+- **sweep**: python script to run a `sweep`
+- **sweep**: add `patchelf` script to install fast on new machine
+- **power**: update `power` scripts for sweep
+- **pdks**: update `pdks` for sweep
+- **sim**: update `sim` infrastructure for sweep
+- **asap7**: update `asap7` flow config
+- **encoder**: add `halut_encoder` unit to `halut_top` core
+- **sim**: add simulation infrastructure
+- **rtl**: add support for `C=16` and `C=64` rtl + tests
+- **pdks**: add `NanGate45` submodule
+- **power**: internal technology works
+- **hw**: add FF to input of `halut_encoder`
+- **dv**: update `dv` test: add questa + add delays for `post-layout`
+- **asap7**: update `ASAP7` `clk_period`
+- **hw**: update flow inc. `clk_period` for `OpenROAD`
+- **hw**: make `fp_16_32_adder` stateless
+- **test**: add `env` variables read in to `halut_matmul` test
+- **power**: add initial power analysis script for `pt`
+- **ASAP&**: update `ASAP7` patch for `OpenROAD`
+- **OpenROAD**: patch `openroad` flow to work for `ASAP7`
+- **ASAP7**: make `ASAP7` flow work for `halut_matmul`
+- **nangate45**: update `NanGate45` flow
+- **hw**: add parsing of default values to `fusesoc`
+- **export**: add single `design.v` export to fusesoc for `mflowgen`
+- **vscode**: update `.vscode` settings
+- **hw**: add `halut_matmul` `rtl` implementation
+- **hw**: `halut_encoder` cleanup + 1 GHz simulation
+- **hw**: update `halut_decoder` to work with `halut_matmul`
+- **vscode**: update `vscode` settings for verilator linting
+- **hw**: add `halut_decoder_x` `rtl` implementation
+- **hw**: add `halut_encoder_4` `rtl` implementation
+- **hw**: adapt `halut_encoder` to fit into `halut_encoder_4`
+- **hw**: add `halut_decoder` `rtl` implementation
+- **hw**: adding `halut_encoder` `rtl` implementation
+- **vscode**: update `verilator` configuration for `vscode`
+- **hw**: change `fp_16_comparision` from `GE` to `GT`
+- **hw**: add `fp_16_comparision` module
+- **fp16**: adding `fp16` to `fp32` conversion with `denormals` sup
+- **fp_adder**: add `denormals` test for FP32 + cleanup
+- **fp_adder**: adding `float32` adder `rtl` implementation
+- **vscode**: update `verilator` path + add doc
+- **vscode**: update `.vscode` use current env verilator + `waiver`
+- **dv**: add `float16` input to scm
+- **dv**: add `ci` for design verification
+- **vcd**: add `vcd` dump file output for `cocotb` sim
+- **dv**: add `icarus` simulator test with `cocotb` for `scm`
+- **rtl**: remove `flip-flops` from the register file memories
+- **cocotb**: add `cocotb` to env plus updated `edalize`
+- **OpenROAD**: move `ASAP7` OpenROAD flow to `vast.ai` due to ram
+- **OpenROAD**: update `OpenROAD-flow` reference (upstream merge)
+- **OpenROAD**: update `ASAP7` and `NanGate45` config files
+- **rtl**: update `RTL` to a parameterized `SCM`
+- **vast.ai**: adding max `RAM` search command to docs
+- **scm**: slim down register_file_memory
+- **flow**: updating flow + edalize + top `core`
+- **openroad**: adding `nangate45` support
+- **report**: workflow reports to a predefined repo
+- **hw**: update `Dockerfile` with `OpenROAD` dependecies
+- **OpenROAD**: adding `report` scripts to `OpenROAD` flow
+- **docker**: update Dockerfile + conda env
+- **hw**: update `conda` env with `openroad-gui`
+- **OpenROAD**: add `OpenROAD` flow to `core` file + update `edalize`
+- **OpenROAD**: add `OpenROAD` flow config files
+- **sv2v**: add `sv2v` core for `OpenROAD` flow
+- **lowRISC**: update `lowRISC` ip + patch
+- **hw**: adding `OpenROAD` flow
+- **fusesoc**: adding top `fusesoc` `.core` file
+- **hw**: adding first `rtl` files
+- **hw**: adding `hardware` conda `env`
+- **vscode**: adding nice `VSCode` systemverilog settings
+- **script**: update halut linting script with hardware
+- **lowRISC**: vendor in `lowRISC` primitives ip (`prim`)
+- **lowRISC**: add `lowRISC` vendor.py script
+- **hw**: adding hw subfolder + `GLIBC` install instructions
+- **results**: update single-layer results
+- **analysis**: update `LeViT` analysis
+- **LeViT**: force offline calculation in `fp32` bc `CUDA` kernels
+- **linear**: adding error calc functions to linear layer
+- **linear**: add 1D and 2D input support for `HalutLinear` + tests
+- **LeViT**: update analysis pipeline for `LeViT`
+- **linear**: update `HalutLinear` to support `batch_size`
+- **cuda**: add `CUDA` to `HalutLinear`
+- **LeViT**: update setup for `LeViT` analysis
+- **dscnn**: after `ds-cnn` single layer analysis
+- **groups**: support `groups` with `Conv2D` gpu implementation
+- **groups**: add `groups` to `conv2d` cpu support
+- **dscnn**: analysis setup for multi model support
+- **LeViT**: add `LeViT` network + validate paper claims
+- **dscnn**: adding `ds-cnn` and being able to train it
+- **analysis**: add `C`, `K`, `Enc` parameter sweep
+- **prototypes**: make `K` flexible for `CPU` and `GPU` + tests
+- **encoding**: add `encoding` functions to `conv2d` layer + tests
+- **encoding**: add `GPU` kernels + tests for new `encoding` func
+- **encoding**: add `decision_tree` + `full_pq` encoding + cleanup
+- **conv3x3**: add conv3x3 analysis + changes to learning algo
+- **conv2d**: support `padding` + simplify with `torch.nn.Unfold`
+- **analysis**: finish up the conv1x1 analysis
+- **analysis**: add results as submodule + `CUDA` support C=128,96
+- **analysis**: add errors: mae, mse, mape, scaled error
+- **learn**: update model with the new learning method
+- **offline**: learn multi-core with `JoinableQueue`, `multiprocessing`
+- **conv2d**: add `CUDA` kernels to `HalutConv2d` module + tests
+- **cuda**: add complete halut `cuda` forward path + tests
+- **cuda**: add `CUDA` kernel `read_acc_lut` + tests
+- **cuda**: add `CUDA` kernel for halut encode + tests
+- **analysis**: add analysis script + perf cpu with numba
+- **quantization**: add quantization param to halut + optimizations
+- **gpu**: add `gpu` support for resnet + reproduce accuracy
+- **model**: add halut model wrapper + resnet50 tests
+- **conv2d**: add conv2d e2e module + tests + refactors
+- **halut_linear**: add e2e offline learning tests + error analysis
+- **halut**: offline export + import and speed/accuracy test
+- **save**: save input for offline learning later
+- **conv2d**: add numpy + im2col based convolution using np.dot
+- **linear**: add halut linear layer to pytorch
+- **resnet**: add pretrained CIFAR-10 resnet
+- **example**: add cpp example
+- **example**: update python example
+- **cpp**: restructuring + deletions + cleanup
+- **cpp**: add maddness cpp code (already pre-cleaned)
+- **mn**: add learned matmul + examples
+- **cli**: add CLI + docs
+- **lint**: adding pylint pre-commit hook
+- **setup**: initial setup
+
+### Fix
+
+- link to container in hw-lint-verilator test
+- correct offest since `rows` parameter is removed
+- set to correct `lut` after training
+- `linear` and `conv2d` tests by removing if condition
+- **argmin**: `conv2d` test exclude unsupported
+- **kn2col**: fix `linear` tests
+- **eval**: fix distributed evaluation
+- **test**: fix resnet test by not using `half` for `cpu`
+- **halut**: readd `bias` to `gradient` computation
+- **retraining**: dont use `barrier` when using a single gpu
+- **halut**: do not replace already learned layers
+- **HalutLinear**: `HalutLinear` regression fix
+- **backwards**: fix `backwards` tests
+- fix `.gitmodules`
+- **retraining**: add additional check for non distributed training
+- **retraining**: set `path` correct
+- **resnet_test**: make `ResNet-18` `e2e` less flaky
+- **e2e_test**: fixing `e2e` `ResNet-50` test
+- **test**: fix `learning` test by dropping encoding algo support
+- **backprop**: fix `linear` custom backprop
+- **sweep**: fix `regex`
+- **HalutLinear**: add `bias` check before `require_grad`
+- **pylint**: ignore `.sh` files with `pylint`
+- **cuda**: add implicit `fp16` to `fp32` conversion for PyTorch 1.12
+- **dv**: fix `scm` input with to conform with new `cocotb` `1.7`
+- **dv**: fix `halut_matmul` test
+- **ci**: propagte exit code for `dv` tests
+- **halut_decoder**: add ff + properly negedge triggered ff
+- **NanGate45**: update `NanGate45` contraints + config
+- **ci**: fix paths in `hw` ci + up limti to 180 minutes
+- **ci**: `hw` ci for vast.ai fix paths
+- **scm**: fix `scm` `waddr_onehot_unit` by adding enable signal
+- **yosys**: fix synthesis by removing `assign` out of `always_comb`
+- **asap7**: fix link in `README` + gallery generation
+- **openroad**: fix `ASAP7` + `NanGate45` ci
+- **vast.ai**: allow for parallel execution
+- **constraints**: change `clk` to `clk_i` in `sdc` files
+- **lowRISC**: fixing `lowRISC` `onehot` core dependencies
+- **verible**: fix `verible` linting by patching `lowRISC`
+- `rtl` formatting + by circumventing a verible parser error
+- **ci**: fix `hw` ci
+- **tests**: fix linear gpu tests
+- **module**: add `HalutConv2d` to the halut keys
+- **ci**: update pylint + gpu cleanup
+- **ci**: miniconda install in ci fix
+- **quantization**: undo split_val qunatization
+- **conv2d**: fix `conv2D` when using `padding` > 0  and `stride` > 1
+- **conda**: use `setup-miniconda` in ci + package `cache`
+- **ci**: lock conda env with in a `environment_lock.yml` file
+- **typechecking**: set numpy version for type consistency
+- **cli**: fix conda build of cli
+- **tests**: fix pytest and mypy tests
+
+### Refactor
+
+- cleanup remove unused script
+- remove unused scripts
+- remove some asap7 baggage
+- set mypy version + change to 3.8 version for hardware
+- fix some more mypy issues
+- rename github actions
+- update hardware env
+- make mypy work + fix pylint version
+- change from pyright to mypy
+- move to a `pyproject.toml`
+- some refactoring
+- remove unused multi core offline learning
+- small changes
+- cleanup
+- simplify `eval` function
+- cleanup `cpp` linting (not used anymore)
+- **cleanup**: remove `cpp` ci build test
+- **cleanup**: remove unused `mypy` config
+- **cleanup**: remove unused `cpp` code (beauty)
+- **cleanup**: remove more references to diff `encodings`
+- **cleanup**: drop support for other `encodings` (beauty)
+- **rtl**: move all logic out of `always_ff` + signed/unsigned
+- **rtl**: adapt `rtl` code to pass linter + add `halut_pkg`
+- **scm**: remove unused wires
+- cleanup resnet
+- remove some comments
+- remove bolt plus a ton of other cpp code
+- maddness module + pylint + pytest
+- major refactor of maddness python implementation
+- **maddness**: add pylint + cleanup
+
+### Perf
+
+- **halut**: optimize (slightly) a debug function
+- **halut**: speed up loading of stored inputs per layer
+- **vscode**: change `vscode` extension for more performance
+- remove `build` directory from `sv` index
+- **learning**: optimize learning by using a sparse ridge regression
+- **cuda**: reduce memory usage + update analysis
