@@ -1,3 +1,6 @@
 [submodule "src/python/results"]
 	path = src/python/results
 	url = https://github.com/joennlae/halutdata
+[submodule "hardware/flow/OpenROAD"]
+	path = hardware/flow/OpenROAD
+	url = https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
