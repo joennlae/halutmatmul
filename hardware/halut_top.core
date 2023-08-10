@@ -52,11 +52,6 @@ filesets:
       - halut:util:sv2v
       - halut:util:report
 
-  openroad_asap7_files:
-    files:
-      - flow/asap7/config.mk: { file_type: configFile }
-      - flow/asap7/constraint.sdc: { file_type: SDC }
-
   openroad_nangate45_files:
     files:
       - flow/nangate45/config.mk: { file_type: configFile }
@@ -106,11 +101,6 @@ targets:
       openroad:
         flow_path: flow/OpenROAD/flow
 
-  openroad_asap7: &openroad_asap7
-    <<: *openroad_target
-    filesets_append:
-      - openroad_asap7_files
-
   openroad_nangate45: &openroad_nangate45
     <<: *openroad_target
     filesets_append:
@@ -125,16 +115,6 @@ targets:
         flow_path: flow/OpenROAD/flow
         make_target: floorplan
 
-  openroad_asap7_floor:
-    <<: *openroad_target
-    filesets_append:
-      - openroad_asap7_files
-    default_tool: openroad
-    tools:
-      openroad:
-        flow_path: flow/OpenROAD/flow
-        make_target: floorplan
-
   export_design:
     filesets:
       - files_rtl
@@ -142,33 +122,17 @@ targets:
     toplevel: halut_decoder_x # not used
     default_tool: export
 
-  openroad_asap7_encoder_4:
-    <<: *openroad_asap7
-    toplevel: halut_encoder_4
-
   openroad_nangate45_encoder_4:
     <<: *openroad_nangate45
     toplevel: halut_encoder_4
-
-  openroad_asap7_decoder:
-    <<: *openroad_asap7
-    toplevel: halut_decoder
 
   openroad_nangate45_decoder:
     <<: *openroad_nangate45
     toplevel: halut_decoder
 
-  openroad_asap7_fp_16_32_adder:
-    <<: *openroad_asap7
-    toplevel: fp_16_32_adder
-
   openroad_nangate45_fp_16_32_adder:
     <<: *openroad_nangate45
     toplevel: fp_16_32_adder
-
-  openroad_asap7_encoder:
-    <<: *openroad_asap7
-    toplevel: halut_encoder
 
   openroad_nangate45_encoder:
     <<: *openroad_nangate45
