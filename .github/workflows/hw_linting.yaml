@@ -20,15 +20,15 @@ jobs:
           python-version: 3.7
       - name: Lint with pylint
         run: |
-          $CONDA/bin/conda install -c conda-forge pylint=2.15.2
+          $CONDA/bin/conda install -c conda-forge pylint=2.17.1
           $CONDA/bin/pylint --reports yes hardware/util/* hardware/dv/**/*.py hardware/analysis/*.py
 
   typechecking-python:
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
+    container: # use gpu env as mypy does not work in hw env
+      image: ghcr.io/joennlae/halutmatmul-conda-gpu:latest
     defaults:
       run:
         shell: bash -el {0}
