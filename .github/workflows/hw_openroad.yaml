@@ -1,4 +1,4 @@
-name: HW Synth + PAR OpenROAD
+name: HW Synth (Yosys) + PnR (OpenROAD)
 
 on: push
 
@@ -10,6 +10,10 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        subunit: ["matmul", "encoder_4", "decoder", "fp_16_32_adder"]
     container:
       image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
@@ -17,41 +21,57 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Run OpenROAD flow for NanGATE45
+      - name: Yosys Synth + PnR backend with OpenROAD
         run: |
           source /venv/bin/activate
           python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
+      - name: build subunit
+        if: ${{ matrix.subunit == 'halut_matmul' }}
+        run: |
           cd hardware
           NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
+      - name: build subunit
+        if: ${{ matrix.subunit == 'encoder_4' }}
+        run: |
+          cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
+      - name: build subunit
+        if: ${{ matrix.subunit == 'decoder' }}
+        run: |
+          cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
+      - name: build subunit
+        if: ${{ matrix.subunit == 'fp_16_32_adder' }}
+        run: |
+          cd hardware
+          fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
       - name: Copy & save reports
+        if: ${{ matrix.subunit == 'halut_matmul' }}
         run: |
           cd hardware/build
           mkdir flow_reports
-          mkdir -p flow_reports/halut_matmul
-          mkdir -p flow_reports/halut_encoder_4
-          mkdir -p flow_reports/halut_decoder
-          mkdir -p flow_reports/fp_16_32_adder
+          mkdir -p flow_reports/halut_${{ matrix.subunit }}
           cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.html flow_reports/halut_matmul 
           cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.json flow_reports/halut_matmul
           cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/reports/ flow_reports/halut_matmul
           cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/logs/ flow_reports/halut_matmul
-          cp halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/metrics.html flow_reports/halut_encoder_4
-          cp halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/metrics.json flow_reports/halut_encoder_4
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/reports/ flow_reports/halut_encoder_4
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_encoder_4-openroad/logs/ flow_reports/halut_encoder_4
-          cp halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/metrics.html flow_reports/halut_decoder
-          cp halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/metrics.json flow_reports/halut_decoder
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/reports/ flow_reports/halut_decoder
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_decoder-openroad/logs/ flow_reports/halut_decoder
-          tar -cvf report.tar.gz flow_reports
+      - name: Copy & save reports
+        if: ${{ matrix.subunit != 'halut_matmul' }}
+        run: |
+          cd hardware/build
+          mkdir flow_reports
+          mkdir -p flow_reports/halut_${{ matrix.subunit }}
+          cp halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/metrics.html flow_reports/halut_${{ matrix.subunit }}
+          cp halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/metrics.json flow_reports/halut_${{ matrix.subunit }}
+          cp -R halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/reports/ flow_reports/halut_${{ matrix.subunit }}
+          cp -R halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/logs/ flow_reports/halut_${{ matrix.subunit }}
+          tar -cvf report.tar.gz flow_reports/halut_${{ matrix.subunit }}
           mkdir backup
           cp report.tar.gz backup/report.tar.gz
       - uses: actions/upload-artifact@v3
         with:
           name: nangate45-openroad-report
-          path: hardware/build/flow_reports
+          path: hardware/build/flow_reports/halut_${{ matrix.subunit }}/
       - name: Pushes current reports to repo
         uses: cpina/github-action-push-to-another-repository@main
         env:
@@ -62,7 +82,7 @@ jobs:
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
           target-branch: main
-          target-directory: "latest/nangate45/"
+          target-directory: "latest/nangate45/halut_${{ matrix.subunit }}/"
       - name: Get Time
         id: time
         uses: nanzm/get-time-action@v1.1
@@ -79,7 +99,7 @@ jobs:
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
           target-branch: main
-          target-directory: "history/nangate45/${{ steps.time.outputs.time }}/"
+          target-directory: "history/nangate45/halut_${{ matrix.subunit }}/${{ steps.time.outputs.time }}/"
 
   # needs to much memory so it is run on a large machine (was run)
   # asap7:
@@ -147,7 +167,6 @@ jobs:
   #         user-email: openroad@reports.ch
   #         target-branch: main
   #         target-directory: "history/asap7/${{ steps.time.outputs.time }}/"
-
 
   # only needed for asap7
   # cleanup:
