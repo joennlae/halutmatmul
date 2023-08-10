@@ -26,23 +26,27 @@ jobs:
           source /venv/bin/activate
           python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
       - name: build subunit
-        if: ${{ matrix.subunit == 'halut_matmul' }}
+        if: ${{ matrix.subunit == 'matmul' }}
         run: |
+          source /venv/bin/activate
           cd hardware
           NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
       - name: build subunit
         if: ${{ matrix.subunit == 'encoder_4' }}
         run: |
+          source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
       - name: build subunit
         if: ${{ matrix.subunit == 'decoder' }}
         run: |
+          source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
       - name: build subunit
         if: ${{ matrix.subunit == 'fp_16_32_adder' }}
         run: |
+          source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
       - name: Copy & save reports
