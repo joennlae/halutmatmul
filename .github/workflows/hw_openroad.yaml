@@ -89,7 +89,7 @@ jobs:
           target-directory: "latest/nangate45/"
       - name: Get Time
         id: time
-        uses: nanzm/get-time-action@v1.1
+        uses: nanzm/get-time-action@master
         with:
           timeZone: 0
           format: "YYYY-MM-DD-HH-mm-ss"
