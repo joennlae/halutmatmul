@@ -1,25 +1,25 @@
 
 module scm #(
-  parameter int unsigned C = 32,
-  parameter int unsigned K = 16,
-  parameter int unsigned DataTypeWidth = 16,
-  // default
-  parameter int unsigned SubUnitAddrWidth = 5,
-  parameter int unsigned TotalAddrWidth = $clog2(C * K)
-) (
-  // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+    parameter int unsigned C = 32,
+    parameter int unsigned K = 16,
+    parameter int unsigned DataTypeWidth = 16,
+    // default
+    parameter int unsigned SubUnitAddrWidth = 5,
+    parameter int unsigned TotalAddrWidth = $clog2(C * K)
+  ) (
+    // Clock and Reset
+    input logic clk_i,
+    input logic rst_ni,
 
-  // Read port R1
-  input  logic unsigned [TotalAddrWidth-1:0] raddr_a_i,
-  output logic signed   [ DataTypeWidth-1:0] rdata_a_o,
+    // Read port R1
+    input  logic unsigned [TotalAddrWidth-1:0] raddr_a_i,
+    output logic signed   [ DataTypeWidth-1:0] rdata_a_o,
 
-  // Write port W1
-  input logic unsigned [TotalAddrWidth-1:0] waddr_a_i,
-  input logic signed   [ DataTypeWidth-1:0] wdata_a_i,
-  input logic                               we_a_i
-);
+    // Write port W1
+    input logic unsigned [TotalAddrWidth-1:0] waddr_a_i,
+    input logic signed   [ DataTypeWidth-1:0] wdata_a_i,
+    input logic                               we_a_i
+  );
 
   localparam int unsigned UnitAddrWidth = (TotalAddrWidth - SubUnitAddrWidth);
   localparam int unsigned NumSubUnits = 2 ** UnitAddrWidth;

@@ -1,29 +1,29 @@
 module halut_decoder #(
-  parameter int unsigned K = halut_pkg::K,
-  parameter int unsigned C = halut_pkg::C,
-  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
-  parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
-  // defaults
-  parameter int unsigned TotalAddrWidth = $clog2(C * K),
-  parameter int unsigned CAddrWidth = $clog2(C),
-  parameter int unsigned TreeDepth = $clog2(K)
-) (
-  // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+    parameter int unsigned K = halut_pkg::K,
+    parameter int unsigned C = halut_pkg::C,
+    parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+    parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
+    // defaults
+    parameter int unsigned TotalAddrWidth = $clog2(C * K),
+    parameter int unsigned CAddrWidth = $clog2(C),
+    parameter int unsigned TreeDepth = $clog2(K)
+  ) (
+    // Clock and Reset
+    input logic clk_i,
+    input logic rst_ni,
 
-  // Write port
-  input logic [TotalAddrWidth-1:0] waddr_i,
-  input logic [ DataTypeWidth-1:0] wdata_i,
-  input logic                      we_i,
+    // Write port
+    input logic [TotalAddrWidth-1:0] waddr_i,
+    input logic [ DataTypeWidth-1:0] wdata_i,
+    input logic                      we_i,
 
-  input logic [CAddrWidth-1:0] c_addr_i,
-  input logic [TreeDepth-1:0] k_addr_i,
-  input logic decoder_i,
+    input logic [CAddrWidth-1:0] c_addr_i,
+    input logic [TreeDepth-1:0] k_addr_i,
+    input logic decoder_i,
 
-  output logic [32-1:0] result_o,  // FP32 output
-  output logic valid_o
-);
+    output logic [32-1:0] result_o,  // FP32 output
+    output logic valid_o
+  );
 
   //                                      ┌───────────────────────────────────┐
   //                                      │    32                             │

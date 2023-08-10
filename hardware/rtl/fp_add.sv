@@ -13,27 +13,27 @@
 
 
 module fp_add #(
-  parameter int unsigned C_EXP_PRENORM  = fp_defs::C_EXP_PRENORM,
-  parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM,
-  parameter int unsigned C_MANT_SHIFTED = fp_defs::C_MANT_SHIFTED,
-  parameter int unsigned C_MANT_SHIFTIN = fp_defs::C_MANT_SHIFTIN,
-  parameter int unsigned C_MANT_ADDOUT  = fp_defs::C_MANT_ADDOUT,
-  parameter int unsigned C_MANT_ADDIN   = fp_defs::C_MANT_ADDIN,
-  parameter int unsigned C_EXP          = fp_defs::C_EXP,
-  parameter int unsigned C_MANT         = fp_defs::C_MANT
-) (  //Input
-  input logic             Sign_a_DI,
-  input logic             Sign_b_DI,
-  input logic [C_EXP-1:0] Exp_a_DI,
-  input logic [C_EXP-1:0] Exp_b_DI,
-  input logic [ C_MANT:0] Mant_a_DI,
-  input logic [ C_MANT:0] Mant_b_DI,
+    parameter int unsigned C_EXP_PRENORM  = fp_defs::C_EXP_PRENORM,
+    parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM,
+    parameter int unsigned C_MANT_SHIFTED = fp_defs::C_MANT_SHIFTED,
+    parameter int unsigned C_MANT_SHIFTIN = fp_defs::C_MANT_SHIFTIN,
+    parameter int unsigned C_MANT_ADDOUT  = fp_defs::C_MANT_ADDOUT,
+    parameter int unsigned C_MANT_ADDIN   = fp_defs::C_MANT_ADDIN,
+    parameter int unsigned C_EXP          = fp_defs::C_EXP,
+    parameter int unsigned C_MANT         = fp_defs::C_MANT
+  ) (  //Input
+    input logic             Sign_a_DI,
+    input logic             Sign_b_DI,
+    input logic [C_EXP-1:0] Exp_a_DI,
+    input logic [C_EXP-1:0] Exp_b_DI,
+    input logic [ C_MANT:0] Mant_a_DI,
+    input logic [ C_MANT:0] Mant_b_DI,
 
-  //Output
-  output logic                              Sign_prenorm_DO,
-  output logic signed [C_EXP_PRENORM-1 : 0] Exp_prenorm_DO,
-  output logic        [ C_MANT_PRENORM-1:0] Mant_prenorm_DO
-);
+    //Output
+    output logic                              Sign_prenorm_DO,
+    output logic signed [C_EXP_PRENORM-1 : 0] Exp_prenorm_DO,
+    output logic        [ C_MANT_PRENORM-1:0] Mant_prenorm_DO
+  );
 
   //Operand components
   logic             Sign_a_D;
@@ -136,8 +136,8 @@ module fp_add #(
   assign Mant_addOut_D = Mant_addInA_D + Mant_addInB_D + (C_MANT_ADDOUT)'(Mant_addCarryIn_D);
 
   assign Mant_prenorm_D = {
-    (Mant_addOut_D[C_MANT_ADDOUT-1] & ~Subtract_S), Mant_addOut_D[C_MANT_ADDOUT-2:0], 20'b0
-  };
+      (Mant_addOut_D[C_MANT_ADDOUT-1] & ~Subtract_S), Mant_addOut_D[C_MANT_ADDOUT-2:0], 20'b0
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // Sign operations

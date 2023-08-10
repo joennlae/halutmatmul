@@ -1,8 +1,8 @@
 module fp_16_32_adder (
-  input  logic signed [16-1:0] operand_fp16_i,
-  input  logic signed [32-1:0] operand_fp32_i,
-  output logic signed [32-1:0] result_o
-);
+    input  logic signed [16-1:0] operand_fp16_i,
+    input  logic signed [32-1:0] operand_fp32_i,
+    output logic signed [32-1:0] result_o
+  );
 
   logic signed [32-1:0] operand_fp16_fp32;
 

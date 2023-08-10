@@ -12,29 +12,29 @@
 // heavily adapted
 
 module fp_norm #(
-  parameter int unsigned       C_MANT_PRENORM     = fp_defs::C_MANT_PRENORM,
-  parameter int unsigned       C_EXP_PRENORM      = fp_defs::C_EXP_PRENORM,
-  parameter int unsigned       C_MANT_PRENORM_IND = fp_defs::C_MANT_PRENORM_IND,
-  parameter bit          [7:0] C_EXP_ZERO         = fp_defs::C_EXP_ZERO,
+    parameter int unsigned       C_MANT_PRENORM     = fp_defs::C_MANT_PRENORM,
+    parameter int unsigned       C_EXP_PRENORM      = fp_defs::C_EXP_PRENORM,
+    parameter int unsigned       C_MANT_PRENORM_IND = fp_defs::C_MANT_PRENORM_IND,
+    parameter bit          [7:0] C_EXP_ZERO         = fp_defs::C_EXP_ZERO,
 
-  parameter int unsigned C_MANT = fp_defs::C_MANT,
-  parameter int unsigned C_EXP  = fp_defs::C_EXP,
+    parameter int unsigned C_MANT = fp_defs::C_MANT,
+    parameter int unsigned C_EXP  = fp_defs::C_EXP,
 
-  parameter bit [2:0] C_RM_NEAREST  = fp_defs::C_RM_NEAREST,
-  parameter bit [2:0] C_RM_TRUNC    = fp_defs::C_RM_TRUNC,
-  parameter bit [2:0] C_RM_PLUSINF  = fp_defs::C_RM_PLUSINF,
-  parameter bit [2:0] C_RM_MINUSINF = fp_defs::C_RM_MINUSINF,
-  parameter bit [2:0] RM_SI = fp_defs::C_RM_NEAREST
-) (
-  //Input Operands
-  input logic        [C_MANT_PRENORM-1:0] Mant_in_DI,
-  input logic signed [ C_EXP_PRENORM-1:0] Exp_in_DI,
-  input logic                             Sign_in_DI,
+    parameter bit [2:0] C_RM_NEAREST  = fp_defs::C_RM_NEAREST,
+    parameter bit [2:0] C_RM_TRUNC    = fp_defs::C_RM_TRUNC,
+    parameter bit [2:0] C_RM_PLUSINF  = fp_defs::C_RM_PLUSINF,
+    parameter bit [2:0] C_RM_MINUSINF = fp_defs::C_RM_MINUSINF,
+    parameter bit [2:0] RM_SI = fp_defs::C_RM_NEAREST
+  ) (
+    //Input Operands
+    input logic        [C_MANT_PRENORM-1:0] Mant_in_DI,
+    input logic signed [ C_EXP_PRENORM-1:0] Exp_in_DI,
+    input logic                             Sign_in_DI,
 
-  output logic [ C_MANT:0] Mant_res_DO,
-  output logic [C_EXP-1:0] Exp_res_DO
+    output logic [ C_MANT:0] Mant_res_DO,
+    output logic [C_EXP-1:0] Exp_res_DO
 
-);
+  );
 
   /////////////////////////////////////////////////////////////////////////////
   // Normalization                                                           //
@@ -78,8 +78,8 @@ module fp_norm #(
   assign Mant_shAmt_D = Denormal_S ?
     Exp_in_DI + (C_EXP_PRENORM)'(Denormals_shift_add_D) : (C_EXP_PRENORM)'(Mant_leadingOne_D);
   assign Mant_shAmt2_D = {Mant_shAmt_D[$high(
-      Mant_shAmt_D
-  )], Mant_shAmt_D} + (C_EXP_PRENORM)'(C_MANT + 4 + 1);
+          Mant_shAmt_D
+        )], Mant_shAmt_D} + (C_EXP_PRENORM)'(C_MANT + 4 + 1);
 
   //Shift mantissa
   always_comb begin
@@ -97,8 +97,8 @@ module fp_norm #(
 
   //adjust exponent
   assign Exp_norm_D = Exp_in_DI - (C_EXP_PRENORM)'($signed(
-      (Mant_leadingOne_D)
-  )) + 1 + (C_EXP_PRENORM)'(Denormals_exp_add_D);
+        (Mant_leadingOne_D)
+      )) + 1 + (C_EXP_PRENORM)'(Denormals_exp_add_D);
   //Explanation of the +1 since I'll probably forget:
   //we get numbers in the format xx.x...
   //but to make things easier we interpret them as
@@ -144,7 +144,7 @@ module fp_norm #(
     Mant_roundUp_S = 1'b0;
     case (RM_SI)
       C_RM_NEAREST:
-      Mant_roundUp_S = Mant_lower_D[3] &&
+        Mant_roundUp_S = Mant_lower_D[3] &&
         (((| Mant_lower_D[2:0]) | Mant_sticky_D) || Mant_upper_D[0]);
       C_RM_TRUNC: Mant_roundUp_S = 0;
       C_RM_PLUSINF: Mant_roundUp_S = Mant_rounded_S & ~Sign_in_DI;
@@ -162,6 +162,6 @@ module fp_norm #(
 
   assign Mant_res_DO         = (C_MANT + 1)'(Mant_upperRounded_D >> (Mant_renorm_S & ~Denormal_S));
   assign Exp_res_DO          = Exp_final_D;
-  // assign Rounded_SO          = Mant_rounded_S;
+// assign Rounded_SO          = Mant_rounded_S;
 
 endmodule  // fp_norm

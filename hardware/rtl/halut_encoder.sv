@@ -1,31 +1,31 @@
 module halut_encoder #(
-  parameter int unsigned K = halut_pkg::K,
-  parameter int unsigned C = halut_pkg::C,
-  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
-  parameter int unsigned EncUnits = 4,
-  parameter int unsigned EncUnitNumber = 0,
-  // default
-  parameter int unsigned TreeDepth = $clog2(K),
-  parameter int unsigned CAddrWidth = $clog2(C),
-  parameter int unsigned CPerEncUnit = C / EncUnits,
-  parameter int unsigned ThreshMemAddrWidth = $clog2(CPerEncUnit * K)
-) (
-  input logic clk_i,
-  input logic rst_ni,
+    parameter int unsigned K = halut_pkg::K,
+    parameter int unsigned C = halut_pkg::C,
+    parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+    parameter int unsigned EncUnits = 4,
+    parameter int unsigned EncUnitNumber = 0,
+    // default
+    parameter int unsigned TreeDepth = $clog2(K),
+    parameter int unsigned CAddrWidth = $clog2(C),
+    parameter int unsigned CPerEncUnit = C / EncUnits,
+    parameter int unsigned ThreshMemAddrWidth = $clog2(CPerEncUnit * K)
+  ) (
+    input logic clk_i,
+    input logic rst_ni,
 
-  input logic signed [DataTypeWidth-1:0] a_input_i[TreeDepth],
+    input logic signed [DataTypeWidth-1:0] a_input_i[TreeDepth],
 
-  // write ports for threshold memory
-  input logic unsigned [ThreshMemAddrWidth-1:0] waddr_i,
-  input logic unsigned [     DataTypeWidth-1:0] wdata_i,
-  input logic                                   we_i,
+    // write ports for threshold memory
+    input logic unsigned [ThreshMemAddrWidth-1:0] waddr_i,
+    input logic unsigned [     DataTypeWidth-1:0] wdata_i,
+    input logic                                   we_i,
 
-  input logic encoder_i,
+    input logic encoder_i,
 
-  output logic unsigned [CAddrWidth-1:0] c_addr_o,
-  output logic unsigned [TreeDepth-1:0] k_addr_o,
-  output logic valid_o
-);
+    output logic unsigned [CAddrWidth-1:0] c_addr_o,
+    output logic unsigned [TreeDepth-1:0] k_addr_o,
+    output logic valid_o
+  );
 
   // schematic but not with all output, input ff
   //
