@@ -1,33 +1,33 @@
 module halut_decoder_x #(
-  parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
-  // how many decoders, needs to be overflowing!!
-  parameter int unsigned K = halut_pkg::K,
-  parameter int unsigned C = halut_pkg::C,
-  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
-  // defaults
-  parameter int unsigned TotalAddrWidth = $clog2(C * K),
-  parameter int unsigned CAddrWidth = $clog2(C),
-  parameter int unsigned TreeDepth = $clog2(K),
-  parameter int unsigned DecAddrWidth = $clog2(DecoderUnits)
-) (
-  // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+    parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
+    // how many decoders, needs to be overflowing!!
+    parameter int unsigned K = halut_pkg::K,
+    parameter int unsigned C = halut_pkg::C,
+    parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+    // defaults
+    parameter int unsigned TotalAddrWidth = $clog2(C * K),
+    parameter int unsigned CAddrWidth = $clog2(C),
+    parameter int unsigned TreeDepth = $clog2(K),
+    parameter int unsigned DecAddrWidth = $clog2(DecoderUnits)
+  ) (
+    // Clock and Reset
+    input logic clk_i,
+    input logic rst_ni,
 
-  // Write port
-  input logic [  DecAddrWidth-1:0] m_addr_i,
-  input logic [TotalAddrWidth-1:0] waddr_i,
-  input logic [ DataTypeWidth-1:0] wdata_i,
-  input logic                      we_i,
+    // Write port
+    input logic [  DecAddrWidth-1:0] m_addr_i,
+    input logic [TotalAddrWidth-1:0] waddr_i,
+    input logic [ DataTypeWidth-1:0] wdata_i,
+    input logic                      we_i,
 
-  input logic [CAddrWidth-1:0] c_addr_i,
-  input logic [TreeDepth-1:0] k_addr_i,
-  input logic decoder_i,
+    input logic [CAddrWidth-1:0] c_addr_i,
+    input logic [TreeDepth-1:0] k_addr_i,
+    input logic decoder_i,
 
-  output logic [32-1:0] result_o,  // FP32 output
-  output logic valid_o,
-  output logic [DecAddrWidth-1:0] m_addr_o
-);
+    output logic [32-1:0] result_o,  // FP32 output
+    output logic valid_o,
+    output logic [DecAddrWidth-1:0] m_addr_o
+  );
 
   logic [DecoderUnits-1:0] decoder_we_i_onehot;
   logic [32-1:0] result_int[DecoderUnits];

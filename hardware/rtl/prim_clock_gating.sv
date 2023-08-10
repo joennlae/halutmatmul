@@ -5,11 +5,11 @@
 // Example clock gating module for yosys synthesis
 
 module prim_clock_gating (
-  input  clk_i,
-  input  en_i,
-  input  test_en_i,
-  output clk_o
-);
+    input  clk_i,
+    input  en_i,
+    input  test_en_i,
+    output clk_o
+  );
 
 `ifdef ASAP7_USELVT
 

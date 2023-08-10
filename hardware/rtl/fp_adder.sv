@@ -1,14 +1,14 @@
 module fp_adder #(
-  parameter int unsigned C_OP = fp_defs::C_OP,
-  parameter int unsigned C_EXP = fp_defs::C_EXP,
-  parameter int unsigned C_MANT = fp_defs::C_MANT,
-  parameter int unsigned C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
-  parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
-) (
-  input  logic [C_OP-1:0] operand_a_di,
-  input  logic [C_OP-1:0] operand_b_di,
-  output logic [C_OP-1:0] result_do
-);
+    parameter int unsigned C_OP = fp_defs::C_OP,
+    parameter int unsigned C_EXP = fp_defs::C_EXP,
+    parameter int unsigned C_MANT = fp_defs::C_MANT,
+    parameter int unsigned C_EXP_PRENORM = fp_defs::C_EXP_PRENORM,
+    parameter int unsigned C_MANT_PRENORM = fp_defs::C_MANT_PRENORM
+  ) (
+    input  logic [C_OP-1:0] operand_a_di,
+    input  logic [C_OP-1:0] operand_b_di,
+    output logic [C_OP-1:0] result_do
+  );
 
   //Operand components
   logic                             sign_a_d;

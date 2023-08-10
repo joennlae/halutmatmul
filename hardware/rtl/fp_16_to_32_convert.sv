@@ -1,7 +1,7 @@
 module fp_16_to_32_convert (
-  input  logic signed [16-1:0] operand_fp16_i,
-  output logic signed [32-1:0] result_o
-);
+    input  logic signed [16-1:0] operand_fp16_i,
+    output logic signed [32-1:0] result_o
+  );
   localparam int unsigned FP_16_EXP_BIAS = 15;
   localparam int unsigned FP_32_EXP_BIAS = 127;
   localparam int unsigned EXP_BIAS_CONVERSION = FP_32_EXP_BIAS - FP_16_EXP_BIAS;  // 112

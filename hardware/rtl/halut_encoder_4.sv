@@ -1,36 +1,36 @@
 module halut_encoder_4 #(
-  parameter int unsigned K = halut_pkg::K,
-  parameter int unsigned C = halut_pkg::C,
-  parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
-  parameter int unsigned EncUnits = 4,
+    parameter int unsigned K = halut_pkg::K,
+    parameter int unsigned C = halut_pkg::C,
+    parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+    parameter int unsigned EncUnits = 4,
 
-  // do not change
-  parameter int unsigned CAddrWidth = $clog2(C),
-  parameter int unsigned TreeDepth = $clog2(K),
-  parameter int unsigned CPerEncUnit = C / EncUnits,
-  parameter int unsigned ThreshMemAddrWidth = $clog2(CPerEncUnit * K)
-) (
-  // Clock and Reset
-  input logic clk_i,
-  input logic rst_ni,
+    // do not change
+    parameter int unsigned CAddrWidth = $clog2(C),
+    parameter int unsigned TreeDepth = $clog2(K),
+    parameter int unsigned CPerEncUnit = C / EncUnits,
+    parameter int unsigned ThreshMemAddrWidth = $clog2(CPerEncUnit * K)
+  ) (
+    // Clock and Reset
+    input logic clk_i,
+    input logic rst_ni,
 
-  // mapping is last to first!! so first unit gets:
-  // a_input_i[DataTypeWidth * (((EncUnits - 1)) * TreeDepth)+:DataTypeWidth * TreeDepth]
-  input logic signed [DataTypeWidth-1:0] a_input_i[EncUnits][TreeDepth],
+    // mapping is last to first!! so first unit gets:
+    // a_input_i[DataTypeWidth * (((EncUnits - 1)) * TreeDepth)+:DataTypeWidth * TreeDepth]
+    input logic signed [DataTypeWidth-1:0] a_input_i[EncUnits][TreeDepth],
 
-  // write ports for threshold memory
-  // TODO: maybe one input port for all encoder units?
-  input logic unsigned [ThreshMemAddrWidth-1:0] waddr_i[EncUnits],
-  input logic unsigned [     DataTypeWidth-1:0] wdata_i[EncUnits],
-  input logic                                   we_i   [EncUnits],
+    // write ports for threshold memory
+    // TODO: maybe one input port for all encoder units?
+    input logic unsigned [ThreshMemAddrWidth-1:0] waddr_i[EncUnits],
+    input logic unsigned [     DataTypeWidth-1:0] wdata_i[EncUnits],
+    input logic                                   we_i   [EncUnits],
 
-  input logic encoder_i,
+    input logic encoder_i,
 
-  output logic unsigned [CAddrWidth-1:0] c_addr_o,
-  output logic unsigned [TreeDepth-1:0] k_addr_o,
-  output logic valid_o
+    output logic unsigned [CAddrWidth-1:0] c_addr_o,
+    output logic unsigned [TreeDepth-1:0] k_addr_o,
+    output logic valid_o
 
-);
+  );
   logic [EncUnits-1:0] encoder_int, encoder_int_n;
   logic [CAddrWidth-1:0] c_addr_int[EncUnits];
   logic [TreeDepth-1:0] k_addr_int[EncUnits];

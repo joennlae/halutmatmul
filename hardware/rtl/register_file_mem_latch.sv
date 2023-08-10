@@ -14,21 +14,21 @@
  * register file when targeting ASIC synthesis or event-based simulators.
  */
 module register_file_mem_latch #(
-  parameter int unsigned AddrWidth = 4,
-  parameter int unsigned DataWidth = 16
-) (
-  // Clock and Reset
-  input logic clk_i,
+    parameter int unsigned AddrWidth = 4,
+    parameter int unsigned DataWidth = 16
+  ) (
+    // Clock and Reset
+    input logic clk_i,
 
-  // Read port R1
-  input  logic unsigned [AddrWidth-1:0] raddr_a_i,
-  output logic signed   [DataWidth-1:0] rdata_a_o,
+    // Read port R1
+    input  logic unsigned [AddrWidth-1:0] raddr_a_i,
+    output logic signed   [DataWidth-1:0] rdata_a_o,
 
-  // Write port W1
-  input logic unsigned [AddrWidth-1:0] waddr_a_i,
-  input logic signed   [DataWidth-1:0] wdata_a_i,
-  input logic                          we_a_i
-);
+    // Write port W1
+    input logic unsigned [AddrWidth-1:0] waddr_a_i,
+    input logic signed   [DataWidth-1:0] wdata_a_i,
+    input logic                          we_a_i
+  );
 
   // localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
   localparam int unsigned NumWords = 2 ** AddrWidth;
