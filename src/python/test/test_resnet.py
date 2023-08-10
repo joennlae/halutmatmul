@@ -48,6 +48,7 @@ def download_weights(
 
 
 @pytest.mark.heavy
+@pytest.mark.skip(reason="Github CI runner crashes...")
 def test_cifar10_inference_resnet18() -> None:
     with tempfile.TemporaryDirectory() as tmpdirname:
         print("created temporary directory", tmpdirname)
