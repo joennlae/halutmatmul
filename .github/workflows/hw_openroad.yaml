@@ -21,36 +21,34 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Yosys Synth + PnR backend with OpenROAD
-        run: |
-          source /venv/bin/activate
-          python hardware/util/vendor.py hardware/flow/openroad.vendor.hjson -v
-      - name: build subunit
+        with:
+          submodules: recursive
+      - name: Yosys synth + OpenROAD PnR (matmul)
         if: ${{ matrix.subunit == 'matmul' }}
         run: |
           source /venv/bin/activate
           cd hardware
           NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
-      - name: build subunit
+      - name: Yosys synth + OpenROAD PnR (encoder_4)
         if: ${{ matrix.subunit == 'encoder_4' }}
         run: |
           source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
-      - name: build subunit
+      - name: Yosys synth + OpenROAD PnR (decoder)
         if: ${{ matrix.subunit == 'decoder' }}
         run: |
           source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
-      - name: build subunit
+      - name: Yosys synth + OpenROAD PnR (fp_16_32_adder)
         if: ${{ matrix.subunit == 'fp_16_32_adder' }}
         run: |
           source /venv/bin/activate
           cd hardware
           fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
       - name: Copy & save reports
-        if: ${{ matrix.subunit == 'halut_matmul' }}
+        if: ${{ matrix.subunit == 'matmul' }}
         run: |
           cd hardware/build
           mkdir flow_reports
