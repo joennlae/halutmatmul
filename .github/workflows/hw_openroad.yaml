@@ -86,7 +86,7 @@ jobs:
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
           target-branch: main
-          target-directory: "latest/nangate45/halut_${{ matrix.subunit }}/"
+          target-directory: "latest/nangate45/"
       - name: Get Time
         id: time
         uses: nanzm/get-time-action@v1.1
