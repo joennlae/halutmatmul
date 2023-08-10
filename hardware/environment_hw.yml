@@ -1,27 +1,29 @@
 name: /scratch/janniss/conda/halutmatmul_hw
 channels:
-  - litex-hub
   - conda-forge
+  - litex-hub
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.10
   # IDE deps
   - black
   - pylint=2.17
   - pytest
   - pre-commit
-  - mypy>=1.4
+  # mypy somehow breaks this env
+  # - conda-forge::mypy>=1.4.1
   - pytest-xdist
   - numpy # mypy
   # HW deps
-  - zachjs-sv2v
-  - openroad
+  - litex-hub::zachjs-sv2v
+  # unresolvable deps
+  - litex-hub::openroad=2.0_9484_g353633e01=20230724_080446_py310
   # libfmt deps for openroad
   - fmt=8
-  - yosys
-  - verilator
-  - verible
-  - iverilog
+  - litex-hub::yosys
+  - litex-hub::verilator
+  - litex-hub::verible
+  - litex-hub::iverilog
   - patchelf
   - elfutils
   - pip
