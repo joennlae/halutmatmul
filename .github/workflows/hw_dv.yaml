@@ -6,7 +6,7 @@ jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
 
-  rtl-simulations:
+  rtl-simulations-icarus:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
@@ -17,7 +17,7 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Simulate and run DV with icarus
+      - name: Simulate and run DV with icarus for subunits
         run: |
           source /venv/bin/activate
           cd hardware
@@ -40,11 +40,31 @@ jobs:
           RESULT=$(($RESULT + $?))
           fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder_x
           RESULT=$(($RESULT + $?))
+
+          echo "Exit Code: $RESULT"
+          exit $RESULT
+
+  rtl-simulations-icarus-large:
+    needs: changes
+    if: ${{ needs.changes.outputs.hardware == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Simulate and run DV with icarus for top level
+        run: |
+          source /venv/bin/activate
+          cd hardware
+          RESULT=0
           fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
           RESULT=$(($RESULT + $?))
           NUM_C=16 NUM_DECODER_UNITS=8 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=64 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+          NUM_C=32 NUM_DECODER_UNITS=8 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
