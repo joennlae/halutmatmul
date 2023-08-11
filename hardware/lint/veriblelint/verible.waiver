@@ -1,4 +1,0 @@
-
-# waiver file
-
-waive --rule=always-comb --regex=".*" --location="rtl/prim_clock_gating\.sv"
