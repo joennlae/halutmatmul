@@ -60,15 +60,13 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.hardware == 'true' }}
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
-      - name: Lint RTL with verilate
-        run: |
-          source /venv/bin/activate
-          cd hardware
-          fusesoc --cores-root=. run --target=lint --tool=veriblelint halut:ip:halut_top
+      - name: Run Verible
+        uses: chipsalliance/verible-linter-action@main
+        with:
+          paths: hw
+          extra_args: "--waiver_files .github/verible.waiver"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: true
+          reviewdog_reporter: github-check
