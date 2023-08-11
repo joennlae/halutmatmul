@@ -7,18 +7,11 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += $(shell cat "files.txt")
+VERILOG_SOURCES = $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v
 
 VSIM_ARGS=-t 1ps
 
-ifeq ($(SIM),icarus)
-COMPILE_ARGS += -I $(shell cat "incdirs.txt")
-else ifeq ($(SIM),verilator)
-COMPILE_ARGS += -I$(shell cat "incdirs.txt") # TODO fix when multiple include dirs
-# https://docs.cocotb.org/en/stable/simulator_support.html#sim-verilator-waveforms
-EXTRA_ARGS += --trace --trace-structs
-else ifeq ($(SIM),questa)
-COMPILE_ARGS += +incdir+$(shell cat "incdirs.txt")
+ifeq ($(SIM),questa)
 WAVES = 1
 endif
 

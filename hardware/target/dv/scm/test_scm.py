@@ -67,7 +67,7 @@ async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
     for _ in range(1000):
         random_val = np.float16(np.random.random_sample())
         random_val_bin = float_to_float16_binary(random_val)
-        random_addr = getrandbits(TOTAL_ADDR_WIDTH)
+        random_addr = getrandbits(TOTAL_ADDR_WIDTH - 1)
         # dut._log.info(f"value: {random_val}, {random_val_bin}, addr: {random_addr}")
         await RisingEdge(dut.clk_i)
         dut.waddr_a_i.value = random_addr
@@ -78,8 +78,9 @@ async def read_write_test_extended(dut) -> None:  # type: ignore[no-untyped-def]
         dut.raddr_a_i.value = random_addr
         await RisingEdge(dut.clk_i)
         read_out_bin = dut.rdata_a_o.value
-
-        assert read_out_bin == random_val_bin, "read != write"
+        assert (
+            read_out_bin == random_val_bin
+        ), f"read != write, {read_out_bin}, {random_val_bin}"
         assert (
             binary_to_float16(read_out_bin) == random_val
         ), "float -> bin -> float != float"
