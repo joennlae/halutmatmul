@@ -1,0 +1,37 @@
+package:
+  name: halutmatmul
+  authors: ["Jannis Schönleber"]
+
+dependencies:
+  tech_cells_generic:
+    {
+      git: "https://github.com/pulp-platform/tech_cells_generic.git",
+      version: 0.2.11,
+    }
+
+sources:
+  - rtl/halut_pkg.sv
+
+  - rtl/fp_defs_pkg.sv
+  - rtl/fp_leading_one.sv
+  - rtl/fp_norm.sv
+  - rtl/fp_add.sv
+  - rtl/fp_adder.sv
+  - rtl/fp_16_32_adder.sv
+  - rtl/fp_16_comparision.sv
+  - rtl/fp_16_to_32_convert.sv
+
+  - rtl/register_file_mem_latch.sv
+  - rtl/scm.sv
+
+  - rtl/halut_encoder.sv
+  - rtl/halut_encoder_4.sv
+  - rtl/halut_decoder.sv
+  - rtl/halut_decoder_x.sv
+
+  - rtl/halut_matmul.sv
+
+  - target: gf12
+    files:
+      - gf12/sourcecode/tc_sram.sv
+      - gf12/sourcecode/tc_clk.sv
