@@ -4,7 +4,7 @@
 
 # heavily inspired by https://github.com/pulp-platform/iguana/blob/main/target/ihp13/pickle/pickle.mk
 # Authors:
-# -Jannis Schönleber  <janniss@iis.ee.ethz.ch>
+# - Jannis Schönleber  <janniss@iis.ee.ethz.ch>
 
 # First step of preprocessing, put all used RTL into one large file
 
@@ -21,7 +21,7 @@ PICKLE_DIR ?= $(HALUT_ROOT)/target/open-frontend/pickle
 #########
 
 # Generate sources manifest for use by Morty
-$(PICKLE_DIR)/out/halut_matmul.sources.json: $(HALUT_ROOT)/Bender.yml
+$(PICKLE_DIR)/out/halut_matmul.sources.json: halut-deps $(HALUT_ROOT)/Bender.yml
 	mkdir -p $(dir $@)
 	$(BENDER) sources -f > $@
 
