@@ -38,13 +38,10 @@ module halut_decoder_x #(
   logic valid_o_q, valid_o_n;
   logic [DecAddrWidth-1:0] m_addr_o_q, m_addr_o_n;
 
-  prim_onehot_enc #(
-    .OneHotWidth(DecoderUnits)
-  ) wadd_onehot (
-    .in_i (m_addr_i),
-    .en_i (we_i),
-    .out_o(decoder_we_i_onehot)
-  );
+  // one hot
+  for (genvar i=0; i < DecoderUnits; i++) begin: gen_one_hot
+    assign decoder_we_i_onehot[i] = (m_addr_i == i) & we_i;
+  end
 
   for (genvar x = 0; x < DecoderUnits; x++) begin : gen_decoders
     halut_decoder #(

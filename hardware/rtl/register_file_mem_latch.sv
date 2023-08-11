@@ -5,14 +5,7 @@
 
 // Adapted by Jannis Schönleber 2022
 
-/**
- * RISC-V register file
- *
- * Register file with 16 x 16 bit wide registers. Register 0 is fixed to 0.
- * This register file is based on latches and is thus smaller than the flip-flop
- * based RF. It requires a target technology-specific clock gating cell. Use this
- * register file when targeting ASIC synthesis or event-based simulators.
- */
+
 module register_file_mem_latch #(
     parameter int unsigned AddrWidth = 4,
     parameter int unsigned DataWidth = 16
@@ -30,7 +23,6 @@ module register_file_mem_latch #(
     input logic                          we_a_i
   );
 
-  // localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
   localparam int unsigned NumWords = 2 ** AddrWidth;
 
   logic                          clk_int;
@@ -53,7 +45,7 @@ module register_file_mem_latch #(
   // WRITE //
   ///////////
   // Global clock gating
-  prim_clock_gating cg_we_global (
+  tc_clk_gating cg_we_global (
     .clk_i    (clk_i),
     .en_i     (we_a_i),
     .test_en_i(1'b0),
@@ -73,7 +65,7 @@ module register_file_mem_latch #(
 
   // Individual clock gating (if integrated clock-gating cells are available)
   for (genvar x = 0; x < NumWords; x++) begin : gen_cg_word_iter
-    prim_clock_gating cg_i (
+    tc_clk_gating cg_i (
       .clk_i    (clk_int),
       .en_i     (waddr_onehot_a[x]),
       .test_en_i(1'b0),
@@ -87,7 +79,7 @@ module register_file_mem_latch #(
   for (genvar i = 0; i < NumWords; i++) begin : g_rf_latches
     always_latch begin
       if (mem_clocks[i]) begin
-        mem[i] = wdata_a_i;
+        mem[i] <= wdata_a_i;
       end
     end
   end

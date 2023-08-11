@@ -93,24 +93,7 @@ module halut_encoder #(
 
   logic fp_16_comparision_o;
 
-  prim_onehot_enc #(
-    .OneHotWidth(TreeDepth)
-  ) tree_level_input (
-    .in_i (tree_level_cnt),
-    .en_i (1'b1),
-    .out_o(input_tree_level_one_hot)
-  );
-
-  prim_onehot_mux #(
-    .Width (DataTypeWidth),
-    .Inputs(TreeDepth)
-  ) input_mux (
-    .clk_i (clk_i),
-    .in_i  (a_input_q),
-    .rst_ni(rst_ni),
-    .sel_i (input_tree_level_one_hot),
-    .out_o (data_input_comparision)
-  );
+  assign data_input_comparision = a_input_q[tree_level_cnt];
 
   scm #(
     .C(CPerEncUnit),
