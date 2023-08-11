@@ -21,7 +21,7 @@ module halut_matmul #(
     input logic rst_ni,
 
     // Encoder
-    input logic [     DataTypeWidth-1:0] a_input_enc_i[EncUnits][TreeDepth],
+    input logic signed [     DataTypeWidth-1:0] a_input_enc_i[EncUnits][TreeDepth],
     input logic [ThreshMemAddrWidth-1:0] waddr_enc_i  [EncUnits],
     input logic [     DataTypeWidth-1:0] wdata_enc_i  [EncUnits],
     input logic                          we_enc_i     [EncUnits],
