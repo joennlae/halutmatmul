@@ -54,7 +54,7 @@ jobs:
         run: |
           source /venv/bin/activate
           cd hardware
-          fusesoc --cores-root=. run --target=lint --tool=verilator halut:ip:halut_top
+          make halut-lint-verilator
 
   hw-lint-verilate:
     needs: changes
