@@ -30,7 +30,6 @@ jobs:
           cd hardware
           NUM_M=2 NUM_DECODER_UNITS=1 make halut-open-synth-and-pnr-${{ matrix.subunit }}
       - name: Copy & save reports
-        if: ${{ matrix.subunit == 'matmul' }}
         run: |
           cd hardware/target/open-synth-and-pnr/out
           tar -cvf report.tar.gz ${{ matrix.subunit }}
