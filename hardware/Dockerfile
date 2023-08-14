@@ -41,7 +41,7 @@ RUN apt-get -y update
 RUN apt-get -y install software-properties-common
 RUN apt-add-repository -y ppa:git-core/ppa
 RUN apt-get -y update
-RUN apt-get -y install git make build-essential time libglu1 klayout
+RUN apt-get -y install git make build-essential time libglu1
 RUN apt install -y curl python3 build-essential git cmake
 
 # bender
