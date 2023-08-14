@@ -8,6 +8,7 @@ halut-deps: $(HALUT_ROOT)/.bender/.done
 
 include $(HALUT_ROOT)/target/open-frontend/pickle/pickle.mk
 include $(HALUT_ROOT)/target/dv/tests.mk
+include $(HALUT_ROOT)/target/open-synth-and-pnr/synth-and-pnr.mk
 
 halut-slang-sv: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.morty.sv
 	slang --top halut_matmul $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.morty.sv
