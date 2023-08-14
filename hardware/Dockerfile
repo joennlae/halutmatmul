@@ -32,7 +32,7 @@ RUN /venv/bin/conda-unpack
 # The runtime-stage image; we can use Debian as the
 # base image since the Conda env also includes Python
 # for us.
-FROM ubuntu:20.04 AS runtime
+FROM ubuntu:22.04 AS runtime
 
 # Copy /venv from the previous stage:
 COPY --from=build /venv /venv
@@ -42,6 +42,7 @@ RUN apt-get -y install software-properties-common
 RUN apt-add-repository -y ppa:git-core/ppa
 RUN apt-get -y update
 RUN apt-get -y install git make build-essential time libglu1 klayout
+RUN apt install -y curl python3 build-essential git cmake
 
 # bender
 ARG BENDER_VERSION=0.27.1
@@ -59,6 +60,13 @@ RUN mkdir -p /tools/slang && chmod 777 /tools/slang && \
     cmake --install build --strip
 
 ENV PATH="${PATH}:/tools/slang"
+
+# morty from master via cargo
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+RUN echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo install --git https://github.com/pulp-platform/morty.git
+
 
 RUN echo 'alias sv2v=zachjs-2v2v' >> ~/.bashrc
 RUN echo "source /venv/bin/activate" >> ~/.bashrc
