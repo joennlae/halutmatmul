@@ -68,6 +68,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install --git https://github.com/pulp-platform/morty.git
 
 
-RUN echo 'alias sv2v=zachjs-2v2v' >> ~/.bashrc
+RUN echo 'alias sv2v=zachjs-sv2v' >> ~/.bashrc
 RUN echo "source /venv/bin/activate" >> ~/.bashrc
 SHELL ["/bin/bash", "-c"]
