@@ -65,7 +65,7 @@ jobs:
       - name: Run Verible
         uses: chipsalliance/verible-linter-action@main
         with:
-          paths: hw
+          paths: hardware/rtl
           extra_args: "--waiver_files .github/verible.waiver"
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_error: true
