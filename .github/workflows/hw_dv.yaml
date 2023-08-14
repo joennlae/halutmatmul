@@ -22,23 +22,23 @@ jobs:
           source /venv/bin/activate
           cd hardware
           RESULT=0
-          fusesoc --cores-root=. run --target=icarus halut:test:scm
+          make test-scm
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:fp_adder
+          make test-fp-adder
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:fp_16_to_32_convert
+          make test-fp-16-to-32-convert
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:fp_16_32_adder
+          make test-fp-16-32-adder
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:fp_16_comparision
+          make test-fp-16-comparision
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder
+          make test-halut-encoder
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder
+          make test-halut-decoder
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:halut_encoder_4
+          make test-halut-encoder-4
           RESULT=$(($RESULT + $?))
-          fusesoc --cores-root=. run --target=icarus halut:test:halut_decoder_x
+          make test-halut-decoder-x
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
@@ -60,11 +60,11 @@ jobs:
           source /venv/bin/activate
           cd hardware
           RESULT=0
-          fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+          make test-halut-matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=16 NUM_DECODER_UNITS=8 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+          NUM_C=16 NUM_DECODER_UNITS=8 make test-halut-matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=32 NUM_DECODER_UNITS=8 fusesoc --cores-root=. run --target=icarus halut:test:halut_matmul
+          NUM_C=32 NUM_DECODER_UNITS=8 make test-halut-matmul
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
