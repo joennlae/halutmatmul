@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        subunit: ["matmul", "encoder_4", "decoder", "fp_16_32_adder"]
+        subunit:
+          ["halut_matmul", "halut_encoder_4", "halut_decoder", "fp_16_32_adder"]
     container:
       image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
@@ -23,63 +24,26 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Yosys synth + OpenROAD PnR (matmul)
-        if: ${{ matrix.subunit == 'matmul' }}
+      - name: Yosys synth + OpenROAD PnR
         run: |
           source /venv/bin/activate
           cd hardware
-          NUM_M=2 NUM_DECODER_UNITS=1 fusesoc --cores-root=. run --target=openroad_nangate45 halut:ip:halut_top
-      - name: Yosys synth + OpenROAD PnR (encoder_4)
-        if: ${{ matrix.subunit == 'encoder_4' }}
-        run: |
-          source /venv/bin/activate
-          cd hardware
-          fusesoc --cores-root=. run --target=openroad_nangate45_encoder_4 halut:ip:halut_top
-      - name: Yosys synth + OpenROAD PnR (decoder)
-        if: ${{ matrix.subunit == 'decoder' }}
-        run: |
-          source /venv/bin/activate
-          cd hardware
-          fusesoc --cores-root=. run --target=openroad_nangate45_decoder halut:ip:halut_top
-      - name: Yosys synth + OpenROAD PnR (fp_16_32_adder)
-        if: ${{ matrix.subunit == 'fp_16_32_adder' }}
-        run: |
-          source /venv/bin/activate
-          cd hardware
-          fusesoc --cores-root=. run --target=openroad_nangate45_fp_16_32_adder halut:ip:halut_top
+          make halut-open-synth-and-pnr-${{ matrix.subunit }}
       - name: Copy & save reports
         if: ${{ matrix.subunit == 'matmul' }}
         run: |
-          cd hardware/build
-          mkdir flow_reports
-          mkdir -p flow_reports/halut_${{ matrix.subunit }}
-          cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.html flow_reports/halut_matmul 
-          cp halut_ip_halut_top_0.1/openroad_nangate45-openroad/metrics.json flow_reports/halut_matmul
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/reports/ flow_reports/halut_matmul
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45-openroad/logs/ flow_reports/halut_matmul
-      - name: Copy & save reports
-        if: ${{ matrix.subunit != 'halut_matmul' }}
-        run: |
-          cd hardware/build
-          mkdir flow_reports
-          mkdir -p flow_reports/halut_${{ matrix.subunit }}
-          cp halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/metrics.html flow_reports/halut_${{ matrix.subunit }}
-          cp halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/metrics.json flow_reports/halut_${{ matrix.subunit }}
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/reports/ flow_reports/halut_${{ matrix.subunit }}
-          cp -R halut_ip_halut_top_0.1/openroad_nangate45_${{ matrix.subunit }}-openroad/logs/ flow_reports/halut_${{ matrix.subunit }}
-          tar -cvf report.tar.gz flow_reports/halut_${{ matrix.subunit }}
-          mkdir backup
-          cp report.tar.gz backup/report.tar.gz
+          cd hardware/target/open-synth-and-pnr/out
+          tar -cvf report.tar.gz ${{ matrix.subunit }}
       - uses: actions/upload-artifact@v3
         with:
           name: nangate45-openroad-report
-          path: hardware/build/flow_reports/halut_${{ matrix.subunit }}/
+          path: hardware/target/open-synth-and-pnr/out/${{ matrix.subunit }}/
       - name: Pushes current reports to repo
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
         with:
-          source-directory: "hardware/build/flow_reports"
+          source-directory: "hardware/target/open-synth-and-pnr/out"
           destination-github-username: "joennlae"
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
@@ -96,12 +60,12 @@ jobs:
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
         with:
-          source-directory: "hardware/build/flow_reports"
+          source-directory: "hardware/target/open-synth-and-pnr/out"
           destination-github-username: "joennlae"
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
           target-branch: main
-          target-directory: "history/nangate45/halut_${{ matrix.subunit }}/${{ steps.time.outputs.time }}/"
+          target-directory: "history/nangate45/${{ matrix.subunit }}/${{ steps.time.outputs.time }}/"
 
   # needs to much memory so it is run on a large machine (was run)
   # asap7:
