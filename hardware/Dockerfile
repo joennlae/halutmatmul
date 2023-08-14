@@ -43,5 +43,23 @@ RUN apt-add-repository -y ppa:git-core/ppa
 RUN apt-get -y update
 RUN apt-get -y install git make build-essential time libglu1 klayout
 
+# bender
+ARG BENDER_VERSION=0.27.1
+RUN mkdir -p /tools/bender && chmod 777 /tools/bender && \
+    cd /tools/bender && curl --proto '=https' --tlsv1.2 -sSf https://pulp-platform.github.io/bender/init | bash -s -- ${BENDER_VERSION}
+
+ENV PATH="${PATH}:/tools/bender"
+
+# slang
+ARG SLANG_VERSION=v4.0
+RUN mkdir -p /tools/slang && chmod 777 /tools/slang && \
+    cd /tools/slang && git clone https://github.com/MikePopoloski/slang.git && \
+    cd slang && git checkout ${SLANG_VERSION} && \
+    cmake -B build && cmake --build build -j$(nproc) && \
+    cmake --install build --strip
+
+ENV PATH="${PATH}:/tools/slang"
+
+RUN echo 'alias sv2v=zachjs-2v2v' >> ~/.bashrc
 RUN echo "source /venv/bin/activate" >> ~/.bashrc
 SHELL ["/bin/bash", "-c"]
