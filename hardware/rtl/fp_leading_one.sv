@@ -19,11 +19,11 @@ module fp_leading_one #(
     output logic                   no_ones_o
   );
 
-  localparam int unsigned NUM_LEVELS = $clog2(LEN);
+  localparam int unsigned NumLevels = $clog2(LEN);
 
-  logic [          LEN-1:0][NUM_LEVELS-1:0] index_lut;
-  logic [2**NUM_LEVELS-1:0]                 sel_nodes;
-  logic [2**NUM_LEVELS-1:0][NUM_LEVELS-1:0] index_nodes;
+  logic [         LEN-1:0][NumLevels-1:0]   index_lut;
+  logic [2**NumLevels-1:0]                  sel_nodes;
+  logic [2**NumLevels-1:0][NumLevels-1:0]   index_nodes;
 
   logic [          LEN-1:0]                 in_flipped;
 
@@ -35,7 +35,7 @@ module fp_leading_one #(
   generate
     genvar j;
     for (j = 0; j < LEN; j++) begin : gen_index_lut
-      assign index_lut[j]  = (NUM_LEVELS)'($unsigned(j));
+      assign index_lut[j]  = (NumLevels)'($unsigned(j));
       assign in_flipped[j] = in_i[LEN-j-1];
     end
   endgenerate
@@ -60,9 +60,9 @@ module fp_leading_one #(
     genvar k;
     genvar l;
     genvar level;
-    for (level = 0; level < NUM_LEVELS; level++) begin : gen_tree
+    for (level = 0; level < NumLevels; level++) begin : gen_tree
       //------------------------------------------------------------
-      if (level < NUM_LEVELS - 1) begin : gen_tree_lower_levels
+      if (level < NumLevels - 1) begin : gen_tree_lower_levels
         for (l = 0; l < 2 ** level; l++) begin : gen_tree_lower_levels_loop
           assign sel_nodes[2**level-1+l]   =
             sel_nodes[2**(level+1)-1+l*2] | sel_nodes[2**(level+1)-1+l*2+1];
@@ -71,7 +71,7 @@ module fp_leading_one #(
         end
       end
       //------------------------------------------------------------
-      if (level == NUM_LEVELS - 1) begin : gen_tree_to_level
+      if (level == NumLevels - 1) begin : gen_tree_to_level
         for (k = 0; k < 2 ** level; k++) begin : gen_tree_map_inputs
           // if two successive indices are still in the vector...
           if (k * 2 < LEN - 1) begin : gen_tree_map_incoming_value_to_tree
