@@ -2,9 +2,9 @@ module fp_16_to_32_convert (
     input  logic signed [16-1:0] operand_fp16_i,
     output logic signed [32-1:0] result_o
   );
-  localparam int unsigned FP_16_EXP_BIAS = 15;
-  localparam int unsigned FP_32_EXP_BIAS = 127;
-  localparam int unsigned EXP_BIAS_CONVERSION = FP_32_EXP_BIAS - FP_16_EXP_BIAS;  // 112
+  localparam int unsigned FP16ExpBias = 15;
+  localparam int unsigned FP32ExpBias = 127;
+  localparam int unsigned ExpBiasConversion = FP32ExpBias - FP16ExpBias;  // 112
 
   logic sign;
   logic [4:0] exp_fp16_in;
@@ -34,11 +34,11 @@ module fp_16_to_32_convert (
         exp_fp32_converted = 8'h0;
         mant_converted = mant_fp16_in;
       end else begin : subnormal_case
-        exp_fp32_converted = 8'(EXP_BIAS_CONVERSION) - 8'(first_one);  // + 1 - 1
+        exp_fp32_converted = 8'(ExpBiasConversion) - 8'(first_one);  // + 1 - 1
         mant_converted = mant_fp16_in << first_one + 1;
       end
     end else begin : default_case
-      exp_fp32_converted = 8'(exp_fp16_in) + 8'(EXP_BIAS_CONVERSION);
+      exp_fp32_converted = 8'(exp_fp16_in) + 8'(ExpBiasConversion);
       mant_converted = mant_fp16_in;
     end
   end
