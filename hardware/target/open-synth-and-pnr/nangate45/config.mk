@@ -1,8 +1,8 @@
 # export DESIGN_NAME  = register_file_latch # defined via edalize
 export PLATFORM    = nangate45
 
-export VERILOG_FILES = $(shell cat "files.txt")
-export SDC_FILE      = ./constraint.sdc
+export VERILOG_FILES = $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v
+export SDC_FILE      = $(HALUT_ROOT)/target/open-synth-and-pnr/nangate45/constraint.sdc
 export ABC_AREA      = 1
 
 # export PLACE_DENSITY          = 0.60
@@ -17,7 +17,7 @@ export ADDER_MAP_FILE :=
 # export CORE_AREA   = 10 10 1995 1995
 
 
-export CTS_BUF_CELL           = BUF_X32 BUF_X16 BUF_X8 BUF_X4
+export CTS_BUF_CELL           = BUF_X32 BUF_X16 # BUF_X8 BUF_X4
 
 export ABC_AREA               = 1
 # export RESYNTH_AREA_RECOVER		= 1
