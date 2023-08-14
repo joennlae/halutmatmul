@@ -11,7 +11,7 @@
 BENDER ?= bender # https://github.com/pulp-platform/bender
 MORTY  ?= morty  # https://github.com/pulp-platform/morty
 SVASE  ?= svase  # https://github.com/pulp-platform/svase
-SV2V   ?= sv2v   # https://https://github.com/zachjs/sv2v
+SV2V   ?= zachjs-sv2v   # https://https://github.com/zachjs/sv2v
 
 PICKLE_DIR ?= $(HALUT_ROOT)/target/open-frontend/pickle
 
