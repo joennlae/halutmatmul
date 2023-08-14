@@ -33,21 +33,24 @@ jobs:
         run: |
           cd hardware/target/open-synth-and-pnr/out
           tar -cvf report.tar.gz ${{ matrix.subunit }}
+          cd ..
+          mkdir -p flow_reports
+          mv out/report.tar.gz flow_reports/${{ matrix.subunit }}.tar.gz
       - uses: actions/upload-artifact@v3
         with:
           name: nangate45-openroad-report
-          path: hardware/target/open-synth-and-pnr/out/${{ matrix.subunit }}/
+          path: hardware/target/open-synth-and-pnr/flow_reports/${{ matrix.subunit }}.tar.gz
       - name: Pushes current reports to repo
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_AUTOPUSH_KEY }}
         with:
-          source-directory: "hardware/target/open-synth-and-pnr/out"
+          source-directory: "hardware/target/open-synth-and-pnr/out/${{ matrix.subunit }}"
           destination-github-username: "joennlae"
           destination-repository-name: "halutmatmul-openroad-reports"
           user-email: openroad@reports.ch
           target-branch: main
-          target-directory: "latest/nangate45/"
+          target-directory: "latest/nangate45/${{ matrix.subunit }}"
       - name: Get Time
         id: time
         uses: nanzm/get-time-action@master
