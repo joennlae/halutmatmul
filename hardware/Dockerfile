@@ -42,7 +42,7 @@ RUN apt-get -y install software-properties-common
 RUN apt-add-repository -y ppa:git-core/ppa
 RUN apt-get -y update
 RUN apt-get -y install git make build-essential time libglu1
-RUN apt install -y curl python3 build-essential git cmake
+RUN apt install -y curl python3 cmake libglu1-mesa-dev
 
 # bender
 ARG BENDER_VERSION=0.27.1
