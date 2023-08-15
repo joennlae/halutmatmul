@@ -21,11 +21,11 @@ module halut_decoder_x #(
     input logic                      we_i,
 
     input logic [CAddrWidth-1:0] c_addr_i,
-    input logic [TreeDepth-1:0] k_addr_i,
-    input logic decoder_i,
+    input logic [ TreeDepth-1:0] k_addr_i,
+    input logic                  decoder_i,
 
-    output logic [32-1:0] result_o,  // FP32 output
-    output logic valid_o,
+    output logic [32-1:0]           result_o,  // FP32 output
+    output logic                    valid_o,
     output logic [DecAddrWidth-1:0] m_addr_o
   );
 

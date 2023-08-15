@@ -22,10 +22,10 @@ module halut_matmul #(
 
     // Encoder
     input logic signed [     DataTypeWidth-1:0] a_input_enc_i[EncUnits][TreeDepth],
-    input logic [ThreshMemAddrWidth-1:0] waddr_enc_i  [EncUnits],
-    input logic [     DataTypeWidth-1:0] wdata_enc_i  [EncUnits],
-    input logic                          we_enc_i     [EncUnits],
-    input logic                          encoder_i,
+    input logic        [ThreshMemAddrWidth-1:0] waddr_enc_i  [EncUnits],
+    input logic        [     DataTypeWidth-1:0] wdata_enc_i  [EncUnits],
+    input logic                                 we_enc_i     [EncUnits],
+    input logic                                 encoder_i,
 
     // Decoder
     input logic [  DecAddrWidth-1:0] m_addr_dec_i[DecUnitsX],
