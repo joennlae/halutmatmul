@@ -1,3 +1,6 @@
 **/sim_build/
 **/results.xml
 **/*.vcd
+**/*.wlf
+transcript
+modelsim.ini
