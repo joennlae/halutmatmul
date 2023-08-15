@@ -2,7 +2,6 @@
 
 package halut_pkg;
 
-// defaults are set in halut_util_sv2v.core!!
 `ifndef NUM_M
   `define NUM_M 32
 `endif

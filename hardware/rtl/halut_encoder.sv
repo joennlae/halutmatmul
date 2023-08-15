@@ -70,7 +70,7 @@ module halut_encoder #(
   //               │
   //      ┌────────┴────────┐
   //      │                 │
-  //      │ c_addr_int │
+  //      │ c_addr_int      │
   //      │►                │
   //      └─────────────────┘
 
@@ -86,7 +86,6 @@ module halut_encoder #(
   logic unsigned [TreeDepth-1:0] k_addr_n, k_addr_o_n;
   logic unsigned [$clog2(CPerEncUnit)-1:0] c_addr_int, c_addr_int_n;
   logic unsigned [CAddrWidth-1:0] c_addr_o_q, c_addr_o_n;
-  logic unsigned [TreeDepth-1:0] input_tree_level_one_hot;
   logic signed [DataTypeWidth-1:0] a_input_q[TreeDepth];
   logic signed [DataTypeWidth-1:0] a_input_n[TreeDepth];
   logic valid_o_n;
