@@ -33,5 +33,4 @@ sources:
 
   - target: gf12
     files:
-      - gf12/sourcecode/tc_sram.sv
-      - gf12/sourcecode/tc_clk.sv
+      - target/commercial-14nm/sourcecode/tc_clk.sv
