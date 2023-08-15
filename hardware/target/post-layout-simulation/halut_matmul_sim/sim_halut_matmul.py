@@ -2,8 +2,6 @@
 # type: ignore due to this being copied together later
 from math import ceil, log2
 import os
-from random import getrandbits
-import typing
 import numpy as np
 import cocotb
 from cocotb.triggers import RisingEdge, Timer
@@ -21,11 +19,12 @@ from util.helper_functions import (
     encoding_function,
 )
 
-CLOCK_PERIOD_PS = int(os.environ.get("CLK_PERIOD", 1000))
-print("CLOCK_PERIOD_PS = ", CLOCK_PERIOD_PS)
+CLOCK_PERIOD_NS = float(os.environ.get("CLK_PERIOD_NS", 1))
+print("CLOCK_PERIOD_NS = ", CLOCK_PERIOD_NS)
+CLOCK_PERIOD_PS = CLOCK_PERIOD_NS * 1000
 
 DATA_TYPE_WIDTH = 16
-C = int(os.environ.get("NUM_C", 32))
+C = int(os.environ.get("NUM_C", 16))
 K = 16
 M = int(os.environ.get("NUM_M", 32))
 DecoderUnits = int(os.environ.get("NUM_DECODER_UNITS", 16))
@@ -57,7 +56,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     lut = np.random.random((M, C, K)).astype(np.float16)
 
     result, _ = decoding_2d(lut, encoded)
-    print("results", encoded, result)
+    print("results", encoded, result, C, M)
     cocotb.start_soon(Clock(dut.clk_i, CLOCK_PERIOD_PS, units="ps").start())
 
     # Initial values
