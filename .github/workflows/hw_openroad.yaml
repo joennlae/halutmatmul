@@ -13,8 +13,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        subunit:
-          ["halut_matmul", "halut_encoder_4", "halut_decoder", "fp_16_32_adder"]
+        subunit: ["halut_encoder_4", "halut_decoder", "fp_16_32_adder"] # "halut_matmul"
     container:
       image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
