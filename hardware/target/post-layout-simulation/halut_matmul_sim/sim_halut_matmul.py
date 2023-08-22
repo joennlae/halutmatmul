@@ -22,6 +22,7 @@ from util.helper_functions import (
 CLOCK_PERIOD_NS = float(os.environ.get("CLK_PERIOD_NS", 1))
 print("CLOCK_PERIOD_NS = ", CLOCK_PERIOD_NS)
 CLOCK_PERIOD_PS = CLOCK_PERIOD_NS * 1000
+print("CLOCK_PERIOD_PS = ", CLOCK_PERIOD_PS)
 
 DATA_TYPE_WIDTH = 16
 C = int(os.environ.get("NUM_C", 16))
@@ -87,13 +88,13 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     await Timer(CLOCK_PERIOD_PS / 2, "ps")
     for _ in range(6):
         await RisingEdge(dut.clk_i)
-    await Timer(CLOCK_PERIOD_PS / 2, "ps")
+    await Timer(CLOCK_PERIOD_PS / 2 + CLOCK_PERIOD_PS / 4, "ps")
     dut.rst_ni.value = 1
 
     # write threshold values
     await RisingEdge(dut.clk_i)
     for idx in range(threshold_table.shape[0] // EncUnits):
-        await Timer(CLOCK_PERIOD_PS / 2, "ps")
+        await Timer(CLOCK_PERIOD_PS / 10 * 4, "ps")
         w_addr_val = convert_int_array_width(
             [idx, idx, idx, idx], n_bits=ThreshMemAddrWidth
         )
@@ -112,7 +113,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     for m in range(DecoderUnits):
         for c in range(C):
             for k in range(K):
-                await Timer(CLOCK_PERIOD_PS / 2, "ps")
+                await Timer(CLOCK_PERIOD_PS / 10 * 4, "ps")
                 dut.waddr_dec_i.value = convert_int_array_width(
                     [c * K + k for _ in range(DecUnitsX)], n_bits=TotalAddrWidth
                 )
@@ -135,6 +136,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     idx_encoder_input_top = np.arange(TreeDepth) * TreeDepth + TreeDepth
 
     await Timer(CLOCK_PERIOD_PS / 2, "ps")
+    starting_time = cocotb.utils.get_sim_time(units="ps")
     current_encoder_input[
         idx_encoder_input_base[0 % 4] : idx_encoder_input_top[0 % 4]
     ] = input_a[0, 0]
@@ -158,10 +160,10 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                 dut.a_input_enc_i.value = convert_fp16_array(current_encoder_input)
 
             await RisingEdge(dut.clk_i)
-            # dut._log.info(
-            #     f"(r) : {row}, {c_}, \n"
-            #     f"{dut.valid_o.value}, {dut.result_o.value}, {dut.m_addr_o.value}\n"
-            # )
+            dut._log.info(
+                f"(r) : {row}, {c_}, \n"
+                f"{dut.valid_o.value}, {dut.result_o.value}, {dut.m_addr_o.value}\n"
+            )
 
             output_offset = 7
             if (
@@ -181,17 +183,17 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     result_o_bin_vals = create_bin_vals_from_binstr(
                         result_o_out.binstr, DecUnitsX
                     )
-                    # print("vals", m_addr_bin_vals, result_o_bin_vals)
+                    print("vals", m_addr_bin_vals, result_o_bin_vals)
                     for i in range(DecUnitsX):
                         assert dut.valid_o[i].value == 1, f"not valid result {i}"
                         assert (
                             m_addr_bin_vals[i] == lookup_m + DecoderUnits * i
                         ), f"m_addr_o[{i}] wrong"
-                        # print(
-                        #     "comp",
-                        #     binary_to_float32(result_o_bin_vals[i]),
-                        #     result[row - 1, lookup_m + DecoderUnits * i],
-                        # )
+                        print(
+                            "comp",
+                            binary_to_float32(result_o_bin_vals[i]),
+                            result[row - 1, lookup_m + DecoderUnits * i],
+                        )
                         assert (
                             binary_to_float32(result_o_bin_vals[i])
                             == result[row - 1, lookup_m + DecoderUnits * i]
@@ -207,3 +209,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     0, n_bits=DecUnitsX
                 ), "should be invalid"
         dut._log.info(f"finished applying input row {row + 1}/{ROWS}")
+    end_time = cocotb.utils.get_sim_time(units="ps")
+    print(f"simulation took {end_time - starting_time} ps")
+    print(f"starting time {starting_time} ps")
+    print(f"ending time {end_time} ps")
