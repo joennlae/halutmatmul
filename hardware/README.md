@@ -77,3 +77,15 @@ The flow relies on several tools, platforms and designs that each have their own
 - Find the tool license at: `OpenROAD-flow-scripts/tools/{tool}/` or `OpenROAD-flow-scripts/tools/OpenROAD/src/{tool}/`.
 - Find the platform license at: `OpenROAD-flow-scripts/flow/platforms/{platform}/`.
 - Find the design license at: `OpenROAD-flow-scripts/flow/designs/src/{design}/`.
+
+
+### Commercial-14nm
+
+Only works with IIS rights (ask me for git access). But the NDA needs to be signed first.
+
+```bash
+cd target
+git clone git@iis-git.ee.ethz.ch:janniss/maddness-gf12.git commercial-14nm
+```
+
+And read the README inside the repo for more information.
