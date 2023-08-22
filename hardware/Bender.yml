@@ -31,6 +31,6 @@ sources:
 
   - rtl/halut_matmul.sv
 
-  - target: gf12
+  - target: commercial-14
     files:
       - target/commercial-14nm/sourcecode/tc_clk.sv
