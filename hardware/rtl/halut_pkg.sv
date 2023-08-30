@@ -27,6 +27,6 @@ package halut_pkg;
   localparam integer unsigned M = `NUM_M;
   localparam integer unsigned DataTypeWidth = `DATA_WIDTH;
   localparam integer unsigned DecoderUnits = `NUM_DECODER_UNITS;
-  typedef enum {FP32, INT} AccumulationEnum;
-  localparam AccumulationEnum AccumulationOption = `ACC_TYPE;
+  typedef enum {FP32, INT} accumulation_enum_t;
+  localparam accumulation_enum_t AccumulationOption = `ACC_TYPE;
 endpackage : halut_pkg

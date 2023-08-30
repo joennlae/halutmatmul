@@ -3,7 +3,7 @@ module halut_decoder #(
     parameter int unsigned C = halut_pkg::C,
     parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
     parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
-    parameter halut_pkg::AccumulationEnum AccumulationOption = halut_pkg::AccumulationOption,
+    parameter halut_pkg::accumulation_enum_t AccumulationOption = halut_pkg::AccumulationOption,
     // defaults
     parameter int unsigned TotalAddrWidth = $clog2(C * K),
     parameter int unsigned CAddrWidth = $clog2(C),
@@ -65,13 +65,13 @@ module halut_decoder #(
     .we_a_i(we_i)
   );
 
-  if (AccumulationOption == halut_pkg::FP32) begin
+  if (AccumulationOption == halut_pkg::FP32) begin : fp32_accumulation
     fp_16_32_adder fp_adder (
       .operand_fp16_i(rdata_o_q),
       .operand_fp32_i(result_int_q),
       .result_o(result_int_d)
     );
-  end else if (AccumulationOption == halut_pkg::INT) begin
+  end else if (AccumulationOption == halut_pkg::INT) begin : int_accumulation
     mixed_int_adder #(
       .IN_WIDTH(DataTypeWidth),
       .OUT_WIDTH(32)

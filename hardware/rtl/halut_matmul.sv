@@ -5,7 +5,7 @@ module halut_matmul #(
     parameter int unsigned M = halut_pkg::M,
     parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
     parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
-    parameter halut_pkg::AccumulationEnum AccumulationOption = halut_pkg::AccumulationOption,
+    parameter halut_pkg::accumulation_enum_t AccumulationOption = halut_pkg::AccumulationOption,
     // do not change
     parameter int unsigned EncUnits = 4,  // default
     parameter int unsigned DecUnitsX = M / DecoderUnits,
