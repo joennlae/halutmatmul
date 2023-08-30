@@ -24,7 +24,7 @@ module scm #(
   localparam int unsigned UnitAddrWidth = (TotalAddrWidth - SubUnitAddrWidth);
   localparam int unsigned NumSubUnits = 2 ** UnitAddrWidth;
 
-  logic unsigned [TotalAddrWidth-1:SubUnitAddrWidth] raddr_int_unit, waddr_int_unit;
+  logic unsigned [UnitAddrWidth-1:0] raddr_int_unit, waddr_int_unit;
   logic unsigned [SubUnitAddrWidth-1:0] raddr_int_sub, waddr_int_sub;
   logic signed [DataTypeWidth-1:0] wdata_a_q;
   logic unsigned [NumSubUnits-1:0] waddr_onehot_unit;

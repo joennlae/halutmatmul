@@ -97,7 +97,8 @@ module halut_encoder #(
   scm #(
     .C(CPerEncUnit),
     .K(K),
-    .DataTypeWidth(DataTypeWidth)
+    .DataTypeWidth(DataTypeWidth),
+    .SubUnitAddrWidth($clog2(K)) // be sure to have enough bits such that addressing is split in scm
   ) threshold_memory (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

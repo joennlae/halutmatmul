@@ -5,6 +5,7 @@ module halut_matmul #(
     parameter int unsigned M = halut_pkg::M,
     parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
     parameter int unsigned DecoderUnits = halut_pkg::DecoderUnits,
+    parameter halut_pkg::AccumulationEnum AccumulationOption = halut_pkg::AccumulationOption,
     // do not change
     parameter int unsigned EncUnits = 4,  // default
     parameter int unsigned DecUnitsX = M / DecoderUnits,
@@ -14,16 +15,17 @@ module halut_matmul #(
     parameter int unsigned TreeDepth = $clog2(K),
     parameter int unsigned CPerEncUnit = C / EncUnits,
     parameter int unsigned ThreshMemAddrWidth = $clog2(CPerEncUnit * K),
-    parameter int unsigned MAddrWidth = $clog2(M)
+    parameter int unsigned MAddrWidth = $clog2(M),
+    parameter int unsigned EncDataWidth = 16  // only support FP16 comparision for now
   ) (
     // Clock and Reset
     input logic clk_i,
     input logic rst_ni,
 
     // Encoder
-    input logic signed [     DataTypeWidth-1:0] a_input_enc_i[EncUnits][TreeDepth],
+    input logic signed [      EncDataWidth-1:0] a_input_enc_i[EncUnits][TreeDepth],
     input logic        [ThreshMemAddrWidth-1:0] waddr_enc_i  [EncUnits],
-    input logic        [     DataTypeWidth-1:0] wdata_enc_i  [EncUnits],
+    input logic        [      EncDataWidth-1:0] wdata_enc_i  [EncUnits],
     input logic                                 we_enc_i     [EncUnits],
     input logic                                 encoder_i,
 
@@ -33,7 +35,7 @@ module halut_matmul #(
     input logic [ DataTypeWidth-1:0] wdata_dec_i [DecUnitsX],
     input logic                      we_dec_i    [DecUnitsX],
 
-    output logic [32-1:0] result_o[DecUnitsX],  // FP32 output
+    output logic [32-1:0] result_o[DecUnitsX],  // FP32 output or INT32 output
     output logic valid_o[DecUnitsX],
     output logic [MAddrWidth-1:0] m_addr_o[DecUnitsX]
   );
@@ -51,7 +53,7 @@ module halut_matmul #(
   halut_encoder_4 #(
     .K(K),
     .C(C),
-    .DataTypeWidth(DataTypeWidth),
+    .DataTypeWidth(EncDataWidth),
     .EncUnits(EncUnits)
   ) encoder (
     .clk_i(clk_i),
@@ -75,7 +77,8 @@ module halut_matmul #(
       .DecoderUnits(DecoderUnits),
       .K(K),
       .C(C),
-      .DataTypeWidth(DataTypeWidth)
+      .DataTypeWidth(DataTypeWidth),
+      .AccumulationOption(AccumulationOption)
     ) decoder (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
