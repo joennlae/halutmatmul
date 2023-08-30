@@ -1,6 +1,6 @@
 module mixed_int_adder #(
-    parameter IN_WIDTH = 8,
-    parameter OUT_WIDTH = 32
+    parameter int unsigned IN_WIDTH = 8,
+    parameter int unsigned OUT_WIDTH = 32
   )
   (
     input logic signed  [IN_WIDTH-1:0]  int_short_i,
