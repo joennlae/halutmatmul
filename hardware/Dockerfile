@@ -61,6 +61,15 @@ RUN mkdir -p /tools/slang && chmod 777 /tools/slang && \
 
 ENV PATH="${PATH}:/tools/slang"
 
+# svase
+ARG SVASE_VERSION=master
+RUN mkdir -p /tools/svase && chmod 777 /tools/svase && \
+    cd /tools/svase && git clone https://github.com/pulp-platform/svase.git && \
+    cd svase && git checkout ${SVASE_VERSION} && \
+    make all
+
+ENV PATH="${PATH}:/tools/svase/build"
+
 # morty from master via cargo
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 RUN echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
