@@ -62,7 +62,7 @@ RUN mkdir -p /tools/slang && chmod 777 /tools/slang && \
 ENV PATH="${PATH}:/tools/slang"
 
 # svase
-ARG SVASE_VERSION=master
+ARG SVASE_VERSION=08dc71dec60555c5c2880a8d0991d5b48415e280
 RUN mkdir -p /tools/svase && chmod 777 /tools/svase && \
     cd /tools/svase && git clone https://github.com/pulp-platform/svase.git && \
     cd svase && git checkout ${SVASE_VERSION} && \
