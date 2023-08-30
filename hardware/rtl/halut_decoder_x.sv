@@ -4,6 +4,7 @@ module halut_decoder_x #(
     parameter int unsigned K = halut_pkg::K,
     parameter int unsigned C = halut_pkg::C,
     parameter int unsigned DataTypeWidth = halut_pkg::DataTypeWidth,
+    parameter halut_pkg::AccumulationEnum AccumulationOption = halut_pkg::AccumulationOption,
     // defaults
     parameter int unsigned TotalAddrWidth = $clog2(C * K),
     parameter int unsigned CAddrWidth = $clog2(C),
@@ -48,7 +49,8 @@ module halut_decoder_x #(
       .K(K),
       .C(C),
       .DataTypeWidth(DataTypeWidth),
-      .DecoderUnits(DecoderUnits)
+      .DecoderUnits(DecoderUnits),
+      .AccumulationOption(AccumulationOption)
     ) sub_unit_decoder (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
