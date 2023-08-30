@@ -1,5 +1,12 @@
 HALUT_ROOT ?= $(shell pwd)
 
+NUM_C ?= 32
+NUM_M ?= 32
+NUM_DECODER_UNITS ?= 16
+DATA_WIDTH ?= 16
+# FP32 or INT
+ACC_TYPE ?= FP32
+
 $(HALUT_ROOT)/.bender/.done:
 	bender checkout
 	touch $@
