@@ -27,7 +27,9 @@ $(PICKLE_DIR)/out/halut_matmul.sources.json: halut-deps $(HALUT_ROOT)/Bender.yml
 
 # Pickle all synthesizable RTL into a single file
 $(PICKLE_DIR)/out/halut_matmul.morty.sv: $(PICKLE_DIR)/out/halut_matmul.sources.json
-	$(MORTY) -q -f $< -o $@ -D SYNTHESIS=1 -D MORTY=1 -D COCOTB_SIM=1 --keep_defines --top halut_matmul
+	$(MORTY) -q -f $< -o $@ -D SYNTHESIS=1 -D MORTY=1 -D COCOTB_SIM=1 --keep_defines --top halut_matmul \
+	-D NUM_C=$(NUM_C) -D NUM_M=$(NUM_M) -D NUM_DECODER_UNITS=$(NUM_DECODER_UNITS) \
+	-D DATA_WIDTH=$(DATA_WIDTH) -D ACC_TYPE=$(ACC_TYPE)
 
 halut-morty-all: $(PICKLE_DIR)/out/halut_matmul.morty.sv
 
@@ -37,17 +39,19 @@ halut-morty-all: $(PICKLE_DIR)/out/halut_matmul.morty.sv
 
 # svase not needed at the moment
 # Pre-elaborate SystemVerilog pickle
-# $(PICKLE_DIR)/out/halut_matmul.svase.sv: $(PICKLE_DIR)/out/halut_matmul.morty.sv
-# 	$(SVASE) halut_matmul $@ $<
-# 
-# halut-svase-all: $(PICKLE_DIR)/out/halut_matmul.svase.sv
+$(PICKLE_DIR)/out/halut_matmul.svase.sv: $(PICKLE_DIR)/out/halut_matmul.morty.sv
+	$(SVASE) halut_matmul $@ $<
+
+halut-svase-all: $(PICKLE_DIR)/out/halut_matmul.svase.sv
 
 ########
 # SV2V #
 ########
 
 # Convert pickle to Verilog
-$(PICKLE_DIR)/out/halut_matmul.sv2v.v: $(PICKLE_DIR)/out/halut_matmul.morty.sv
+$(PICKLE_DIR)/out/halut_matmul.sv2v.v: $(PICKLE_DIR)/out/halut_matmul.svase.sv
 	$(SV2V) --oversized-numbers --verbose --write $@ $<
+	# replace module name with halut_matmul
+	sed -i 's|module halut_matmul__[[:alnum:]_]*|module halut_matmul|g' $@
 
 halut-pickle-all: $(PICKLE_DIR)/out/halut_matmul.sv2v.v
