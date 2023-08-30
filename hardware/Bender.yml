@@ -21,6 +21,8 @@ sources:
   - rtl/fp_16_comparision.sv
   - rtl/fp_16_to_32_convert.sv
 
+  - rtl/mixed_int_adder.sv
+
   - rtl/register_file_mem_latch.sv
   - rtl/scm.sv
 
