@@ -65,13 +65,13 @@ module halut_decoder #(
     .we_a_i(we_i)
   );
 
-  if (AccumulationOption == halut_pkg::FP32) begin : fp32_accumulation
+  if (AccumulationOption == halut_pkg::FP32) begin : gen_fp32_accumulation
     fp_16_32_adder fp_adder (
       .operand_fp16_i(rdata_o_q),
       .operand_fp32_i(result_int_q),
       .result_o(result_int_d)
     );
-  end else if (AccumulationOption == halut_pkg::INT) begin : int_accumulation
+  end else if (AccumulationOption == halut_pkg::INT) begin : gen_int_accumulation
     mixed_int_adder #(
       .IN_WIDTH(DataTypeWidth),
       .OUT_WIDTH(32)
