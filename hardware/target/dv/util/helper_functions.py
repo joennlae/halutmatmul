@@ -11,6 +11,13 @@ def convert_fp16_array(vals: np.ndarray) -> BinaryValue:
     return fuse_binary_values(bin_vals)
 
 
+def convert_int8_array(vals: np.ndarray) -> BinaryValue:
+    bin_vals = []
+    for val in vals:
+        bin_vals.append(int_8_to_binary(val))
+    return fuse_binary_values(bin_vals)
+
+
 def convert_int_array_width(vals: "typing.List[int]", n_bits: int = 4) -> BinaryValue:
     bin_vals = []
     for val in vals:
@@ -68,12 +75,42 @@ def float_to_float32_binary(fl: np.float32) -> BinaryValue:
     )
 
 
+def int_32_to_binary(int: np.int32) -> BinaryValue:
+    # pylint: disable=too-many-function-args
+    # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
+    # numpy could control it with ">H" big-endian, "<H" little-endian
+    # u4 -> uint32
+    return LogicArray(bin(np.int32(int).view("u4"))[2:].zfill(32)).to_BinaryValue(  # type: ignore
+        bigEndian=True
+    )
+
+
+def int_8_to_binary(int: np.int8) -> BinaryValue:
+    # pylint: disable=too-many-function-args
+    # fl = 0.33325195 -> '0011010101010101' # big endian flip for little endian
+    # numpy could control it with ">H" big-endian, "<H" little-endian
+    # u4 -> uint32
+    return LogicArray(bin(np.int8(int).view("u1"))[2:].zfill(8)).to_BinaryValue(  # type: ignore
+        bigEndian=True
+    )
+
+
 def binary_to_float32(binary: BinaryValue) -> np.float32:
     bin_str = binary.binstr  # back to big endian
     padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
     bytes_list = list(int(padded_bits, 2).to_bytes(len(padded_bits) // 8, "big"))
     # print(bin_str, padded_bits, bytes_list, bytes(bytes_list))
     dt = np.dtype(np.float32)
+    dt = dt.newbyteorder(">")
+    return np.frombuffer(bytes(bytes_list), dtype=dt, count=-1)[0]
+
+
+def binary_to_int32(binary: BinaryValue) -> np.int32:
+    bin_str = binary.binstr  # back to big endian
+    padded_bits = bin_str + "0" * ((8 - len(bin_str) % 8) if len(bin_str) % 8 else 0)
+    bytes_list = list(int(padded_bits, 2).to_bytes(len(padded_bits) // 8, "big"))
+    # print(bin_str, padded_bits, bytes_list, bytes(bytes_list))
+    dt = np.dtype(np.int32)
     dt = dt.newbyteorder(">")
     return np.frombuffer(bytes(bytes_list), dtype=dt, count=-1)[0]
 
@@ -113,9 +150,13 @@ def encoding_function(
 def decoding_2d(
     lut: np.ndarray, encoded: np.ndarray
 ) -> "typing.Tuple[np.ndarray, np.ndarray]":
-    result = np.zeros((encoded.shape[0], lut.shape[0]), dtype=np.float32)  # [N, M]
+    dtype = np.float32
+    if isinstance(lut[0, 0, 0], np.int8):
+        dtype = np.int32
+
+    result = np.zeros((encoded.shape[0], lut.shape[0]), dtype=dtype)  # [N, M]
     result_history = np.zeros(
-        (encoded.shape[0], lut.shape[0], lut.shape[1]), dtype=np.float32
+        (encoded.shape[0], lut.shape[0], lut.shape[1]), dtype=dtype
     )
     for m in range(lut.shape[0]):
         for c in range(lut.shape[1]):
