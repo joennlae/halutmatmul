@@ -16,7 +16,8 @@ WAVES = 1
 endif
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
-TOPLEVEL = halut_encoder
+TOPLEVEL_SHORT = halut_encoder
+TOPLEVEL= $$(sed -n 's|module \($(TOPLEVEL_SHORT)__[[:alnum:]_]*\)\s.*$$|\1|p' $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v 2> /dev/null | tail -1)
 
 # MODULE is the basename of the Python test file
 MODULE = test_halut_encoder
