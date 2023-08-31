@@ -37,6 +37,7 @@ $(PNR_DIR)/out/%/.done: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matm
 	python $(FLOW_HOME)/util/genReportTable.py
 	mkdir -p $(dir $@)/results
 	mkdir -p $(dir $@)/reports
+	cp $(FLOW_HOME)/metadata.json $(dir $@)/reports/metadata.json
 	cp -r $(FLOW_HOME)/reports/nangate45/$(UNIQUE_TOP)/base/* $(dir $@)/reports
 	cp $(FLOW_HOME)/reports/report-gallery-$(UNIQUE_TOP).html $(dir $@)/reports/report-gallery-$*.html
 	# sed replace the path to the report-gallery.html
