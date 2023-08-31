@@ -24,13 +24,13 @@ jobs:
           RESULT=0
           make test-scm
           RESULT=$(($RESULT + $?))
-          make test-fp-adder
+          ACC_TYPE=FP32 make test-fp-adder
           RESULT=$(($RESULT + $?))
-          make test-fp-16-to-32-convert
+          ACC_TYPE=FP32 make test-fp-16-to-32-convert
           RESULT=$(($RESULT + $?))
-          make test-fp-16-32-adder
+          ACC_TYPE=FP32 make test-fp-16-32-adder
           RESULT=$(($RESULT + $?))
-          make test-fp-16-comparision
+          ACC_TYPE=FP32 make test-fp-16-comparision
           RESULT=$(($RESULT + $?))
           make test-halut-encoder
           RESULT=$(($RESULT + $?))
@@ -39,6 +39,8 @@ jobs:
           make test-halut-encoder-4
           RESULT=$(($RESULT + $?))
           make test-halut-decoder-x
+          RESULT=$(($RESULT + $?))
+          ACC_TYPE=INT make test-mixed-int-adder
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
