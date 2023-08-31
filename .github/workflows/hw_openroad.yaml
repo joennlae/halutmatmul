@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        subunit: ["halut_encoder_4", "halut_decoder", "halut_matmul"] # "fp_16_32_adder"
+        subunit:
+          ["halut_encoder_4", "halut_decoder", "halut_matmul", "fp_16_32_adder"]
     container:
       image: ghcr.io/joennlae/halutmatmul-conda-hw:latest
     defaults:
@@ -34,7 +35,7 @@ jobs:
         run: |
           source /venv/bin/activate
           cd hardware
-          ACC_TYPE=FP32 DATA_WIDTH=8 NUM_M=4 NUM_DECODER_UNITS=2 make halut-open-synth-and-pnr-${{ matrix.subunit }}
+          ACC_TYPE=FP32 DATA_WIDTH=16 NUM_M=4 NUM_DECODER_UNITS=2 make halut-open-synth-and-pnr-${{ matrix.subunit }}
       - name: Copy & save reports
         run: |
           cd hardware/target/open-synth-and-pnr/out
