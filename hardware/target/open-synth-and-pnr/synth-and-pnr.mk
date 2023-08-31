@@ -24,7 +24,7 @@ $(PNR_DIR)/out/%/.done: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matm
 		YOSYS_CMD=yosys \
 		OPENROAD_EXE=openroad \
 		DESIGN_NAME=$$( \
-			if [ "$*" -eq "halut_matmul" ]; then \
+			if [ "$*" = "halut_matmul" ]; then \
 				echo "halut_matmul"; \
 			else \
 				sed -n 's|module \($*__[[:alnum:]_]*\)\s.*$$|\1|p' $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v 2> /dev/null | tail -1; \
