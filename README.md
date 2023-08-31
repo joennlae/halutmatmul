@@ -1,9 +1,9 @@
 # Halutmatmul
 
 ### Algorithmic CI
-[![GPU Tests (Vast.ai)](https://github.com/joennlae/halutmatmul/actions/workflows/gpu_tests.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/gpu_tests.yaml)
-[![PyTest](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml)
-[![Linting](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml)
+[![PyTorch Layer Test | PyTest](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml)
+[![Python Linting](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml)
+[![Mypy - Typechecking](https://github.com/joennlae/halutmatmul/actions/workflows/python_typing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_typing.yaml)
 
 ### Hardware CI
 
@@ -42,21 +42,6 @@ conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmat
 | -------------  |  -------------  |
 | All Report     | [All](https://github.com/joennlae/halutmatmul-openroad-reports/tree/main/latest/nangate45)  |
 | History        | [History](https://github.com/joennlae/halutmatmul-openroad-reports/tree/main/history/nangate45)  |
-
-### Total Circuit (M=2)
-| halut_matmul         |  NanGate45      |
-| -------------  |  -------------  |
-| Area [μm^2]    | 140647.7656 |
-| Freq [Mhz]     |  333.3 |
-| GE             |  176.25 kGE |
-| Std Cell [#]   |  68994 | 
-| Voltage [V]    |   1.1             |
-| Util [%]       |  59.2 | 
-| TNS            |  -0.31 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/nangate45/halut_matmul/base/final_clocks.webp)  |
-| Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/reports/report-gallery-halut_matmul.html)  |
-| Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/metrics.html)  |
-| Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/reports/report-table.html)  |
 
 
 ### Encoder
