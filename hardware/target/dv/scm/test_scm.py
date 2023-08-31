@@ -1,5 +1,6 @@
 # pylint: disable=no-value-for-parameter, protected-access
 from math import log2
+import os
 from random import getrandbits
 import numpy as np
 import cocotb
@@ -9,8 +10,9 @@ from cocotb.binary import BinaryValue
 
 from util.helper_functions import binary_to_float16, float_to_float16_binary
 
-DATA_TYPE_WIDTH = 16
-C = 32
+# be sure to get the correct scm__$hash$ from the generated file !!
+DATA_TYPE_WIDTH = int(os.environ.get("DATA_WIDTH", 16))
+C = int(os.environ.get("NUM_C", 32))
 M = 1
 K = 16
 SUB_UNIT_ADDR_WIDTH = 5

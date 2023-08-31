@@ -17,8 +17,8 @@ endif
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
 TOPLEVEL_SHORT = scm
-
-TOPLEVEL= $$(sed -n 's|module \($(TOPLEVEL_SHORT)__[[:alnum:]_]*\)\s.*$$|\1|p' $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v 2> /dev/null | tail -1)
+# head -1 because scm is instantiated in encoder and decoder we test the decoder here (first instance)
+TOPLEVEL= $$(sed -n 's|module \($(TOPLEVEL_SHORT)__[[:alnum:]_]*\)\s.*$$|\1|p' $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v 2> /dev/null | head -1)
 
 # MODULE is the basename of the Python test file
 MODULE = test_scm
