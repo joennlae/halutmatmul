@@ -64,9 +64,9 @@ jobs:
           RESULT=0
           make test-halut-matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=16 NUM_DECODER_UNITS=8 make test-halut-matmul
+          NUM_C=16 NUM_DECODER_UNITS=4 make test-halut-matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=32 NUM_DECODER_UNITS=8 make test-halut-matmul
+          NUM_C=32 NUM_DECODER_UNITS=4 make test-halut-matmul
           RESULT=$(($RESULT + $?))
           DATA_WIDTH=8 ACC_TYPE=INT make test-halut-matmul
           RESULT=$(($RESULT + $?))
