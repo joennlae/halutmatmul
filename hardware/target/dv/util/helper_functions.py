@@ -152,7 +152,7 @@ def decoding_2d(
 ) -> "typing.Tuple[np.ndarray, np.ndarray]":
     dtype = np.float32
     if isinstance(lut[0, 0, 0], np.int8):
-        dtype = np.int32
+        dtype = np.int32  # type: ignore
 
     result = np.zeros((encoded.shape[0], lut.shape[0]), dtype=dtype)  # [N, M]
     result_history = np.zeros(
