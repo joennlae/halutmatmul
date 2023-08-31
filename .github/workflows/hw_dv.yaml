@@ -66,6 +66,8 @@ jobs:
           RESULT=$(($RESULT + $?))
           NUM_C=32 NUM_DECODER_UNITS=8 make test-halut-matmul
           RESULT=$(($RESULT + $?))
+          NUM_C=32 NUM_DECODER_UNITS=8 ACC_TYPE=INT make test-halut-matmul
+          RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
           exit $RESULT
