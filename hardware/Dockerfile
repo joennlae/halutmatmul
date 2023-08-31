@@ -68,7 +68,7 @@ RUN mkdir -p /tools/svase && chmod 777 /tools/svase && \
     cd svase && git checkout ${SVASE_VERSION} && \
     make all
 
-ENV PATH="${PATH}:/tools/svase/build"
+ENV PATH="${PATH}:/tools/svase/svase/build"
 
 # morty from master via cargo
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
