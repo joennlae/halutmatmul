@@ -23,12 +23,7 @@ $(test-targets): test-%: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_mat
     PYTHONPATH=$(HALUT_ROOT)/target/dv/ ACC_TYPE=$(ACC_TYPE) DATA_WIDTH=$(DATA_WIDTH) NUM_C=$(NUM_C) \
 		NUM_M=$(NUM_M) NUM_DECODER_UNITS=$(NUM_DECODER_UNITS)
 
-test-halut-matmul-int: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v
-	make -C $(HALUT_ROOT)/target/dv/halut-matmul/ SIM=icarus HALUT_ROOT=$(HALUT_ROOT) \
-		PYTHONPATH=$(HALUT_ROOT)/target/dv/ ACC_TYPE=$(ACC_TYPE) DATA_WIDTH=$(DATA_WIDTH) NUM_C=$(NUM_C) \
-		NUM_M=$(NUM_M) NUM_DECODER_UNITS=$(NUM_DECODER_UNITS)
-
-test-all: $(test-targets) test-halut-matmul-int
+test-all: $(test-targets)
 
 $(test-targets-questa): test-questa-%: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v
 	make -C $(HALUT_ROOT)/target/dv/$*/ SIM=questa HALUT_ROOT=$(HALUT_ROOT) \
