@@ -40,7 +40,7 @@ jobs:
           RESULT=$(($RESULT + $?))
           make test-halut-decoder-x
           RESULT=$(($RESULT + $?))
-          ACC_TYPE=INT make test-mixed-int-adder
+          ACC_TYPE=INT DATA_WIDTH=8 make test-mixed-int-adder
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
@@ -68,7 +68,7 @@ jobs:
           RESULT=$(($RESULT + $?))
           NUM_C=32 NUM_DECODER_UNITS=8 make test-halut-matmul
           RESULT=$(($RESULT + $?))
-          NUM_C=32 NUM_DECODER_UNITS=8 ACC_TYPE=INT make test-halut-matmul
+          DATA_WIDTH=8 ACC_TYPE=INT make test-halut-matmul
           RESULT=$(($RESULT + $?))
 
           echo "Exit Code: $RESULT"
