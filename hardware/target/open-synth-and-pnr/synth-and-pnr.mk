@@ -23,7 +23,12 @@ $(PNR_DIR)/out/%/.done: $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matm
 		SHELL=/bin/bash \
 		YOSYS_CMD=yosys \
 		OPENROAD_EXE=openroad \
-		DESIGN_NAME=$*
+		DESIGN_NAME=$$( \
+			if [[ "$*" == "halut_matmul" ]]; then \
+				echo "halut_matmul"; \
+			else \
+				sed -n 's|module \($*__[[:alnum:]_]*\)\s.*$$|\1|p' $(HALUT_ROOT)/target/open-frontend/pickle/out/halut_matmul.sv2v.v 2> /dev/null | tail -1; \
+			fi)
 	python $(FLOW_HOME)/util/genMetrics.py --design $*
 	python $(FLOW_HOME)/util/genReport.py -vvvv
 	python $(FLOW_HOME)/util/genReportTable.py
