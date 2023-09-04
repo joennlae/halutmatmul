@@ -36,7 +36,9 @@ conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmat
 
 * [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
 
-## Hardware OpenROAD flow results
+## Hardware OpenROAD flow results from CI
+
+All NanGate45 results are not optimized! The results are only for reference and to show the flow works.
 
 | All Designs    |  NanGate45      |
 | -------------  |  -------------  |
@@ -44,37 +46,48 @@ conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmat
 | History        | [History](https://github.com/joennlae/halutmatmul-openroad-reports/tree/main/history/nangate45)  |
 
 
+### Full design (halutmatmul)
+
+Run locally with:
+```bash
+git submodule update --init --recursive
+cd hardware
+ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-synth-and-pnr-halut_matmul
+```
+
+### Halutmatmul
+
+TODO: add path to result + GDS link
+
 ### Encoder
 | halut_encoder_4         |  NanGate45      |
 | -------------  |  -------------  |
-| Area [μm^2]    | 69711.9531 |
-| Freq [Mhz]     |  333.3 |
-| GE             |  87.358 kGE |
-| Std Cell [#]   |  33746 | 
+| Area [μm^2]    | 46782 |
+| Freq [Mhz]     |  166.7 |
+| GE             |  58.624 kGE |
+| Std Cell [#]   |  23130 | 
 | Voltage [V]    |   1.1             |
-| Util [%]       |  58.7 | 
-| TNS            |  0.0 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/nangate45/halut_encoder_4/base/final_clocks.webp)  |
-| Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_encoder_4/reports/report-gallery-halut_encoder_4.html)  |
-| Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_encoder_4/metrics.html)  |
+| Util [%]       |  48.7 | 
+| TNS            |  0 |
+| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_clocks.webp)  |
+| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_routing.webp)  |
 | Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_encoder_4/reports/report-table.html)  |
+| GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/results/6_final.gds)  |
 
 
 ### Decoder
 | halut_decoder         |  NanGate45      |
 | -------------  |  -------------  |
-| Area [μm^2]    | 68923.7891 |
-| Freq [Mhz]     |  333.3 |
-| GE             |  86.37 kGE |
-| Std Cell [#]   |  34395 | 
+| Area [μm^2]    | 24667.5 |
+| Freq [Mhz]     |  166.7 |
+| GE             |  30.911 kGE |
+| Std Cell [#]   |  12256 | 
 | Voltage [V]    |   1.1             |
-| Util [%]       |  58.9 | 
-| TNS            |  -0.66 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/nangate45/halut_decoder/base/final_clocks.webp)  |
-| Gallery        | [Gallery Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/reports/report-gallery-halut_decoder.html)  |
-| Metrics        | [Metrics Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/metrics.html)  |
+| Util [%]       |  52.1 | 
+| TNS            |  0 |
+| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp)  |
+| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp)  |
 | Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/reports/report-table.html)  |
-
-### Links
+| GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |### Links
 
 * [Addendum](docs/addendum.md)
