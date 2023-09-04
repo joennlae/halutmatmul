@@ -10,8 +10,8 @@ base_raw_url = (
     "https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/"
 )
 
-units = ["halut_encoder_4", "halut_decoder"]
-titles = ["Encoder", "Decoder"]
+units = ["halut_matmul", "halut_encoder_4", "halut_decoder"]
+titles = ["Full Design", "Encoder", "Decoder"]
 
 
 def clone_git_repo(repo_url: str, clone_dir: str, rev: str = "main") -> str:
