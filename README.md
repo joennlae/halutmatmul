@@ -55,9 +55,21 @@ cd hardware
 ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-synth-and-pnr-halut_matmul
 ```
 
-### Halutmatmul
+### Full Design
+| halut_matmul         |  NanGate45      |
+| -------------  |  -------------  |
+| Area [μm^2]    | 128816 |
+| Freq [Mhz]     |  166.7 |
+| GE             |  161.423 kGE |
+| Std Cell [#]   |  65496 | 
+| Voltage [V]    |   1.1             |
+| Util [%]       |  50.4 | 
+| TNS            |  0 |
+| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_clocks.webp)  |
+| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_routing.webp)  |
+| Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_matmul/reports/report-table.html)  |
+| GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/results/6_final.gds)  |
 
-TODO: add path to result + GDS link
 
 ### Encoder
 | halut_encoder_4         |  NanGate45      |
@@ -88,6 +100,8 @@ TODO: add path to result + GDS link
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp)  |
 | Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp)  |
 | Report         | [Report Viewer](https://htmlpreview.github.io/?https://github.com/joennlae/halutmatmul-openroad-reports/blob/main/latest/nangate45/halut_decoder/reports/report-table.html)  |
-| GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |### Links
+| GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |
+
+### Links
 
 * [Addendum](docs/addendum.md)
