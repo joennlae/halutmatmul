@@ -110,7 +110,6 @@ with tempfile.TemporaryDirectory() as tmpdirname:
 | TNS            |  {tns_nangate45} |
 | Clock Net      | ![Clock_net]({base_raw_url}main/latest/nangate45/{unit}/reports/final_clocks.webp)  |
 | Routing        | ![Routing]({base_raw_url}main/latest/nangate45/{unit}/reports/final_routing.webp)  |
-| Report         | [Report Viewer]({total_preview_url}blob/main/latest/nangate45/{unit}/reports/report-table.html)  |
 | GDS            | [GDS Download]({base_raw_url}main/latest/nangate45/{unit}/results/6_final.gds)  |
 
 """
