@@ -10,8 +10,8 @@ base_raw_url = (
     "https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/"
 )
 
-units = ["halut_matmul", "halut_encoder_4", "halut_decoder"]
-titles = ["Total Circuit (M=2)", "Encoder", "Decoder"]
+units = ["halut_encoder_4", "halut_decoder"]
+titles = ["Encoder", "Decoder"]
 
 
 def clone_git_repo(repo_url: str, clone_dir: str, rev: str = "main") -> str:
@@ -74,17 +74,13 @@ with tempfile.TemporaryDirectory() as tmpdirname:
         #     std_cells_count_asap7 = data[0]["finish__design__instance__count__stdcell"]
         #     utilization_asap7 = data[0]["finish__design__instance__utilization"]
 
-        with open(f"{tmpdirname}/latest/nangate45/{unit}/metrics.json") as f:
+        with open(f"{tmpdirname}/latest/nangate45/{unit}/reports/metadata.json") as f:
             data = json.load(f)
-            area_nangate45 = data[0]["finish__design__instance__area"]
-            tns_nangate45 = data[0]["finish__timing__setup__tns"]
-            clk_period_nangate45 = data[0]["constraints__clocks__details"][0].split(
-                " "
-            )[1]
-            std_cells_count_nangate45 = data[0][
-                "finish__design__instance__count__stdcell"
-            ]
-            utilization_nangate45 = data[0]["finish__design__instance__utilization"]
+            area_nangate45 = data["finish__design__instance__area"]
+            tns_nangate45 = data["finish__timing__setup__tns"]
+            clk_period_nangate45 = data["constraints__clocks__details"][0].split(" ")[1]
+            std_cells_count_nangate45 = data["finish__design__instance__count__stdcell"]
+            utilization_nangate45 = data["finish__design__instance__utilization"]
 
         # freq_asap7 = 1.0 / (float(clk_period_asap7) * (1e-6))
         freq_nangate45 = 1.0 / (float(clk_period_nangate45) * (1e-3))
@@ -112,10 +108,10 @@ with tempfile.TemporaryDirectory() as tmpdirname:
 | Voltage [V]    |   1.1             |
 | Util [%]       |  {util_nangate45:.1f} | 
 | TNS            |  {tns_nangate45} |
-| Clock Net      | ![Clock_net]({base_raw_url}main/latest/nangate45/{unit}/reports/nangate45/{unit}/base/final_clocks.webp)  |
-| Gallery        | [Gallery Viewer]({total_preview_url}blob/main/latest/nangate45/{unit}/reports/report-gallery-{unit}.html)  |
-| Metrics        | [Metrics Viewer]({total_preview_url}blob/main/latest/nangate45/{unit}/metrics.html)  |
+| Clock Net      | ![Clock_net]({base_raw_url}main/latest/nangate45/{unit}/reports/final_clocks.webp)  |
+| Routing        | ![Routing]({base_raw_url}main/latest/nangate45/{unit}/reports/final_routing.webp)  |
 | Report         | [Report Viewer]({total_preview_url}blob/main/latest/nangate45/{unit}/reports/report-table.html)  |
+| GDS            | [GDS Download]({base_raw_url}main/latest/nangate45/{unit}/results/6_final.gds)  |
 
 """
         resulting_string += current_table
