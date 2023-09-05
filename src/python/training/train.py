@@ -26,9 +26,12 @@ from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
 from models.resnet_georg import ResNet
+from models.resnet9 import ResNet9
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 SCRATCH_BASE = "/scratch/janniss"
+
+activator = 0  # TODO remove
 
 
 def train_one_epoch(
@@ -399,6 +402,8 @@ def main(args, gradient_accumulation_steps=1):
             model = resnet20()
         elif args.model == "resnet20_georg":
             model = ResNet("ResNet20")
+        elif args.model == "resnet9":
+            model = ResNet9(3, num_classes)
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         # state_dict_copy = model.state_dict().copy()
@@ -426,6 +431,7 @@ def main(args, gradient_accumulation_steps=1):
         "other": [],
         "prototypes": [],
         "temperature": [],
+        "lut": [],
     }
 
     def _add_params(module, prefix=""):
@@ -440,6 +446,9 @@ def main(args, gradient_accumulation_steps=1):
                 if name == "temperature":
                     params["temperature"].append(p)
                     continue
+                if name == "lut":
+                    params["lut"].append(p)
+                    continue
             # if prefix in ("conv1", "linear"):
             #     continue
             print("add to other", prefix, name)
@@ -450,8 +459,10 @@ def main(args, gradient_accumulation_steps=1):
             _add_params(child_module, prefix=child_prefix)
 
     _add_params(model)
+    params["prototypes"] = params["lut"][:-1]
+    params["lut"] = params["lut"][-1]
 
-    custom_lrs = {"temperature": 0.1, "prototypes": 0.005}
+    custom_lrs = {"other": args.lr, "temperature": 0.1, "prototypes": 0.005, "lut": 0.1}
     param_groups = []
     # pylint: disable=consider-using-dict-items
     for key in params:
@@ -462,6 +473,7 @@ def main(args, gradient_accumulation_steps=1):
             else:
                 param_groups.append({"params": params[key]})
 
+    print("Param groups", len(param_groups))
     opt_name = args.opt.lower()
     if opt_name.startswith("sgd"):
         optimizer = torch.optim.SGD(
@@ -643,31 +655,31 @@ def main(args, gradient_accumulation_steps=1):
         writer.add_scalar("test/acc5", acc5, epoch)
         writer.add_scalar("test/loss", loss, epoch)
         # calc temperature
-        all_temps = []
+        # all_temps = []
 
-        def _get_temps(module, prefix=""):
-            for name, p in module.named_parameters(recurse=False):
-                if isinstance(module, (HalutConv2d, HalutLinear)):
-                    if name == "temperature":
-                        # pylint: disable=cell-var-from-loop
-                        all_temps.append(p)
-                        continue
+        # def _get_temps(module, prefix=""):
+        #     for name, p in module.named_parameters(recurse=False):
+        #         if isinstance(module, (HalutConv2d, HalutLinear)):
+        #             if name == "temperature":
+        #                 # pylint: disable=cell-var-from-loop
+        #                 all_temps.append(p)
+        #                 continue
 
-            for child_name, child_module in module.named_children():
-                child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
-                _get_temps(child_module, prefix=child_prefix)
+        #     for child_name, child_module in module.named_children():
+        #         child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+        #         _get_temps(child_module, prefix=child_prefix)
 
-        _get_temps(model)
-        del _get_temps
-        print("all_temps", all_temps)
-        avg = 0.0
-        length = 0
-        for temp in all_temps:
-            avg += temp.item()
-            length += 1
+        # _get_temps(model)
+        # del _get_temps
+        # print("all_temps", all_temps)
+        # avg = 0.0
+        # length = 0
+        # for temp in all_temps:
+        #     avg += temp.item()
+        #     length += 1
 
-        avg_temp = avg / length
-        writer.add_scalar("train/temp", avg_temp, epoch)
+        # avg_temp = avg / length
+        # writer.add_scalar("train/temp", avg_temp, epoch)
 
         writer.flush()
         if model_ema:
@@ -753,7 +765,7 @@ def get_args_parser(add_help=True):
     parser.add_argument(
         "-b",
         "--batch-size",
-        default=64,
+        default=128,
         type=int,
         help="images per gpu, the total batch size is $NGPU x batch_size",
     )

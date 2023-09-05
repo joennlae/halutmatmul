@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 import torch.distributed as dist
 from torch.distributed.elastic.multiprocessing.errors import record
+from torch.nn.parameter import Parameter
 import torchvision
 
 from training.timm_model import convert_to_halut
@@ -18,6 +19,7 @@ from training.utils_train import save_on_master, set_weight_decay  # type: ignor
 from training.train import load_data, main  # type: ignore[attr-defined]
 from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
 from models.resnet import resnet18
+from models.resnet9 import ResNet9
 from models.resnet20 import resnet20
 from models.resnet_georg import ResNet
 from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
@@ -71,6 +73,8 @@ def load_model(
             model = resnet20()
         elif args.model == "resnet20_georg":
             model = ResNet("ResNet20")  # type: ignore
+        elif args.model == "resnet9":
+            model = ResNet9(3, num_classes)  # type: ignore
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -170,13 +174,24 @@ def run_retraining(
         next_layer_idx = len(halut_modules.keys())
     # C = int(args.C)
     K = 16
-    use_prototype = True
+    use_prototype = False
 
     # add all at once
-    max = len(layers) - 1
+    # max = len(layers) - 1
+    max = len(layers)
     for i in range(next_layer_idx, max):
+        print("next_layer_idx", next_layer_idx, i, max)
+        print("editable_keys", halut_model.editable_keys)
         if not test_only:
             next_layer = layers[i]
+            if next_layer not in halut_model.editable_keys:
+                print("not in editable keys", next_layer)
+                if "gause" in next_layer or "quant" in next_layer:
+                    module_ref = get_module_by_name(halut_model.model, next_layer)
+                    module_ref.active = Parameter(
+                        torch.zeros(1, dtype=torch.bool), requires_grad=False
+                    )
+                continue
             c_base = 16
             loop_order = "im2col"
             c_ = c_base
@@ -221,6 +236,7 @@ def run_retraining(
                     C=v[HalutModuleConfig.C],  # type: ignore
                     K=v[HalutModuleConfig.K],  # type: ignore
                 )
+        break  # only add layer by layer
     if args.distributed:
         dist.barrier()
     halut_model.run_inference()
@@ -240,6 +256,7 @@ def run_retraining(
             "other": [],
             "prototypes": [],
             "temperature": [],
+            "lut": [],
         }
 
         def _add_params(module, prefix=""):
@@ -254,6 +271,9 @@ def run_retraining(
                     if name == "temperature":
                         params["temperature"].append(p)
                         continue
+                    if name == "lut":
+                        params["lut"].append(p)
+                        continue
                 # if prefix in ("conv1", "linear"):
                 #     continue
                 print("add to other", prefix, name)
@@ -264,8 +284,14 @@ def run_retraining(
                 _add_params(child_module, prefix=child_prefix)
 
         _add_params(model)
-
-        custom_lrs = {"temperature": 0.1, "prototypes": 0.002, "other": 0.001}
+        params["prototypes"] = params["lut"][:-1]
+        params["lut"] = params["lut"][-1]
+        custom_lrs = {
+            "temperature": 0.1,
+            "prototypes": 0.01,
+            "lut": 0.01,
+            "other": 0.01,
+        }
         param_groups = []
         # pylint: disable=consider-using-dict-items
         for key in params:
@@ -276,9 +302,10 @@ def run_retraining(
                 else:
                     param_groups.append({"params": params[key]})
 
+        print("param_groups", len(param_groups))
         weight_decay = 0.0
         opt_name = "adam"
-        lr_scheduler_name = "cosineannealinglr"
+        lr_scheduler_name = "plateau"  # "cosineannealinglr"
         args_checkpoint.lr_scheduler = lr_scheduler_name
         args_checkpoint.opt = opt_name
         # opt_name = args_checkpoint.opt.lower()
@@ -305,13 +332,15 @@ def run_retraining(
         # TODO: make learning rate more adaptive
         # imagenet 0.001, cifar10 0.01
 
-        # TODO LR scheduler
         # checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
         # args_checkpoint.lr_scheduler = "steplr"
 
         # if args_checkpoint.cifar10:
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=train_epochs
+        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        #     optimizer, T_max=train_epochs
+        # )
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.2, patience=6, verbose=True
         )
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(
         #     optimizer, step_size=lr_step_size, gamma=0.1
@@ -474,27 +503,33 @@ def model_analysis(args: Any) -> None:
 
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
-    MODEL_NAME_EXTENSION = "cifar10-halut-resnet20"
-    TRAIN_EPOCHS = 400  # imagenet 2, cifar10 max 40 as we use plateaulr
-    BATCH_SIZE = 64
-    LR = 0.001  # imagenet 0.001, cifar10 0.01
+    MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
+    TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
+    BATCH_SIZE = 128
+    LR = 0.02  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
-    GRADIENT_ACCUMULATION_STEPS = 4
+    GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
         "cuda_id", metavar="N", type=int, help="id of cuda_card", default=0
     )
     parser.add_argument(
+        "-testname",
+        type=str,
+        help="test name",
+        default=None,
+    )
+    parser.add_argument(
         "-halutdata",
         type=str,
         help="halut data path",
-        default=DEFAULT_FOLDER + f"/halut/resnet18-{MODEL_NAME_EXTENSION}",
+        default=DEFAULT_FOLDER + f"/halut/resnet9-{MODEL_NAME_EXTENSION}",
     )
     parser.add_argument(
         "-learned",
         type=str,
         help="halut learned path",
-        default=DEFAULT_FOLDER + f"/halut/resnet18-{MODEL_NAME_EXTENSION}/learned",
+        default=DEFAULT_FOLDER + f"/halut/resnet9-{MODEL_NAME_EXTENSION}/learned",
     )
     parser.add_argument("-C", type=int, help="C", default=64)
     parser.add_argument("-modelname", type=str, help="model name", default="resnet18")
@@ -502,7 +537,7 @@ if __name__ == "__main__":
         "-resultpath",
         type=str,
         help="result_path",
-        default=f"./results/data/resnet18-{MODEL_NAME_EXTENSION}/",
+        default=f"./results/data/resnet9-{MODEL_NAME_EXTENSION}/",
     )
     parser.add_argument(
         "-checkpoint",
@@ -536,6 +571,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    print(args)
+
+    if args.testname is not None:
+        args.resultpath = f"./results/data/{args.testname}/"
+        args.halutdata = DEFAULT_FOLDER + f"/halut/{args.testname}/"
+        args.learned = DEFAULT_FOLDER + f"/halut/{args.testname}/learned/"
+
     if args.analysis:
         print(
             args.checkpoint,
@@ -567,6 +609,7 @@ if __name__ == "__main__":
             batch_size=BATCH_SIZE,
             lr=LR,
             lr_step_size=LR_STEP_SIZE,
+            train_epochs=TRAIN_EPOCHS,
         )
         torch.cuda.set_device(args.gpu)
         # carry over rank, world_size, gpu backend
@@ -611,6 +654,7 @@ if __name__ == "__main__":
             batch_size=BATCH_SIZE,
             lr=LR,
             lr_step_size=LR_STEP_SIZE,
+            train_epochs=TRAIN_EPOCHS,
         )
         torch.cuda.empty_cache()
         if args.distributed:
@@ -622,6 +666,7 @@ if __name__ == "__main__":
                 batch_size=BATCH_SIZE,
                 lr=LR,
                 lr_step_size=LR_STEP_SIZE,
+                train_epochs=TRAIN_EPOCHS,
             )  # do not overwrite args_checkpoint
         torch.cuda.empty_cache()
         if not args.single:

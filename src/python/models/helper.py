@@ -15,7 +15,7 @@ import halutmatmul.halutmatmul as hm
 
 T_co = TypeVar("T_co", covariant=True)
 
-MAX_ROWS_FOR_SUBSAMPLING = 1024 * 128 * 8
+MAX_ROWS_FOR_SUBSAMPLING = 1024 * 128 * 1
 RUN_ALL_SUBSAMPLING = 4419 * 4419
 
 
