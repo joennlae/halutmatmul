@@ -878,15 +878,15 @@ class HalutConv2d(_ConvNd):
                     self.errors.append((_input.shape[0], res_error))  # type: ignore
             return output
         else:
-            if self.dims.shape[0] > 1:
-                unfolded = self.transform_input(_input)
-                # use inverted selection of dims to set values of unfolded to zero
-                unfolded_new = torch.zeros_like(unfolded)
-                unfolded_new[:, self.dims] = unfolded[:, self.dims]
-                self.check_store_offline(_input, unfolded_new)
-                out_unf = unfolded_new.matmul(self.transform_weight(self.weight))
-                output = self.transform_output(out_unf, _input)
-                return output
+            # if self.dims.shape[0] > 1:
+            #     unfolded = self.transform_input(_input)
+            #     # use inverted selection of dims to set values of unfolded to zero
+            #     unfolded_new = torch.zeros_like(unfolded)
+            #     unfolded_new[:, self.dims] = unfolded[:, self.dims]
+            #     self.check_store_offline(_input, unfolded_new)
+            #     out_unf = unfolded_new.matmul(self.transform_weight(self.weight))
+            #     output = self.transform_output(out_unf, _input)
+            #     return output
             self.check_store_offline(_input)
 
             if self.padding_mode != "zeros":

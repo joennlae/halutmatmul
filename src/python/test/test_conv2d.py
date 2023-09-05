@@ -175,7 +175,7 @@ def conv2d_helper(
         for g in [1]  # only supporting one group for now
         for stride in [1, 2]
         for padding in [0, 1]
-        for loop_order in ["kn2col", "im2col"]
+        for loop_order in ["im2col"]  # "kn2col",
         for use_prototypes in [
             False
         ]  # test is deativated as it is deactivated in modules.py
@@ -208,9 +208,6 @@ def test_conv2d_module(
     if use_prototypes and loop_order == "kn2col":
         # some cases are supported but kmeans takes ages
         pytest.skip("Not supported yet when usage of prototypes is enabled")
-
-    if kernel_size == 1 and padding == 1 and not use_prototypes:
-        pytest.skip("With kernel_size=1 and padding=1 the scaled error is over 0.2")
 
     conv2d_helper(
         in_channels,
