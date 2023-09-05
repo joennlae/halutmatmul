@@ -305,7 +305,7 @@ class HalutLinear(Linear):
                     requires_grad=False,
                 )
             if len(self.DT.shape) > 1:
-                self.use_decision_tree = True
+                self.use_decision_tree = False
             self.P = Parameter(
                 state_dict[prefix + "P"]
                 .clone()
@@ -314,7 +314,7 @@ class HalutLinear(Linear):
                 requires_grad=True,
             )
             if len(self.P.shape) > 1:
-                self.use_prototypes = True
+                self.use_prototypes = False
             if not self.use_prototypes and not self.use_decision_tree:
                 state_dict[prefix + "B"] = create_bit_matrix(
                     self.lut.size(1), self.lut.size(2), self.weight.dtype
@@ -505,6 +505,21 @@ class HalutConv2d(_ConvNd):
         self.lut = Parameter(torch.zeros(1), requires_grad=False)
         self.thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.dims = Parameter(torch.zeros(1), requires_grad=False)
+        # pre select dims
+        # if kernel_size == 3 and False:
+        #     self.dims = Parameter(
+        #         torch.zeros(in_channels * 4, dtype=torch.int64), requires_grad=False
+        #     )
+        #     for i in range(in_channels):
+        #         # random select idx out of list with no duplicates
+        #         # ensure no duplicates
+        #         channel_dims = torch.tensor(
+        #             np.random.choice(
+        #                 [0, 1, 2, 3, 4, 5, 6, 7, 8], size=4, replace=False
+        #             ),
+        #             dtype=torch.int64,
+        #         )
+        #         self.dims[i * 4 : (i + 1) * 4] = channel_dims + i * 9
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
@@ -560,7 +575,7 @@ class HalutConv2d(_ConvNd):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"]
@@ -584,7 +599,7 @@ class HalutConv2d(_ConvNd):
                 requires_grad=True,
             )
             if len(self.P.shape) > 1:
-                self.use_prototypes = True
+                self.use_prototypes = False
             if prefix + "DT" in state_dict.keys():
                 self.DT = Parameter(
                     state_dict[prefix + "DT"]
@@ -594,7 +609,7 @@ class HalutConv2d(_ConvNd):
                     requires_grad=False,
                 )
             if len(self.DT.shape) > 1:
-                self.use_decision_tree = True
+                self.use_decision_tree = False
             self.weight.requires_grad = False
             if len(self.lut.shape) > 3:
                 self.loop_order = "kn2col"
@@ -638,9 +653,15 @@ class HalutConv2d(_ConvNd):
         errors /= total_input_images
         return errors
 
-    def check_store_offline(self, _input: Tensor) -> None:
+    def check_store_offline(
+        self, _input: Tensor, transformed_input: Optional[Tensor] = None
+    ) -> None:
         if self.store_input[0]:
-            input_a = self.transform_input(_input)
+            input_a = (
+                self.transform_input(_input)
+                if transformed_input is None
+                else transformed_input
+            )
             input_b = self.transform_weight(self.weight)
             print(
                 "storing input in ram ",
@@ -857,7 +878,17 @@ class HalutConv2d(_ConvNd):
                     self.errors.append((_input.shape[0], res_error))  # type: ignore
             return output
         else:
+            if self.dims.shape[0] > 1:
+                unfolded = self.transform_input(_input)
+                # use inverted selection of dims to set values of unfolded to zero
+                unfolded_new = torch.zeros_like(unfolded)
+                unfolded_new[:, self.dims] = unfolded[:, self.dims]
+                self.check_store_offline(_input, unfolded_new)
+                out_unf = unfolded_new.matmul(self.transform_weight(self.weight))
+                output = self.transform_output(out_unf, _input)
+                return output
             self.check_store_offline(_input)
+
             if self.padding_mode != "zeros":
                 return F.conv2d(
                     F.pad(
