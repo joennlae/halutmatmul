@@ -382,6 +382,30 @@ resnet20_b_layers = [
     "linear",
 ]
 
+resnet9_layers = [
+    # "conv1.0",
+    # "gause1",
+    # "quant1",
+    "conv2.0",
+    # "gause2",
+    # "quant2",
+    "res1.0.0",
+    "res1.1.0",
+    # "gause3",
+    # "quant3",
+    "conv3.0",
+    # "gause4",
+    # "quant4",
+    "conv4.0",
+    # "gause5",
+    # "quant5",
+    "res2.0.0",
+    "res2.1.0",
+    # "gause6",
+    # "quant5",
+    # "classifier.3",
+]
+
 """
 layer1.0.conv1   torch.Size([64, 64, 3, 3])
 layer1.0.conv2   torch.Size([64, 64, 3, 3])
@@ -406,6 +430,7 @@ fc   torch.Size([1000, 512])
 """
 
 
+# pylint: disable=too-many-return-statements
 def get_layers(name: available_models) -> list[str]:
     if name == "resnet-50":
         return layers_interesting
@@ -417,6 +442,8 @@ def get_layers(name: available_models) -> list[str]:
         return resnet18_layers
     elif name == "resnet20":
         return resnet20_layers
+    elif name == "resnet9":
+        return resnet9_layers
     else:
         return Exception("Model name not supported: ", name)  # type: ignore
 
