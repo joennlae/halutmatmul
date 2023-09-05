@@ -176,7 +176,9 @@ def conv2d_helper(
         for stride in [1, 2]
         for padding in [0, 1]
         for loop_order in ["kn2col", "im2col"]
-        for use_prototypes in [True, False]
+        for use_prototypes in [
+            False
+        ]  # test is deativated as it is deactivated in modules.py
     ],
 )
 def test_conv2d_module(
