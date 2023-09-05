@@ -111,7 +111,9 @@ def linear_helper(
         for b in [0.0]
         for bias in [True, False]
         for batch_size in [1, 8]
-        for use_prototypes in [True, False]
+        for use_prototypes in [
+            False
+        ]  # test is deactivated as it is deactivated in modules.py
     ],
 )
 def test_linear_module(
