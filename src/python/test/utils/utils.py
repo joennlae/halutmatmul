@@ -33,7 +33,6 @@ def helper_test_module(
     rel_error: float = 0.2,
     scaled_error_max: float = 0.2,
 ) -> None:
-
     out = torch_module(ts_input)
     ret = halutmatmul_module(ts_input)
 
@@ -51,7 +50,7 @@ def helper_test_module(
     state_dict = halutmatmul_module.state_dict()
     shapes_normal = []
     for k, v in state_dict.items():
-        if k in (["lut", "thresholds", "bias"]):
+        if k in (["lut", "bias"]):  # "thresholds" currently deactivated
             shapes_normal.append(v.shape)
     print("all shapes:", len(all_shapes), "normal", len(shapes_normal))
 
