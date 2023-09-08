@@ -5,9 +5,15 @@ from torch.nn.parameter import Parameter
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 
-def conv_block(in_channels, out_channels, pool=False):
+def conv_block(in_channels, out_channels, pool=False, halut_active=False):
     layers = [
-        HalutConv2d(in_channels, out_channels, kernel_size=3, padding=1),
+        HalutConv2d(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            padding=1,
+            halut_active=halut_active,
+        ),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
     ]
@@ -19,6 +25,9 @@ def conv_block(in_channels, out_channels, pool=False):
 def _weights_init(m):
     if isinstance(m, (HalutLinear, HalutConv2d)):
         init.kaiming_normal_(m.weight)
+    if isinstance(m, HalutConv2d) and m.halut_active:
+        init.kaiming_normal_(m.lut)
+        init.normal_(m.thresholds)
 
 
 class GaussianNoise(nn.Module):
@@ -82,20 +91,26 @@ class ResNet9(nn.Module):
         self.conv1 = conv_block(in_channels, 64)
         # self.gause1 = GaussianNoise()
         # self.quant1 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv2 = conv_block(64, 128, pool=True)
+        self.conv2 = conv_block(64, 128, pool=True, halut_active=False)
         # self.gause2 = GaussianNoise()
         # self.quant2 = SimulateQuantError(bitwidth=bitwidth)
-        self.res1 = nn.Sequential(conv_block(128, 128), conv_block(128, 128))
+        self.res1 = nn.Sequential(
+            conv_block(128, 128, halut_active=False),
+            conv_block(128, 128, halut_active=False),
+        )
         # self.gause3 = GaussianNoise()
         # self.quant3 = SimulateQuantError(bitwidth=bitwidth)
 
-        self.conv3 = conv_block(128, 256, pool=True)
+        self.conv3 = conv_block(128, 256, pool=True, halut_active=False)
         # self.gause4 = GaussianNoise()
         # self.quant4 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv4 = conv_block(256, 256, pool=True)
+        self.conv4 = conv_block(256, 256, pool=True, halut_active=False)
         # self.gause5 = GaussianNoise()
         # self.quant5 = SimulateQuantError(bitwidth=bitwidth)
-        self.res2 = nn.Sequential(conv_block(256, 256), conv_block(256, 256))
+        self.res2 = nn.Sequential(
+            conv_block(256, 256, halut_active=False),
+            conv_block(256, 256, halut_active=False),
+        )
         # self.gause6 = GaussianNoise()
         # self.quant6 = SimulateQuantError(bitwidth=bitwidth)
 
