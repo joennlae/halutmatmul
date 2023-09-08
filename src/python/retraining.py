@@ -115,7 +115,7 @@ def run_retraining(
     lr_step_size: int = 8,
     # pylint: disable=unused-argument
     train_epochs: int = 20,
-) -> tuple[Any, int, int]:
+) -> tuple[Any, int, int, int]:
     (
         model_name,
         model,
@@ -179,6 +179,15 @@ def run_retraining(
     # add all at once
     # max = len(layers) - 1
     max = len(layers)
+    if next_layer_idx == 0:
+        max = 1
+    elif next_layer_idx == 1:
+        max = 4  # add residual + next conv layer together
+    else:
+        max = next_layer_idx + 1
+    # max = len(layers)
+    max = next_layer_idx + 1
+    print("next input", next_layer_idx, max)
     for i in range(next_layer_idx, max):
         print("next_layer_idx", next_layer_idx, i, max)
         print("editable_keys", halut_model.editable_keys)
@@ -236,7 +245,6 @@ def run_retraining(
                     C=v[HalutModuleConfig.C],  # type: ignore
                     K=v[HalutModuleConfig.K],  # type: ignore
                 )
-        break  # only add layer by layer
     if args.distributed:
         dist.barrier()
     halut_model.run_inference()
@@ -254,7 +262,7 @@ def run_retraining(
 
         params = {  # type: ignore
             "other": [],
-            "prototypes": [],
+            "thresholds": [],
             "temperature": [],
             "lut": [],
         }
@@ -265,11 +273,11 @@ def run_retraining(
                     # filter(lambda p: p.requires_grad, model.parameters())
                     continue
                 if isinstance(module, (HalutConv2d, HalutLinear)):
-                    if name == "P":
-                        params["prototypes"].append(p)
+                    if name == "thresholds":
+                        # params["thresholds"].append(p)
                         continue
                     if name == "temperature":
-                        params["temperature"].append(p)
+                        # params["temperature"].append(p)
                         continue
                     if name == "lut":
                         params["lut"].append(p)
@@ -284,14 +292,19 @@ def run_retraining(
                 _add_params(child_module, prefix=child_prefix)
 
         _add_params(model)
-        params["prototypes"] = params["lut"][:-1]
-        params["lut"] = params["lut"][-1]
+        params["old_lut"] = params["lut"][:-1]
+        params["lut"] = params["lut"][-1:]
+        params["old_thresholds"] = params["thresholds"][:-1]
+        params["thresholds"] = params["thresholds"][-1:]
         custom_lrs = {
-            "temperature": 0.1,
-            "prototypes": 0.01,
-            "lut": 0.01,
-            "other": 0.01,
+            "temperature": 0.1 * 0.0,
+            "thresholds": lr / 4 * 0.0,
+            "old_thresholds": lr / 8 * 0.0,
+            "old_lut": lr / 8,
+            "lut": lr / 4,
+            "other": lr,
         }
+        args_checkpoint.lr = lr
         param_groups = []
         # pylint: disable=consider-using-dict-items
         for key in params:
@@ -305,7 +318,7 @@ def run_retraining(
         print("param_groups", len(param_groups))
         weight_decay = 0.0
         opt_name = "adam"
-        lr_scheduler_name = "plateau"  # "cosineannealinglr"
+        lr_scheduler_name = "cosineannealinglr"
         args_checkpoint.lr_scheduler = lr_scheduler_name
         args_checkpoint.opt = opt_name
         # opt_name = args_checkpoint.opt.lower()
@@ -336,12 +349,12 @@ def run_retraining(
         # args_checkpoint.lr_scheduler = "steplr"
 
         # if args_checkpoint.cifar10:
-        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        #     optimizer, T_max=train_epochs
-        # )
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.2, patience=6, verbose=True
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=train_epochs, eta_min=0.0001
         )
+        # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
+        # )
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(
         #     optimizer, step_size=lr_step_size, gamma=0.1
         # )
@@ -351,7 +364,7 @@ def run_retraining(
         checkpoint["optimizer"] = opt_state_dict
 
         # sys.exit(0)
-        args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
+        args_checkpoint.output_dir = args.output_dir
         if not args.distributed or args.rank == 0:
             save_on_master(
                 checkpoint,
@@ -383,7 +396,7 @@ def run_retraining(
 
     del model
     torch.cuda.empty_cache()
-    return args_checkpoint, idx, len(layers)
+    return args_checkpoint, idx, len(layers), checkpoint["epoch"]
 
 
 # pylint: disable=consider-iterating-dictionary
@@ -504,9 +517,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 40  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 25  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 128
-    LR = 0.02  # imagenet 0.001, cifar10 0.01
+    LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
@@ -585,9 +598,15 @@ if __name__ == "__main__":
         model_analysis(args)
         sys.exit(0)
 
+    output_dir = os.path.dirname(args.checkpoint)
+    if args.testname is not None:
+        output_dir = DEFAULT_FOLDER + f"/halut/{args.testname}/checkpoints/"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    args.output_dir = output_dir
+
     if args.single:
         args.gpu = args.cuda_id
-        args_checkpoint, idx, total = run_retraining(
+        args_checkpoint, idx, total, epoch = run_retraining(
             args,
             distributed=False,
             batch_size=BATCH_SIZE,
@@ -603,7 +622,7 @@ if __name__ == "__main__":
         args_checkpoint.device = "cuda:" + str(args.cuda_id)
     else:
         utils_train.init_distributed_mode(args)  # type: ignore[attr-defined]
-        args_checkpoint, idx, total = run_retraining(
+        args_checkpoint, idx, total, epoch = run_retraining(
             args,
             distributed=True,
             batch_size=BATCH_SIZE,
@@ -619,10 +638,12 @@ if __name__ == "__main__":
         args_checkpoint.distributed = args.distributed  # type: ignore
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
     args_checkpoint.workers = 4  # type: ignore
-    args_checkpoint.output_dir = os.path.dirname(args.checkpoint)  # type: ignore
     args_checkpoint.simulate = False  # type: ignore
+    args_checkpoint.testname = args.testname  # type: ignore
+    # epochs_array = [-1, 30, 20, 20, 30, 30, 30, 30]
+    print("epoch", epoch, idx)
     for i in range(idx, total + 1):  # type: ignore
-        args_checkpoint.epochs = args_checkpoint.epochs + TRAIN_EPOCHS  # type: ignore
+        args_checkpoint.epochs = epoch + TRAIN_EPOCHS  # type: ignore
         args_checkpoint.resume = (  # type: ignore
             f"{args_checkpoint.output_dir}/retrained_checkpoint_{i}.pth"  # type: ignore
         )
@@ -647,7 +668,7 @@ if __name__ == "__main__":
             )
         if not args.single:
             dist.barrier()
-        _, idx, total = run_retraining(
+        _, idx, total, epoch = run_retraining(
             args,
             test_only=True,
             distributed=not args.single,
@@ -660,7 +681,7 @@ if __name__ == "__main__":
         if args.distributed:
             dist.barrier()
         if idx < total:
-            _, idx, total = run_retraining(
+            _, idx, total, epoch = run_retraining(
                 args,
                 distributed=not args.single,
                 batch_size=BATCH_SIZE,
