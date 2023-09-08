@@ -50,44 +50,80 @@ def create_selection_matrix(
 
 def create_bit_matrix(C: int = 1, K: int = 16, dtype=torch.float16) -> torch.Tensor:
     # example when using C = 1
-    offset = 0
+    # fmt: off
     bit_matrix_numpy = np.array(
         [
-            [
-                offset,
-                offset,
-                offset,
-                offset,
-                offset,
-                offset,
-                offset,
-                offset,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-            ],
-            [offset, offset, offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, offset, offset, offset, offset, 1, 1, 1, 1],
-            [offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, offset, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, offset, offset, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, offset, 1, 1],
-            [offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1],
+            # 0
+            [-1,
+             -1, 0,
+             -1, 0, 0, 0,
+             -1, 0, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             -1, 0, 0, 0,
+             1, 0, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             1, 0, 0, 0,
+             0, -1, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             1, 0, 0, 0,
+             0, 1, 0, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, -1, 0, 0,
+             0, 0, -1, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, -1, 0, 0,
+             0, 0, 1, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, 1, 0, 0,
+             0, 0, 0, -1, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, 1, 0, 0,
+             0, 0, 0, 1, 0, 0, 0, 0],
+            # 8
+            [1,
+             0, -1,
+             0, 0, -1, 0,
+             0, 0, 0, 0, -1, 0, 0, 0],
+            [1,
+             0, -1,
+             0, 0, -1, 0,
+             0, 0, 0, 0, 1, 0, 0, 0],
+            [1,
+             0, -1,
+             0, 0, 1, 0,
+             0, 0, 0, 0, 0, -1, 0, 0],
+            [1,
+             0, -1,
+             0, 0, 1, 0,
+             0, 0, 0, 0, 0, 1, 0, 0],
+             # 12
+            [1,
+             0, 1,
+             0, 0, 0, -1,
+             0, 0, 0, 0, 0, 0, -1, 0],
+            [1,
+             0, 1,
+             0, 0, 0, -1,
+             0, 0, 0, 0, 0, 0, 1, 0],
+            [1,
+             0, 1,
+             0, 0, 0, 1,
+             0, 0, 0, 0, 0, 0, 0, -1],
+            [1,
+             0, 1,
+             0, 0, 0, 1,
+             0, 0, 0, 0, 0, 0, 0, 1],
         ]
     )
-    bit_matrix_base = torch.from_numpy(bit_matrix_numpy.T).to(dtype)
+    # fmt: on
+    bit_matrix_base = torch.from_numpy(bit_matrix_numpy).to(dtype)
     bit_matrix = torch.ones((C * K, C * (K - 1)), dtype=dtype)
     for c in range(C):
         bit_matrix[
@@ -142,9 +178,11 @@ def halut_matmul_forward(
     else:
         raise Exception("Either dims or prototype must be provided")
     if prototypes is None:
-        b = B.mm(h.relu())
+        tanh_h = torch.tanh(h)
+        sign_ste = torch.sign(h) - tanh_h.detach() + tanh_h
+        b = B.mm(sign_ste)
         b = b.T.reshape((-1, C, K))
-        encoding_soft = torch.nn.Softmax(dim=2)(b)
+        encoding_soft = torch.nn.Softmax(dim=2)(b / temperature)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
     if decision_trees is not None:
         index = torch.zeros_like(index)
@@ -234,7 +272,7 @@ class HalutLinear(Linear):
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.DT = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1), requires_grad=False)
+        self.temperature = Parameter(torch.ones(1), requires_grad=True)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
 
         self.input_storage_a: Optional[Tensor] = None
@@ -259,6 +297,10 @@ class HalutLinear(Linear):
             self.temperature.data = torch.clamp(
                 self.temperature.data, 0.1, max(temp_annealed, 0.1)
             )
+
+    def halut_updates(self):
+        if self.halut_active:
+            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
@@ -479,6 +521,7 @@ class HalutConv2d(_ConvNd):
         use_decision_tree: bool = False,
         use_prototypes: bool = False,
         loop_order: Literal["im2col", "kn2col"] = "im2col",
+        halut_active: bool = False,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         kernel_size_ = _pair(kernel_size)
@@ -505,21 +548,7 @@ class HalutConv2d(_ConvNd):
         self.lut = Parameter(torch.zeros(1), requires_grad=False)
         self.thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.dims = Parameter(torch.zeros(1), requires_grad=False)
-        # pre select dims
-        # if kernel_size == 3 and False:
-        #     self.dims = Parameter(
-        #         torch.zeros(in_channels * 4, dtype=torch.int64), requires_grad=False
-        #     )
-        #     for i in range(in_channels):
-        #         # random select idx out of list with no duplicates
-        #         # ensure no duplicates
-        #         channel_dims = torch.tensor(
-        #             np.random.choice(
-        #                 [0, 1, 2, 3, 4, 5, 6, 7, 8], size=4, replace=False
-        #             ),
-        #             dtype=torch.int64,
-        #         )
-        #         self.dims[i * 4 : (i + 1) * 4] = channel_dims + i * 9
+
         self.store_input = Parameter(
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
@@ -531,7 +560,7 @@ class HalutConv2d(_ConvNd):
         self.B = Parameter(torch.zeros(1), requires_grad=False)
         self.DT = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
-        self.temperature = Parameter(torch.ones(1), requires_grad=False)
+        self.temperature = Parameter(torch.ones(1), requires_grad=True)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
@@ -539,6 +568,47 @@ class HalutConv2d(_ConvNd):
         self.use_decision_tree = use_decision_tree
         self.use_prototypes = use_prototypes
         self.loop_order = loop_order
+
+        if halut_active:
+            self.halut_active = Parameter(
+                torch.ones(1, dtype=torch.bool), requires_grad=False
+            )
+
+            # M, C, K
+            K = 16
+            C = self.weight.shape[1]
+            M = self.weight.shape[0]
+            print(f"K: {K}, C: {C}, M: {M}")
+            self.lut = Parameter(torch.zeros((M, C, K)), requires_grad=True)
+            self.thresholds = Parameter(torch.zeros((C * 15)), requires_grad=True)
+            self.S = Parameter(
+                create_selection_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device)),
+                requires_grad=False,
+            )
+            self.B = Parameter(
+                create_bit_matrix(
+                    self.lut.size(1), self.lut.size(2), self.weight.dtype
+                ).to(str(self.weight.device)),
+                requires_grad=False,
+            )
+            self.weight.requires_grad = False
+
+            self.dims = Parameter(
+                torch.zeros(in_channels * 4, dtype=torch.int64), requires_grad=False
+            )
+            for i in range(in_channels):
+                # random select idx out of list with no duplicates
+                # ensure no duplicates
+                channel_dims = torch.tensor(
+                    np.random.choice(
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8], size=4, replace=False
+                    ),
+                    dtype=torch.int64,
+                )
+                self.dims[i * 4 : (i + 1) * 4] = channel_dims + i * 9
+
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     def update_lut(self, epoch: int = 0, epoch_max: int = 100):
@@ -555,6 +625,10 @@ class HalutConv2d(_ConvNd):
             self.temperature.data = torch.clamp(
                 self.temperature.data, 0.1, max(temp_annealed, 0.1)
             )
+
+    def halut_updates(self):
+        if self.halut_active:
+            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
