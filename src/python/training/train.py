@@ -70,7 +70,18 @@ def train_one_epoch(
             child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
             update_lut(child_module, prefix=child_prefix)
 
+    def halut_updates(module, prefix=""):
+        if isinstance(module, (HalutConv2d)):
+            module.halut_updates()
+            return
+
+        for child_name, child_module in module.named_children():
+            child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
+            halut_updates(child_module, prefix=child_prefix)
+
     header = f"Epoch: [{epoch}]"
+    # prev_lut = None
+    # prev_conv = None
     for i, (image, target) in enumerate(
         metric_logger.log_every(data_loader, 1, header)
     ):
@@ -96,9 +107,15 @@ def train_one_epoch(
 
             # check if diff exists
             # if prev_lut is not None:
-            #     diff = model.module.layer1[0].conv1.lut - prev_lut
+            #     diff = model.conv2[0].lut - prev_lut
             #     print("diff", torch.norm(diff).item())
-            # prev_lut = model.module.layer1[0].conv1.lut.clone()
+            # if prev_conv is not None:
+            #     diff = model.conv1[0].weight - prev_conv
+            #     print("diff", torch.norm(diff).item())
+            # prev_lut = model.conv2[0].lut.clone()
+            # prev_conv = model.conv1[0].weight.clone()
+            # print("grad norm", model.conv1[0].weight.grad.norm().item())
+            # print("grad norm", model.conv2[0].lut.grad.norm().item())
 
             if args.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
@@ -107,6 +124,7 @@ def train_one_epoch(
             if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
                 optimizer.step()
                 update_lut(model)
+                halut_updates(model)
                 optimizer.zero_grad()
 
         if model_ema and i % args.model_ema_steps == 0:
@@ -126,7 +144,7 @@ def train_one_epoch(
             "loss",
             loss.item(),
             "lr",
-            optimizer.param_groups[0]["lr"],
+            [group["lr"] for group in optimizer.param_groups],
             "img/s",
             batch_size / (time.time() - start_time),
         )
@@ -429,7 +447,7 @@ def main(args, gradient_accumulation_steps=1):
 
     params = {
         "other": [],
-        "prototypes": [],
+        "thresholds": [],
         "temperature": [],
         "lut": [],
     }
@@ -440,11 +458,11 @@ def main(args, gradient_accumulation_steps=1):
                 # filter(lambda p: p.requires_grad, model.parameters())
                 continue
             if isinstance(module, (HalutConv2d, HalutLinear)):
-                if name == "P":
-                    params["prototypes"].append(p)
-                    continue
                 if name == "temperature":
-                    params["temperature"].append(p)
+                    # params["temperature"].append(p)
+                    continue
+                if name == "thresholds":
+                    # params["thresholds"].append(p)
                     continue
                 if name == "lut":
                     params["lut"].append(p)
@@ -459,10 +477,19 @@ def main(args, gradient_accumulation_steps=1):
             _add_params(child_module, prefix=child_prefix)
 
     _add_params(model)
-    params["prototypes"] = params["lut"][:-1]
-    params["lut"] = params["lut"][-1]
-
-    custom_lrs = {"other": args.lr, "temperature": 0.1, "prototypes": 0.005, "lut": 0.1}
+    params["old_lut"] = params["lut"][:-1]
+    params["lut"] = params["lut"][-1:]
+    params["old_thresholds"] = params["thresholds"][:-1]
+    params["thresholds"] = params["thresholds"][-1:]
+    lr = args.lr
+    custom_lrs = {
+        "temperature": 0.1 * 0.0,
+        "thresholds": lr / 4 * 0.0,
+        "old_thresholds": lr / 8 * 0.0,
+        "old_lut": lr / 8,
+        "lut": lr / 4,
+        "other": lr,
+    }
     param_groups = []
     # pylint: disable=consider-using-dict-items
     for key in params:
@@ -615,6 +642,10 @@ def main(args, gradient_accumulation_steps=1):
     print("Start training")
     start_time = time.time()
     best_acc = 0.0
+    testname = ""
+    # check if key in dict
+    if "testname" in args and args.testname is not None:
+        testname = args.testname
     writer = SummaryWriter(
         comment=os.path.basename(os.path.normpath(args.output_dir))
         + f"_{args.batch_size}"
@@ -622,6 +653,7 @@ def main(args, gradient_accumulation_steps=1):
         + f"_{args.lr}"
         + f"_{args.lr_scheduler}"
         + f"_{args.opt}"
+        + f"_{testname}"
     )
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:

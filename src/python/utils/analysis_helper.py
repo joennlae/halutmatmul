@@ -405,6 +405,15 @@ resnet9_layers = [
     # "quant5",
     # "classifier.3",
 ]
+# resnet9_layers = [
+#     "conv2.0",
+#     "conv3.0",
+#     "conv4.0",
+#     "res1.0.0",
+#     "res1.1.0",
+#     "res2.0.0",
+#     "res2.1.0",
+# ]
 
 """
 layer1.0.conv1   torch.Size([64, 64, 3, 3])
