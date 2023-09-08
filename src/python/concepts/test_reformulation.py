@@ -121,12 +121,88 @@ def create_bit_matrix(C: int = 1, depth: int = 4) -> torch.Tensor:
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, offset, 1],
         ]
     )
-    bit_matrix_base = torch.from_numpy(bit_matrix_numpy.T).to(torch.float32)
-    bit_matrix = torch.ones((C * 2**depth, C * (2**depth - 1)), dtype=torch.float32)
+    print(bit_matrix_numpy.shape)
+    # fmt: off
+    bit_matrix_numpy = np.array(
+        [
+            # 0
+            [-1,
+             -1, 0,
+             -1, 0, 0, 0,
+             -1, 0, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             -1, 0, 0, 0,
+             1, 0, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             1, 0, 0, 0,
+             0, -1, 0, 0, 0, 0, 0, 0],
+            [-1,
+             -1, 0,
+             1, 0, 0, 0,
+             0, 1, 0, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, -1, 0, 0,
+             0, 0, -1, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, -1, 0, 0,
+             0, 0, 1, 0, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, 1, 0, 0,
+             0, 0, 0, -1, 0, 0, 0, 0],
+            [-1,
+             1, 0,
+             0, 1, 0, 0,
+             0, 0, 0, 1, 0, 0, 0, 0],
+            # 8
+            [1,
+             0, -1,
+             0, 0, -1, 0,
+             0, 0, 0, 0, -1, 0, 0, 0],
+            [1,
+             0, -1,
+             0, 0, -1, 0,
+             0, 0, 0, 0, 1, 0, 0, 0],
+            [1,
+             0, -1,
+             0, 0, 1, 0,
+             0, 0, 0, 0, 0, -1, 0, 0],
+            [1,
+             0, -1,
+             0, 0, 1, 0,
+             0, 0, 0, 0, 0, 1, 0, 0],
+             # 12
+            [1,
+             0, 1,
+             0, 0, 0, -1,
+             0, 0, 0, 0, 0, 0, -1, 0],
+            [1,
+             0, 1,
+             0, 0, 0, -1,
+             0, 0, 0, 0, 0, 0, 1, 0],
+            [1,
+             0, 1,
+             0, 0, 0, 1,
+             0, 0, 0, 0, 0, 0, 0, -1],
+            [1,
+             0, 1,
+             0, 0, 0, 1,
+             0, 0, 0, 0, 0, 0, 0, 1],
+        ]
+    )
+    print(bit_matrix_numpy.shape)
+    # fmt: on
+    bit_matrix_base = torch.from_numpy(bit_matrix_numpy).to(torch.float32)
+    K = 2**depth
+    bit_matrix = torch.zeros((C * K, C * (K - 1)), dtype=torch.float32)
     for c in range(C):
         bit_matrix[
-            c * 2**depth : (c + 1) * 2**depth,
-            c * (2**depth - 1) : (c + 1) * (2**depth - 1),
+            c * K : (c + 1) * K,
+            c * (K - 1) : (c + 1) * (K - 1),
         ] = bit_matrix_base
     return bit_matrix
 
@@ -151,7 +227,9 @@ def traverse_tree(
     print("selection_tensor", selection_tensor_all.shape)
     h = input[selection_tensor_all, :] - T.unsqueeze(1)
     h = S.mm(input) - T.unsqueeze(1)
-    b = B.mm(h.relu())
+    tanh_h = torch.tanh(h)
+    sign_ste = torch.sign(h) - tanh_h.detach() + tanh_h
+    b = B.mm(torch.tanh(sign_ste))
     b = b.T.reshape((-1, C, 2**depth))
     encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
@@ -225,6 +303,8 @@ def getBack(var_grad_fn: Any) -> None:
 getBack(loss.grad_fn)
 
 print("important test", np.allclose(result, result_torch.detach().numpy()))
+# show how many values are different
+print(np.sum(result != result_torch.detach().numpy()))
 
 # old version
 embeddings = torch.nn.EmbeddingBag.from_pretrained(
@@ -257,6 +337,10 @@ for tree_level in range(4):
 encoded_torch = kaddr.reshape((N, C))
 
 print(np.allclose(encoded, encoded_torch.numpy()))
+# show how many values are different
+print(np.sum(encoded != encoded_torch.numpy()))
+# and equal
+print(np.sum(encoded == encoded_torch.numpy()))
 
 encoded_torch += torch.arange(C) * K
 input = torch.IntTensor(encoded_torch)
