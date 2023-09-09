@@ -219,6 +219,7 @@ def traverse_tree(
     C: int = 32,
     depth: int = 4,
 ) -> torch.Tensor:
+    temperature = 0.5
     print("S", S, S.shape, input.shape)
     selection_tensor = torch.Tensor([0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3])
     selection_tensor_all = torch.zeros((C * 15), dtype=torch.int64)
@@ -227,7 +228,7 @@ def traverse_tree(
     print("selection_tensor", selection_tensor_all.shape)
     h = input[selection_tensor_all, :] - T.unsqueeze(1)
     h = S.mm(input) - T.unsqueeze(1)
-    tanh_h = torch.tanh(h)
+    tanh_h = torch.tanh(h / temperature)
     sign_ste = torch.sign(h) - tanh_h.detach() + tanh_h
     b = B.mm(torch.tanh(sign_ste))
     b = b.T.reshape((-1, C, 2**depth))

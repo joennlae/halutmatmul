@@ -178,11 +178,11 @@ def halut_matmul_forward(
     else:
         raise Exception("Either dims or prototype must be provided")
     if prototypes is None:
-        tanh_h = torch.tanh(h)
+        tanh_h = torch.tanh(h / temperature)
         sign_ste = torch.sign(h) - tanh_h.detach() + tanh_h
         b = B.mm(sign_ste)
         b = b.T.reshape((-1, C, K))
-        encoding_soft = torch.nn.Softmax(dim=2)(b / temperature)
+        encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
     if decision_trees is not None:
         index = torch.zeros_like(index)
@@ -298,9 +298,15 @@ class HalutLinear(Linear):
                 self.temperature.data, 0.1, max(temp_annealed, 0.1)
             )
 
-    def halut_updates(self):
+    def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
         if self.halut_active:
             self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
+            epoch = epoch - start_epoch
+            epoch_max = epoch_max - start_epoch
+            temp_annealed = 1.0 * (1 - epoch / epoch_max)
+            self.temperature.data = torch.clamp(
+                self.temperature.data, 0.1, max(temp_annealed, 0.1)
+            )
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
@@ -626,9 +632,15 @@ class HalutConv2d(_ConvNd):
                 self.temperature.data, 0.1, max(temp_annealed, 0.1)
             )
 
-    def halut_updates(self):
+    def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
         if self.halut_active:
             self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
+            epoch = epoch - start_epoch
+            epoch_max = epoch_max - start_epoch
+            temp_annealed = 1.0 * (1 - epoch / epoch_max)
+            self.temperature.data = torch.clamp(
+                self.temperature.data, 0.1, max(temp_annealed, 0.1)
+            )
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
