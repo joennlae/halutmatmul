@@ -191,7 +191,7 @@ def run_retraining(
     for i in range(next_layer_idx, max):
         print("next_layer_idx", next_layer_idx, i, max)
         print("editable_keys", halut_model.editable_keys)
-        if not test_only:
+        if not test_only and i < len(layers):
             next_layer = layers[i]
             if next_layer not in halut_model.editable_keys:
                 print("not in editable keys", next_layer)
@@ -300,8 +300,8 @@ def run_retraining(
             "temperature": 0.1 * 0.0,
             "thresholds": lr / 4 * 0.0,
             "old_thresholds": lr / 8 * 0.0,
-            "old_lut": lr / 8,
-            "lut": lr / 4,
+            "old_lut": lr,
+            "lut": lr,
             "other": lr,
         }
         args_checkpoint.lr = lr
