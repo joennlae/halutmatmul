@@ -72,7 +72,9 @@ def train_one_epoch(
 
     def halut_updates(module, prefix=""):
         if isinstance(module, (HalutConv2d)):
-            module.halut_updates()
+            module.halut_updates(
+                start_epoch=args.start_epoch, epoch=epoch, epoch_max=args.epochs
+            )
             return
 
         for child_name, child_module in module.named_children():
@@ -462,7 +464,7 @@ def main(args, gradient_accumulation_steps=1):
                     # params["temperature"].append(p)
                     continue
                 if name == "thresholds":
-                    # params["thresholds"].append(p)
+                    params["thresholds"].append(p)
                     continue
                 if name == "lut":
                     params["lut"].append(p)
@@ -484,10 +486,10 @@ def main(args, gradient_accumulation_steps=1):
     lr = args.lr
     custom_lrs = {
         "temperature": 0.1 * 0.0,
-        "thresholds": lr / 4 * 0.0,
-        "old_thresholds": lr / 8 * 0.0,
-        "old_lut": lr / 8,
-        "lut": lr / 4,
+        "thresholds": lr / 2,
+        "old_thresholds": lr / 2,
+        "old_lut": lr,
+        "lut": lr,
         "other": lr,
     }
     param_groups = []
