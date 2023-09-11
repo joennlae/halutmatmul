@@ -299,7 +299,8 @@ class HalutLinear(Linear):
             )
 
     def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
-        if self.halut_active:
+        # pylint: disable=condition-evals-to-constant
+        if self.halut_active and False:
             self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
             epoch = epoch - start_epoch
             epoch_max = epoch_max - start_epoch
@@ -584,7 +585,7 @@ class HalutConv2d(_ConvNd):
             K = 16
             C = self.weight.shape[1]
             M = self.weight.shape[0]
-            print(f"K: {K}, C: {C}, M: {M}")
+            # print(f"K: {K}, C: {C}, M: {M}")
             self.lut = Parameter(torch.zeros((M, C, K)), requires_grad=True)
             self.thresholds = Parameter(torch.zeros((C * 15)), requires_grad=True)
             self.S = Parameter(
@@ -633,7 +634,8 @@ class HalutConv2d(_ConvNd):
             )
 
     def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
-        if self.halut_active:
+        # pylint: disable=condition-evals-to-constant
+        if self.halut_active and False:
             self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
             epoch = epoch - start_epoch
             epoch_max = epoch_max - start_epoch
@@ -668,7 +670,7 @@ class HalutConv2d(_ConvNd):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.dims = Parameter(
                 state_dict[prefix + "dims"]
