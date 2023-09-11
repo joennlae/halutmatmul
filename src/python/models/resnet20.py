@@ -68,17 +68,32 @@ class LambdaLayer(nn.Module):
         return self.lambd(x)
 
 
+halut_active = False
+
+
 class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, option="A"):
         super(BasicBlock, self).__init__()
         self.conv1 = HalutConv2d(
-            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+            in_planes,
+            planes,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
+            halut_active=halut_active,
         )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = HalutConv2d(
-            planes, planes, kernel_size=3, stride=1, padding=1, bias=False
+            planes,
+            planes,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=False,
+            halut_active=halut_active,
         )
         self.bn2 = nn.BatchNorm2d(planes)
 
@@ -104,6 +119,7 @@ class BasicBlock(nn.Module):
                         kernel_size=1,
                         stride=stride,
                         bias=False,
+                        halut_active=halut_active,
                     ),
                     nn.BatchNorm2d(self.expansion * planes),
                 )
@@ -196,8 +212,11 @@ def test(net):
 
 
 if __name__ == "__main__":
+    from torchinfo import summary
+
     for net_name in __all__:
-        if net_name.startswith("resnet"):
+        if net_name.startswith("resnet20"):
             print(net_name)
             test(globals()[net_name]())
+            summary(globals()[net_name](), input_size=(1, 3, 32, 32))
             print()
