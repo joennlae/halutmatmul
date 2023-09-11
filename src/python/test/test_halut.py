@@ -1,6 +1,9 @@
 import functools
 import timeit
-from test.utils.utils import check_if_error_normal_dist_around_zero, error_hist_numpy
+from test.test_utils.utils import (
+    check_if_error_normal_dist_around_zero,
+    error_hist_numpy,
+)
 import numpy as np
 import pytest
 import halutmatmul.halutmatmul as hm
