@@ -298,8 +298,8 @@ def run_retraining(
         params["thresholds"] = params["thresholds"][-1:]
         custom_lrs = {
             "temperature": 0.1 * 0.0,
-            "thresholds": lr / 4 * 0.0,
-            "old_thresholds": lr / 8 * 0.0,
+            "thresholds": lr,
+            "old_thresholds": lr,
             "old_lut": lr,
             "lut": lr,
             "other": lr,
@@ -350,7 +350,8 @@ def run_retraining(
 
         # if args_checkpoint.cifar10:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=train_epochs, eta_min=0.0001
+            optimizer,
+            T_max=train_epochs,  # eta_min=0.0002
         )
         # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
@@ -517,9 +518,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 25  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 200  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 128
-    LR = 0.001  # imagenet 0.001, cifar10 0.01
+    LR = 0.0005  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
