@@ -82,6 +82,9 @@ class SimulateQuantError(nn.Module):
         return x
 
 
+halut_active = True
+
+
 class ResNet9(nn.Module):
     def __init__(self, in_channels, num_classes) -> None:
         super().__init__()
@@ -91,25 +94,25 @@ class ResNet9(nn.Module):
         self.conv1 = conv_block(in_channels, 64)
         # self.gause1 = GaussianNoise()
         # self.quant1 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv2 = conv_block(64, 128, pool=True, halut_active=False)
+        self.conv2 = conv_block(64, 128, pool=True, halut_active=halut_active)
         # self.gause2 = GaussianNoise()
         # self.quant2 = SimulateQuantError(bitwidth=bitwidth)
         self.res1 = nn.Sequential(
-            conv_block(128, 128, halut_active=False),
-            conv_block(128, 128, halut_active=False),
+            conv_block(128, 128, halut_active=halut_active),
+            conv_block(128, 128, halut_active=halut_active),
         )
         # self.gause3 = GaussianNoise()
         # self.quant3 = SimulateQuantError(bitwidth=bitwidth)
 
-        self.conv3 = conv_block(128, 256, pool=True, halut_active=False)
+        self.conv3 = conv_block(128, 256, pool=True, halut_active=halut_active)
         # self.gause4 = GaussianNoise()
         # self.quant4 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv4 = conv_block(256, 256, pool=True, halut_active=False)
+        self.conv4 = conv_block(256, 256, pool=True, halut_active=halut_active)
         # self.gause5 = GaussianNoise()
         # self.quant5 = SimulateQuantError(bitwidth=bitwidth)
         self.res2 = nn.Sequential(
-            conv_block(256, 256, halut_active=False),
-            conv_block(256, 256, halut_active=False),
+            conv_block(256, 256, halut_active=halut_active),
+            conv_block(256, 256, halut_active=halut_active),
         )
         # self.gause6 = GaussianNoise()
         # self.quant6 = SimulateQuantError(bitwidth=bitwidth)
