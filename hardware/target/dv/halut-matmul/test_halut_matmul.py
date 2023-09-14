@@ -5,7 +5,7 @@ from random import getrandbits
 import typing
 import numpy as np
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import RisingEdge, Timer
 from cocotb.clock import Clock
 from cocotb.binary import BinaryValue
 from cocotb.types import LogicArray
@@ -145,6 +145,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
     # pylint: disable=too-many-nested-blocks
     for row in range(input_a.shape[0] + 1):
         for c_ in range(input_a.shape[1]):
+            await Timer(int(CLOCK_PERIOD_PS // 2), "ps")
             if row < ROWS:
                 dut.encoder_i.value = 1
                 current_encoder_input[
@@ -176,10 +177,14 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     dut.c_addr_enc_o.value.value == lookup_c
                 ), "enc assert wrong c output"
 
-            if not (row == 0 or (row == 1 and c_ < 7)) and c_ >= 7:
-                lookup_m = c_ - 7
+            output_offset = 7
+            if (
+                not (row == 0 or (row == 1 and c_ < output_offset))
+                and c_ >= output_offset
+            ):
+                lookup_m = c_ - output_offset
                 assert (
-                    DecoderUnits < C - 7
+                    DecoderUnits < C - output_offset
                 ), "DecoderUnits too high for this logic (and max_fan_out)"
                 if lookup_m in range(DecoderUnits):
                     m_addr_out = dut.m_addr_o.value
@@ -209,7 +214,7 @@ async def halut_matmul_test(dut) -> None:  # type: ignore[no-untyped-def]
                     assert dut.valid_o.value == BinaryValue(
                         0, n_bits=DecUnitsX
                     ), "should be invalid"
-                if row == ROWS and c_ == 7 + DecoderUnits - 7:
+                if row == ROWS and c_ == DecoderUnits + output_offset:
                     dut.encoder_i.value = 0  # turn off
             else:
                 assert dut.valid_o.value == BinaryValue(
