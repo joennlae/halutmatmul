@@ -68,7 +68,7 @@ class LambdaLayer(nn.Module):
         return self.lambd(x)
 
 
-halut_active = False
+halut_active = True
 
 
 class BasicBlock(nn.Module):
@@ -84,6 +84,7 @@ class BasicBlock(nn.Module):
             padding=1,
             bias=False,
             halut_active=halut_active,
+            split_factor=1,
         )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = HalutConv2d(
@@ -94,6 +95,7 @@ class BasicBlock(nn.Module):
             padding=1,
             bias=False,
             halut_active=halut_active,
+            split_factor=1,
         )
         self.bn2 = nn.BatchNorm2d(planes)
 
@@ -120,6 +122,7 @@ class BasicBlock(nn.Module):
                         stride=stride,
                         bias=False,
                         halut_active=halut_active,
+                        split_factor=1,
                     ),
                     nn.BatchNorm2d(self.expansion * planes),
                 )
