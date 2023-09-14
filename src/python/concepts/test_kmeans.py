@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import os
-from test.utils.utils import helper_test_module
+from test.test_utils.utils import helper_test_module
 import numpy as np
 import faiss
 import torch

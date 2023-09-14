@@ -284,30 +284,10 @@ class HalutLinear(Linear):
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     def update_lut(self, epoch: int = 0, epoch_max: int = 100):
-        if self.halut_active and self.use_prototypes:
-            b = self.weight.transpose(1, 0)
-            b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
-            self.lut.data = torch.einsum(
-                "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
-            )
-            # clip temperature to reasonable values
-            epoch = epoch - 376
-            epoch_max = epoch_max - 400
-            temp_annealed = 1.0 * (1 - epoch / epoch_max)
-            self.temperature.data = torch.clamp(
-                self.temperature.data, 0.1, max(temp_annealed, 0.1)
-            )
+        pass
 
     def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
-        # pylint: disable=condition-evals-to-constant
-        if self.halut_active and False:
-            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
-            epoch = epoch - start_epoch
-            epoch_max = epoch_max - start_epoch
-            temp_annealed = 1.0 * (1 - epoch / epoch_max)
-            self.temperature.data = torch.clamp(
-                self.temperature.data, 0.1, max(temp_annealed, 0.1)
-            )
+        pass
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
     def state_dict_hook(
@@ -619,30 +599,18 @@ class HalutConv2d(_ConvNd):
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
     def update_lut(self, epoch: int = 0, epoch_max: int = 100):
-        if self.halut_active and self.use_prototypes:
-            b = self.transform_weight(self.weight)
-            b_reshaped = torch.reshape(b.T, [b.shape[1], self.lut.size(-2), -1])  # MCd
-            self.lut.data = torch.einsum(
-                "CKd, MCd -> MCK", [self.P.detach(), b_reshaped.detach()]
-            )
-            # clip temperature to reasonable values
-            epoch = epoch - 376
-            epoch_max = epoch_max - 400
-            temp_annealed = 1.0 * (1 - epoch / epoch_max)
-            self.temperature.data = torch.clamp(
-                self.temperature.data, 0.1, max(temp_annealed, 0.1)
-            )
+        pass
 
     def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
-        # pylint: disable=condition-evals-to-constant
-        if self.halut_active and False:
-            self.temperature.data = torch.clamp(self.temperature.data, 0.1, 1.0)
-            epoch = epoch - start_epoch
-            epoch_max = epoch_max - start_epoch
-            temp_annealed = 1.0 * (1 - epoch / epoch_max)
-            self.temperature.data = torch.clamp(
-                self.temperature.data, 0.1, max(temp_annealed, 0.1)
-            )
+        pass
+
+    def extra_repr(self):
+        return (
+            super().extra_repr()
+            + f", halut_active={self.halut_active.item()}, loop_order={self.loop_order}, "
+            f"split_factor={self.split_factor}, use_decision_tree={self.use_decision_tree},"
+            f" use_prototypes={self.use_prototypes}"
+        )
 
     def state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
