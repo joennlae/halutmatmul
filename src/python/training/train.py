@@ -88,20 +88,25 @@ def train_one_epoch(
         metric_logger.log_every(data_loader, 1, header)
     ):
         start_time = time.time()
-        # image = image.half()
         image, target = image.to(device), target.to(device)
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             output = model(image)
             loss = criterion(output, target)
 
         if scaler is not None:
+            reported_loss = loss.detach().item()
+            loss = loss / accum_iter
             scaler.scale(loss).backward()
             if args.clip_grad_norm is not None:
                 # we should unscale the gradients of optimizer's assigned params if do gradient clipping
                 scaler.unscale_(optimizer)
                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
-            scaler.step(optimizer)
-            scaler.update()
+            if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
+                scaler.step(optimizer)
+                scaler.update()
+                update_lut(model)
+                halut_updates(model)
+                optimizer.zero_grad()
         else:
             reported_loss = loss.detach().item()
             loss = loss / accum_iter
@@ -164,7 +169,14 @@ def train_one_epoch(
     )
 
 
-def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix=""):
+def evaluate(
+    model,
+    criterion,
+    data_loader,
+    device,
+    print_freq=1,
+    log_suffix="",
+):
     # TODO: sometimes it would be intersting to have that as .train
     model.eval()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
@@ -173,7 +185,6 @@ def evaluate(model, criterion, data_loader, device, print_freq=1, log_suffix="")
     num_processed_samples = 0
     with torch.inference_mode():
         for image, target in metric_logger.log_every(data_loader, print_freq, header):
-            # image = image.half()
             image = image.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             output = model(image)
@@ -464,7 +475,7 @@ def main(args, gradient_accumulation_steps=1):
                     # params["temperature"].append(p)
                     continue
                 if name == "thresholds":
-                    params["thresholds"].append(p)
+                    # params["thresholds"].append(p)
                     continue
                 if name == "lut":
                     params["lut"].append(p)
