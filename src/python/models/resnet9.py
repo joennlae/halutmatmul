@@ -13,6 +13,7 @@ def conv_block(in_channels, out_channels, pool=False, halut_active=False):
             kernel_size=3,
             padding=1,
             halut_active=halut_active,
+            split_factor=2,
         ),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
@@ -82,7 +83,7 @@ class SimulateQuantError(nn.Module):
         return x
 
 
-halut_active = True
+halut_active = False
 
 
 class ResNet9(nn.Module):
