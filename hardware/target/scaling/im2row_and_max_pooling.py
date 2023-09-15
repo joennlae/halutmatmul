@@ -6,11 +6,11 @@ import numpy as np
 
 # estimate 3x3 im2col unit
 kernel_size = 3
-N = 4
+N = 1
 H = 8
 W = 8
-IN_CHANNEL = 4
-OUT_CHANNEL = 64
+IN_CHANNEL = 8
+OUT_CHANNEL = 16
 padding = 1
 
 random_array = np.random.rand(N, H, W, IN_CHANNEL) * 2 - 1
@@ -125,8 +125,75 @@ print("conv2d_out", im2col_array.shape, random_weights.shape, conv2d_out.shape)
 
 print("max_len", max_len)
 # max pooling
-max_pool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
-max_pool_out = max_pool(torch.from_numpy(conv2d_out)).numpy()
+pooling_kernel_size = 2
+max_pool = torch.nn.MaxPool2d(
+    kernel_size=pooling_kernel_size, stride=pooling_kernel_size
+)
+max_pool_out = max_pool(
+    torch.from_numpy(conv2d_out.reshape(N, H, W, OUT_CHANNEL).transpose(0, 3, 1, 2))
+).numpy()
 
 print(max_pool_out.shape)
 print(max_pool_out)
+
+max_pooling_buffers = [
+    [-10000 for _ in range(W // pooling_kernel_size)] for _ in range(OUT_CHANNEL)
+]
+
+max_pool_out_buffer = np.zeros((N, L // (pooling_kernel_size**2), OUT_CHANNEL))
+
+buffer_offset = 0
+element_cnt = 0
+output_valid = [False for _ in range(W // pooling_kernel_size)]
+for n in range(N):
+    for l in range(L):  # H * W
+        print("l", l, "buffer_offset", buffer_offset)
+        print("output_valid", output_valid)
+        for c in range(OUT_CHANNEL):
+            if output_valid[buffer_offset]:
+                # check if overwrite
+                if max_pool_out_buffer[n, element_cnt, c] != 0.0:
+                    raise ValueError("overwrite detected")
+                max_pool_out_buffer[n, element_cnt, c] = max_pooling_buffers[c][
+                    buffer_offset
+                ]
+                max_pooling_buffers[c][buffer_offset] = -10000
+            if conv2d_out[n, l, c] > max_pooling_buffers[c][buffer_offset]:
+                max_pooling_buffers[c][buffer_offset] = conv2d_out[n, l, c]
+            if output_valid[buffer_offset] and c == OUT_CHANNEL - 1:
+                element_cnt += 1
+                if element_cnt == L // (pooling_kernel_size**2):
+                    raise ValueError("element_cnt overflow")
+                output_valid[buffer_offset] = False
+        if l > 0 and (l + 1) % pooling_kernel_size == 0:
+            buffer_offset += 1
+            if buffer_offset == W // pooling_kernel_size:
+                buffer_offset = 0
+        if l > 0 and (l + 1) % (pooling_kernel_size * W) == 0:
+            output_valid = [True for _ in range(W // pooling_kernel_size)]
+    for b in range(W // pooling_kernel_size):
+        for c_ in range(OUT_CHANNEL):
+            if output_valid[b]:
+                # check if overwrite
+                if max_pool_out_buffer[n, element_cnt, c_] != 0.0:
+                    raise ValueError("overwrite detected")
+                max_pool_out_buffer[n, element_cnt, c_] = max_pooling_buffers[c_][b]
+                max_pooling_buffers[c_][b] = -10000
+        output_valid[b] = False
+        element_cnt += 1
+    if element_cnt != L // (pooling_kernel_size**2):
+        raise ValueError("element_cnt not full", element_cnt)
+    element_cnt = 0
+
+
+print("max_pool_out_buffer", max_pool_out_buffer)
+print("max_pool_out", max_pool_out.shape)
+print("max_pool_out_buffer", max_pool_out_buffer.shape)
+max_pool_out = max_pool_out.reshape(N, OUT_CHANNEL, -1).transpose(0, 2, 1)
+# allclose
+print(
+    "max_pool correctness",
+    np.allclose(max_pool_out, max_pool_out_buffer, atol=1e-3),
+)
+
+print("diff", np.abs(max_pool_out - max_pool_out_buffer))
