@@ -316,7 +316,7 @@ class HalutLinear(Linear):
                 .clone()
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
-                requires_grad=False,
+                requires_grad=True,
             )
             self.dims = Parameter(
                 state_dict[prefix + "dims"]
