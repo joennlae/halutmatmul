@@ -20,7 +20,7 @@ jobs:
       - name: Lint with pylint
         run: |
           $CONDA/bin/conda install -c conda-forge pylint=2.15
-          $CONDA/bin/pylint --reports yes maddness/python/* src/python/*
+          $CONDA/bin/pylint --reports yes src/python/*
 
   clang-format:
     needs: changes

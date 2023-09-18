@@ -31,7 +31,6 @@ jobs:
               - '.github/workflows/python_mypy.yaml'
               - '.github/workflows/python_testing.yaml'
               - 'docs/**'
-              - 'maddness/**'
               - 'scripts/**'
               - 'src/**'
             hardware:

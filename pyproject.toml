@@ -8,7 +8,7 @@ name = "MIT"
 
 [tool.mypy]
 ignore_missing_imports = true
-files = ["maddness/python", "src/python"]
+files = ["src/python"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src/python"]
@@ -36,11 +36,7 @@ xfail_strict = true
 # Use multiple processes to speed up Pylint.
 jobs = 4
 
-ignore-paths = [
-  "^maddness/python/joblib/.*$",
-  "^src/python/results/*$",
-  "^src/python/runs/*$",
-]
+ignore-paths = ["^src/python/results/*$", "^src/python/runs/*$"]
 
 ignore-patterns = [
   ".*.json",
@@ -53,7 +49,6 @@ ignore-patterns = [
   ".*.png",
   ".*.csv",
 ]
-# init-hook='import sys; sys.path.append("./maddness/python/")'
 
 max-line-length = 100
 

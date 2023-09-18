@@ -74,7 +74,7 @@ compare_conda_env() {
 lint_python() {
     compare_conda_env
     echo "[INFO] lint python with pylint"
-    pylint maddness/python/* src/python/*
+    pylint src/python/*
     echo "[DONE] lint python with pylint"
     echo "[INFO] check types with mypy"
     mypy

@@ -5,12 +5,7 @@ repos:
     hooks:
       - id: pylint
         types: [python]
-        args: [
-            "-rn",
-            "-sn",
-            # "maddness/python/*",
-            # "src/python/*"
-          ]
+        args: ["-rn", "-sn"]
         exclude: .vscode/|joblib|vast.ai|vendor
 
   - repo: https://github.com/jorisroovers/gitlint
