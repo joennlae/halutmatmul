@@ -1,5 +1,4 @@
 name: HW Synth (Yosys) + PnR (OpenROAD)
-
 on: push
 
 jobs:
