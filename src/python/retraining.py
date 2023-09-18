@@ -21,7 +21,6 @@ from utils.analysis_helper import get_layers, sys_info
 from models.resnet import resnet18
 from models.resnet9 import ResNet9
 from models.resnet20 import resnet20
-from models.resnet_georg import ResNet
 from halutmatmul.halutmatmul import HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
 from halutmatmul.modules import HalutConv2d, HalutLinear
@@ -71,8 +70,6 @@ def load_model(
         )
         if args.model == "resnet20":
             model = resnet20()
-        elif args.model == "resnet20_georg":
-            model = ResNet("ResNet20")  # type: ignore
         elif args.model == "resnet9":
             model = ResNet9(3, num_classes)  # type: ignore
     else:
