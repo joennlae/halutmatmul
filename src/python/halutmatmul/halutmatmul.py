@@ -16,7 +16,7 @@ from halutmatmul.functions import (
     read_luts_opt,
     read_luts_quantized_opt,
 )
-from halutmatmul.maddness_legacy import (
+from halutmatmul.maddness import (
     learn_proto_and_hash_function,
     maddness_lut,
     maddness_quantize_luts,
@@ -64,14 +64,12 @@ def learn_halut_offline_report(
     B: np.ndarray,
     C: int = 16,
     K: int = 16,
-    lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
 ) -> tuple[np.ndarray, Dict[str, Any]]:
     mn = HalutMatmul(
         C,
         K=K,
-        lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
     )
@@ -88,7 +86,6 @@ def learn_halut_offline(
     B: np.ndarray,
     C: int = 16,
     K: int = 16,
-    lut_work_const: int = -1,
     quantize_lut: bool = False,
     run_optimized: bool = True,
     niter=2,
@@ -102,7 +99,6 @@ def learn_halut_offline(
     mn = HalutMatmul(
         C,
         K=K,
-        lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
     )
@@ -126,7 +122,6 @@ class HalutMatmul:
         self,
         C: int = 16,
         K: int = 16,
-        lut_work_const: int = -1,
         quantize_lut: bool = False,
         run_optimized: bool = True,
     ) -> None:
@@ -143,7 +138,6 @@ class HalutMatmul:
         self.encoding_function = halut_encode_opt
         self.learning_function = learn_proto_and_hash_function
 
-        self.lut_work_const = lut_work_const
         self.A_enc: np.ndarray = np.array([])
 
         # EncodingAlgorithm.FOUR_DIM_HASH
@@ -171,7 +165,7 @@ class HalutMatmul:
 
     def get_params(self) -> str:
         params = "=============== \nHalutmatmul parameters\n"
-        params += f"C: {self.C}, K: {self.K}, lut_work_const: {self.lut_work_const} \n"
+        params += f"C: {self.C}, K: {self.K} \n"
         params += f"is_learned: {self.is_learned()} \n"
 
         hash_bucket_strings = ""
@@ -229,7 +223,7 @@ class HalutMatmul:
             self.thresholds,
             self.dims,
         ) = self.learning_function(
-            A, self.C, self.K, lut_work_const=self.lut_work_const
+            A, self.C, self.K
         )  # type: ignore[operator]
         self.splits_lists = split_lists
 

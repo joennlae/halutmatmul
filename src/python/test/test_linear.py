@@ -42,7 +42,6 @@ def linear_helper(
         learn_numpy,
         weights_numpy,
         C=C,
-        lut_work_const=-1,
         only_prototypes=use_prototypes,
     )
 

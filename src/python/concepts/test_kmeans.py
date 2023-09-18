@@ -79,7 +79,7 @@ A_reshaped = A.reshape((A.shape[0], C, -1))
 #     centroids = faiss.vector_float_to_array(clustering.centroids)
 #     print("centroids", centroids.shape, centroids[0])
 
-store_array = hm.learn_halut_offline(A, B, C=C, lut_work_const=-1)
+store_array = hm.learn_halut_offline(A, B, C=C)
 
 halutmatmul_module = HalutLinear(
     in_features=B.shape[0],

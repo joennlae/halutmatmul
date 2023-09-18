@@ -69,7 +69,6 @@ def conv2d_helper(
             input_b.detach().cpu().numpy(),
             C=C,
             K=K,
-            lut_work_const=-1,
             only_prototypes=use_prototypes,
         )
     elif loop_order == "kn2col":
@@ -90,7 +89,6 @@ def conv2d_helper(
                     input_b[k_x * kernel_size + k_y].detach().cpu().numpy(),
                     C=C,
                     K=K,
-                    lut_work_const=-1,
                     only_prototypes=use_prototypes,
                 )
                 luts.append(store_array[hm.HalutOfflineStorage.LUT])

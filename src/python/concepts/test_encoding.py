@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import NullFormatter, StrMethodFormatter
 from models.resnet import END_STORE_A
 from concepts.test_reformulation import encoding_function
-from halutmatmul.maddness_legacy import learn_proto_and_hash_function
-from halutmatmul.model import check_file_exists_and_return_path
+from halutmatmul.maddness import learn_proto_and_hash_function
 
 
 def test_encoding(C=64):
