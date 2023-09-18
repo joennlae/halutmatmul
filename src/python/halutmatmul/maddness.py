@@ -11,6 +11,7 @@ import numpy as np
 import numba
 from sklearn import linear_model
 
+from halutmatmul.maddness_multisplit import MultiSplit
 from halutmatmul.functions import halut_encode_opt, split_lists_to_numpy
 
 
@@ -365,37 +366,6 @@ def create_codebook_start_end_idxs(X, number_of_codebooks, algo="start"):
     assert idxs[0, 0] == 0
     assert idxs[-1, -1] == D
     return idxs
-
-
-# untouched from maddness except for comments etc.
-class MultiSplit:
-    __slots__ = "dim vals scaleby offset".split()
-
-    def __init__(self, dim, vals, scaleby=None, offset=None):
-        self.dim = dim
-        self.vals = np.asarray(vals)
-        self.scaleby = scaleby
-        self.offset = offset
-
-    def __repr__(self) -> str:
-        return f"<{self.get_params()}>"
-
-    def __str__(self) -> str:
-        return self.get_params()
-
-    def get_params(self) -> str:
-        params = (
-            f"Multisplit: dim({self.dim}), vals({self.vals}), "
-            f"scaleby({self.scaleby}), offset({self.offset})"
-        )
-        return params
-
-    def preprocess_x(self, x: np.ndarray) -> np.ndarray:
-        if self.offset is not None:
-            x = x - self.offset
-        if self.scaleby is not None:
-            x = x * self.scaleby
-        return x
 
 
 def learn_binary_tree_splits(

@@ -3,23 +3,23 @@
 from __future__ import annotations
 from functools import reduce
 from typing import Any, Dict, Optional
-from sklearn.cluster import KMeans
 import faiss
 
 import numpy as np
 
 import numba
 
+from halutmatmul.maddness import (
+    learn_proto_and_hash_function,
+    maddness_lut,
+    maddness_quantize_luts,
+)
+
 from halutmatmul.functions import (
     get_str_hash_buckets,
     halut_encode_opt,
     read_luts_opt,
     read_luts_quantized_opt,
-)
-from halutmatmul.maddness import (
-    learn_proto_and_hash_function,
-    maddness_lut,
-    maddness_quantize_luts,
 )
 
 
