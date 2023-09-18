@@ -225,7 +225,7 @@ for c_ in Cs:
         row["M"] = M
         row["N"] = N
         row["D"] = D
-        row["layer"] = test_layer_A
+        row["layer"] = test_layer_A  # type: ignore
 
         halut_learned_init = hm.learn_halut_offline(
             train_input.detach().cpu().numpy(), W.detach().cpu().numpy(), C, K
@@ -462,7 +462,7 @@ for c_ in Cs:
         row["mse_backprop"] = mse
         row["mae_backprop"] = mae
         row["huber_backprop"] = huber
-        row["max_backprop"] = torch.max(output).item()
+        row["max_backprop"] = torch.max(output).item()  # tye: ignore
 
         halut_learned = hm.learn_halut_offline(
             I.detach().cpu().numpy(), W.detach().cpu().numpy(), C, K
@@ -511,7 +511,7 @@ for c_ in Cs:
         row["huber_learned"] = torch.nn.HuberLoss(reduction="mean")(
             halut_learned_output, target
         ).item()
-        row["max_learned"] = torch.max(halut_learned_output).item()
+        row["max_learned"] = torch.max(halut_learned_output).item()  # type: ignore
 
         for t in [4, 6, 7, 8, 10, 16, 32]:
             # convert to empty type as empty_strided is not supported
