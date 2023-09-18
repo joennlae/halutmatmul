@@ -7,7 +7,6 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset
 
 from models.resnet import END_STORE_A, END_STORE_B
-from models.dscnn.dataset import AudioGenerator
 from timm.utils import accuracy
 from training import utils_train
 from halutmatmul.modules import HalutConv2d, HalutLinear
@@ -384,51 +383,3 @@ def evaluate_halut_imagenet(
     print(output.mean().item(), output.std().item())
 
     return metric_logger.acc1.global_avg, metric_logger.acc5.global_avg
-
-
-def eval_halut_kws(
-    data: AudioGenerator,
-    model: torch.nn.Module,
-    device: torch.device,
-    is_store: bool = False,
-    data_path: str = "./data",
-    additional_dict: Optional[dict[str, int]] = None,
-    # pylint: disable=unused-argument
-    batch_size: int = 128,
-    num_workers: int = 8,
-    prev_max: float = 0.0,
-) -> tuple[float, float]:
-    # data = AudioGenerator(mode, self.audio_processor, training_parameters)
-    model.eval()
-
-    store_arrays = {}  # type: ignore
-    with torch.no_grad():
-        inputs_, labels_ = data[0]
-        inputs = torch.Tensor(inputs_[:, None, :, :]).to(device)
-        labels = torch.Tensor(labels_).long().to(device)
-
-        # if integer:
-        #     model = model.cpu()
-        #     inputs = inputs * 255.0 / 255
-        #     inputs = inputs.type(torch.uint8).type(torch.float).cpu()
-
-        outputs = torch.nn.functional.softmax(model(inputs), dim=1)
-        outputs = outputs.to(device)
-
-        # _, predicted = torch.max(outputs, 1)
-        # print(labels.size())
-        acc1, acc5 = accuracy(outputs, labels, topk=(1, 5))
-
-        if is_store:
-            print("iteration for storage: ", inputs.shape)
-            write_inputs_to_disk(
-                model,
-                iteration=0,
-                total_iterations=1,
-                path=data_path,
-                store_arrays=store_arrays,
-                additional_dict=additional_dict,
-            )
-
-    print("Accuracy of the network on the %s set: %.2f %%" % ("validation", acc1))
-    return acc1.cpu().detach().item(), acc5.cpu().detach().item()

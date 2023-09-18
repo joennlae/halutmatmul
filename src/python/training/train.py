@@ -25,7 +25,6 @@ from training.sampler import RASampler
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
-from models.resnet_georg import ResNet
 from models.resnet9 import ResNet9
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
@@ -431,8 +430,6 @@ def main(args, gradient_accumulation_steps=1):
         )
         if args.model == "resnet20":
             model = resnet20()
-        elif args.model == "resnet20_georg":
-            model = ResNet("ResNet20")
         elif args.model == "resnet9":
             model = ResNet9(3, num_classes)
     else:
