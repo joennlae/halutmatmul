@@ -19,4 +19,4 @@ jobs:
       - name: Download model + run validation evaluation
         run: |
           source /venv/bin/activate
-          python src/python/test/model_eval.pys
+          python src/python/test/model_eval.py
