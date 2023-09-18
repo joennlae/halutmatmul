@@ -230,7 +230,7 @@ def traverse_tree(
     h = S.mm(input) - T.unsqueeze(1)
     tanh_h = torch.tanh(h / temperature)
     sign_ste = torch.sign(h) - tanh_h.detach() + tanh_h
-    b = B.mm(torch.tanh(sign_ste))
+    b = B.mm(sign_ste)
     b = b.T.reshape((-1, C, 2**depth))
     encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
