@@ -7,8 +7,10 @@ import numpy as np
 import numba
 from numba import prange
 
-from halutmatmul.maddness import MultiSplit
-from halutmatmul.halutmatmul import HalutMatmul
+from halutmatmul.maddness_multisplit import MultiSplit
+
+if TYPE_CHECKING:  # otherwise circular dependency
+    from halutmatmul.halutmatmul import HalutMatmul
 
 
 @numba.jit(parallel=True, nopython=True)
