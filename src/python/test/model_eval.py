@@ -5,7 +5,7 @@ import requests
 
 import torch
 from torch import nn
-from training.train import evaluate
+from training.train import evaluate  # type: ignore[attr-defined]
 from retraining import load_model
 
 from halutmatmul.modules import HalutConv2d, HalutLinear
