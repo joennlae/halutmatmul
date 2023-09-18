@@ -1,4 +1,5 @@
 # source: https://github.com/pytorch/vision/blob/main/references/classification/utils.py
+# SPDX-License-Identifier: BSD-3-Clause (as before)
 # type: ignore
 # pylint: disable=import-outside-toplevel, redefined-builtin, protected-access, line-too-long
 # pylint: disable=unnecessary-dunder-call, unused-argument, consider-using-dict-items

@@ -1,4 +1,5 @@
 # source: https://github.com/pytorch/vision/blob/main/references/classification/presets.py
+# SPDX-License-Identifier: BSD-3-Clause (as before)
 # type: ignore
 import torch
 from torchvision.transforms import autoaugment, transforms
@@ -62,7 +63,6 @@ class ClassificationPresetEval:
         std=(0.229, 0.224, 0.225),
         interpolation=InterpolationMode.BILINEAR,
     ):
-
         self.transforms = transforms.Compose(
             [
                 transforms.Resize(resize_size, interpolation=interpolation),
