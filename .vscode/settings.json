@@ -17,24 +17,5 @@
     100
   ],
   "editor.formatOnSave": true,
-  "systemverilog.includeIndexing": [
-    "hardware/**/*.{sv,v,svh,vh}",
-  ],
-  "systemverilog.excludeIndexing": "src/**, */build/**",
-  // "systemverilog.formatCommand": "verible-verilog-format --assignment_statement_alignment=preserve --case_items_alignment=infer --class_member_variables_alignment=infer --formal_parameters_alignment=preserve --formal_parameters_indentation=indent --named_parameter_alignment=flush-left --named_parameter_indentation=indent --named_port_alignment=flush-left --named_port_indentation=indent --net_variable_alignment=preserve --port_declarations_alignment=preserve --port_declarations_indentation=indent",
-  "systemverilog.documentSymbolsPrecision": "declaration",
-  "systemverilog.trace.server": "messages",
-  "systemverilog.antlrVerification": false, // has macro bugs
-  "systemverilog.compileOnSave": true,
-  "systemverilog.compilerType": "Verilator",
-  "systemverilog.verifyOnOpen": true,
-  "systemverilog.launchConfigurationVerilator": "/scratch2/janniss/conda/halutmatmul_hw/bin/verilator --sv --lint-only --language 1800-2012 --Wall -Ihardware/rtl -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv",
-  "systemverilogFormatter.commandLineArguments": "--formal_parameters_indentation=indent --named_parameter_indentation=indent --named_port_indentation=indent --port_declarations_indentation=indent", // lowRISC
-  "verilog.linting.linter": "verilator",
-  "verilog.linting.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/",
-  "verilog.linting.verilator.runAtFileLocation": false,
-  "verilog.linting.verilator.arguments": "--language 1800-2012 --Wall -Ihardware/vendor/lowrisc_ip/ip/prim/rtl -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_and2_0 -Ihardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_generic_and2_0/rtl/ hardware/build/halut_ip_halut_top_0.1/src/lowrisc_prim_abstract_prim_pkg_0.1/prim_pkg.sv hardware/lint/verilator/verilator_waiver.vlt hardware/rtl/fp_defs_pkg.sv hardware/rtl/halut_pkg.sv",
-  "verilog.logging.enabled": true,
-  "verilog.ctags.path": "/scratch2/janniss/conda/halutmatmul_hw/bin/ctags",
   "python.analysis.typeCheckingMode": "basic",
 }
