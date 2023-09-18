@@ -1,6 +1,5 @@
 # pylint: disable=no-member
 import glob
-import json
 import re
 from subprocess import call
 import sys
@@ -251,69 +250,6 @@ def json_to_dataframe(
     return df
 
 
-ds_cnn_layers = [
-    "conv1",
-    "conv2",
-    "conv3",
-    "conv4",
-    "conv5",
-    "conv6",
-    "conv7",
-    "conv8",
-    "conv9",
-]
-
-layers_levit = [
-    "blocks.0.m.qkv",
-    "blocks.0.m.proj.1",
-    "blocks.1.m.0",
-    "blocks.1.m.2",
-    "blocks.2.m.qkv",
-    "blocks.2.m.proj.1",
-    "blocks.3.m.0",
-    "blocks.3.m.2",
-    "blocks.4.kv",
-    "blocks.4.q.1",
-    "blocks.4.proj.1",
-    "blocks.5.m.0",
-    "blocks.5.m.2",
-    "blocks.6.m.qkv",
-    "blocks.6.m.proj.1",
-    "blocks.7.m.0",
-    "blocks.7.m.2",
-    "blocks.8.m.qkv",
-    "blocks.8.m.proj.1",
-    "blocks.9.m.0",
-    "blocks.9.m.2",
-    "blocks.10.m.qkv",
-    "blocks.10.m.proj.1",
-    "blocks.11.m.0",
-    "blocks.11.m.2",
-    "blocks.12.kv",
-    "blocks.12.q.1",
-    "blocks.12.proj.1",
-    "blocks.13.m.0",
-    "blocks.13.m.2",
-    "blocks.14.m.qkv",
-    "blocks.14.m.proj.1",
-    "blocks.15.m.0",
-    "blocks.15.m.2",
-    "blocks.16.m.qkv",
-    "blocks.16.m.proj.1",
-    "blocks.17.m.0",
-    "blocks.17.m.2",
-    "blocks.18.m.qkv",
-    "blocks.18.m.proj.1",
-    "blocks.19.m.0",
-    "blocks.19.m.2",
-    "blocks.20.m.qkv",
-    "blocks.20.m.proj.1",
-    "blocks.21.m.0",
-    "blocks.21.m.2",
-    "head",
-    "head_dist",
-]
-
 resnet18_layers = [
     "layer1.0.conv1",
     "layer1.0.conv2",
@@ -384,36 +320,15 @@ resnet20_b_layers = [
 
 resnet9_layers = [
     # "conv1.0",
-    # "gause1",
-    # "quant1",
     "conv2.0",
-    # "gause2",
-    # "quant2",
     "res1.0.0",
     "res1.1.0",
-    # "gause3",
-    # "quant3",
     "conv3.0",
-    # "gause4",
-    # "quant4",
     "conv4.0",
-    # "gause5",
-    # "quant5",
     "res2.0.0",
     "res2.1.0",
-    # "gause6",
-    # "quant5",
     # "classifier.3",
 ]
-# resnet9_layers = [
-#     "conv2.0",
-#     "conv3.0",
-#     "conv4.0",
-#     "res1.0.0",
-#     "res1.1.0",
-#     "res2.0.0",
-#     "res2.1.0",
-# ]
 
 """
 layer1.0.conv1   torch.Size([64, 64, 3, 3])
@@ -443,10 +358,6 @@ fc   torch.Size([1000, 512])
 def get_layers(name: available_models) -> list[str]:
     if name == "resnet-50":
         return layers_interesting
-    elif name == "levit":
-        return layers_levit
-    elif name == "ds-cnn":
-        return ds_cnn_layers
     elif name == "resnet18":
         return resnet18_layers
     elif name == "resnet20":
@@ -470,10 +381,5 @@ def get_input_data_amount(name: available_models, l: str) -> list[int]:
         elif layer_loc == "layer4":
             rows_adapted = [32, 64, 128, 256]
         return rows_adapted
-    elif name == "levit":
-        return [1024]  # [128, 256, 512, 1024]
-    elif name == "ds-cnn":
-        # TODO: think about learning on training set
-        return [1]  # all
     else:
         raise Exception("Model name not supported: ", name)
