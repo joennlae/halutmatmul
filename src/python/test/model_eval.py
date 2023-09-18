@@ -25,7 +25,7 @@ def download_model(
     block_size = 2**20  # Mebibyte
 
     dl = 0
-    print("Download ResNet-9 CIFAR-10 luts, weights, thresholds, and biases")
+    print("Download ResNet-9 CIFAR-10 luts, thresholds and dims")
     with open(path + "/" + "resnet9-best.pth", "wb") as f:
         for data in r.iter_content(block_size):
             f.write(data)
@@ -59,14 +59,14 @@ with tempfile.TemporaryDirectory() as tmpdirname:
     print(model)
     print(halut_modules)
 
-    model.to("cuda")
-    criterion = nn.CrossEntropyLoss()
-    evaluate(
-        model,
-        criterion=criterion,
-        data_loader=data_loader_val,
-        device="cuda",
-    )
+    # model.to("cuda")
+    # criterion = nn.CrossEntropyLoss()
+    # evaluate(
+    #     model,
+    #     criterion=criterion,
+    #     data_loader=data_loader_val,
+    #     device="cuda",
+    # )
 
     # int8 quantized model
     model_int8 = torch.ao.quantization.quantize_dynamic(
@@ -78,16 +78,13 @@ with tempfile.TemporaryDirectory() as tmpdirname:
     model_int8.to("cuda")
     criterion = nn.CrossEntropyLoss()
 
-    # run inference on first 100 images
-    # res = model(torch.from_numpy(data_loader_val.dataset.data[:100]).to("cuda"))
-    # res_int8 = model_int8(
-    #     torch.from_numpy(data_loader_val.dataset.data[:100]).to("cuda")
-    # )
-
-    print(model_int8)
-    evaluate(
+    acc1, acc5, loss = evaluate(
         model_int8,
         criterion=criterion,
         data_loader=data_loader_val,
         device="cuda",
     )
+
+    assert acc1 > 0.90
+    assert acc5 > 0.99
+    assert loss < 0.5
