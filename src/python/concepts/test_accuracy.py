@@ -462,7 +462,7 @@ for c_ in Cs:
         row["mse_backprop"] = mse
         row["mae_backprop"] = mae
         row["huber_backprop"] = huber
-        row["max_backprop"] = torch.max(output).item()  # tye: ignore
+        row["max_backprop"] = torch.max(output).item()  # type: ignore
 
         halut_learned = hm.learn_halut_offline(
             I.detach().cpu().numpy(), W.detach().cpu().numpy(), C, K
