@@ -17,12 +17,12 @@ from training.timm_model import convert_to_halut
 from training import utils_train
 from training.utils_train import save_on_master, set_weight_decay  # type: ignore[attr-defined]
 from training.train import load_data, main  # type: ignore[attr-defined]
-from utils.analysis_helper import get_input_data_amount, get_layers, sys_info
+from utils.analysis_helper import get_layers, sys_info
 from models.resnet import resnet18
 from models.resnet9 import ResNet9
 from models.resnet20 import resnet20
 from models.resnet_georg import ResNet
-from halutmatmul.halutmatmul import EncodingAlgorithm, HalutModuleConfig
+from halutmatmul.halutmatmul import HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
@@ -350,8 +350,7 @@ def run_retraining(
 
         # if args_checkpoint.cifar10:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer,
-            T_max=train_epochs,  # eta_min=0.0002
+            optimizer, T_max=train_epochs, eta_min=0.0002
         )
         # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
@@ -518,9 +517,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 200  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 25  # imagenet 2, cifar10 max 40 as we use plateaulr
     BATCH_SIZE = 128
-    LR = 0.0005  # imagenet 0.001, cifar10 0.01
+    LR = 0.001  # imagenet 0.001, cifar10 0.01
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
