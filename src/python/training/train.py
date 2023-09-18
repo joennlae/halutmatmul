@@ -1,4 +1,6 @@
 # source: https://github.com/pytorch/vision/blob/main/references/classification/train.py
+# SPDX-License-Identifier: BSD-3-Clause (as before)
+# includes a to of halut related changes
 # type: ignore
 # pylint: disable=line-too-long, import-outside-toplevel, unnecessary-lambda-assignment
 import datetime
@@ -20,8 +22,7 @@ import torchvision.transforms as T
 sys.path.append(os.getcwd())
 
 # pylint: disable=wrong-import-position
-from training import presets, transforms, utils_train
-from training.sampler import RASampler
+from training import presets, utils_train
 from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
@@ -29,8 +30,6 @@ from models.resnet9 import ResNet9
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 SCRATCH_BASE = "/scratch/janniss"
-
-activator = 0  # TODO remove
 
 
 def train_one_epoch(
@@ -359,10 +358,7 @@ def load_data(traindir, valdir, args):
 
     print("Creating data loaders")
     if args.distributed:
-        if hasattr(args, "ra_sampler") and args.ra_sampler:
-            train_sampler = RASampler(dataset, shuffle=True, repetitions=args.ra_reps)
-        else:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
         test_sampler = torch.utils.data.distributed.DistributedSampler(
             dataset_test, shuffle=False
         )
@@ -1020,17 +1016,6 @@ def get_args_parser(add_help=True):
         default=None,
         type=float,
         help="the maximum gradient norm (default None)",
-    )
-    parser.add_argument(
-        "--ra-sampler",
-        action="store_true",
-        help="whether to use Repeated Augmentation in training",
-    )
-    parser.add_argument(
-        "--ra-reps",
-        default=3,
-        type=int,
-        help="number of repetitions for Repeated Augmentation (default: 3)",
     )
     parser.add_argument(
         "--weights", default=None, type=str, help="the weights enum name to load"
