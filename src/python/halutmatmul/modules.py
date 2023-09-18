@@ -15,21 +15,6 @@ from torch.nn.modules.conv import _ConvNd
 from torch.nn.parameter import Parameter
 
 
-def create_A_matrix_from_dims(
-    dims: torch.Tensor, D: int, C: int, K: int = 16, dtype=torch.float16
-) -> torch.Tensor:
-    assert D % C == 0
-    depth = int(math.sqrt(K))
-    A = torch.zeros((C, D // C, depth), dtype=dtype)
-    # same as in torch.nn.Conv2d
-    # torch.nn.init.kaiming_uniform_(A, a=math.sqrt(5))
-    dims_reshape = dims.reshape((C, depth)) % (D // C)
-    for c in range(C):
-        for d in range(depth):
-            A[c, dims_reshape[c, d], d] = 1
-    return A
-
-
 def create_selection_matrix(
     C: int = 1, K: int = 16, dtype=torch.float16
 ) -> torch.Tensor:
@@ -163,7 +148,6 @@ def halut_matmul_forward(
     K: int = 16,
     dims: Optional[torch.Tensor] = None,
     prototypes: Optional[torch.Tensor] = None,
-    decision_trees: Optional[torch.Tensor] = None,
     temperature: torch.Tensor = torch.ones(1, dtype=torch.float16),
     split_factor: int = 4,
 ) -> torch.Tensor:
@@ -184,24 +168,6 @@ def halut_matmul_forward(
         b = b.T.reshape((-1, C, K))
         encoding_soft = torch.nn.Softmax(dim=2)(b)
     index = torch.argmax(encoding_soft, dim=2, keepdim=True)
-    if decision_trees is not None:
-        index = torch.zeros_like(index)
-        levels = decision_trees.shape[0]
-
-        for c in range(C):
-            prediction_all_levels = (
-                torch.zeros(input_reshaped.shape[0], dtype=torch.int64) - 1
-            )
-            for level in range(levels):
-                predict = apply_decision_tree_torch(
-                    input_reshaped[:, c], decision_trees[level][c]
-                )
-                minus_one_mask = prediction_all_levels == -1
-                prediction_all_levels = torch.where(
-                    minus_one_mask, predict, prediction_all_levels
-                )
-            index[:, c, :] = prediction_all_levels.unsqueeze(1)
-
     encoding_hard = torch.zeros_like(
         encoding_soft, memory_format=torch.legacy_contiguous_format
     ).scatter_(2, index, 1.0)
@@ -244,7 +210,6 @@ class HalutLinear(Linear):
         device: Union[str, Any] = None,
         dtype: Union[str, Any] = None,
         split_factor: int = 1,
-        use_decision_tree: bool = False,
         use_prototypes: bool = False,
     ) -> None:
         super().__init__(
@@ -270,7 +235,6 @@ class HalutLinear(Linear):
         )
         self.S = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.B = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
-        self.DT = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.P = Parameter(torch.zeros(1, dtype=torch.bool), requires_grad=False)
         self.temperature = Parameter(torch.ones(1), requires_grad=True)
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
@@ -279,7 +243,6 @@ class HalutLinear(Linear):
         self.input_storage_b: Optional[Tensor] = None
 
         self.split_factor = split_factor
-        self.use_decision_tree = use_decision_tree
         self.use_prototypes = use_prototypes
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
@@ -325,16 +288,6 @@ class HalutLinear(Linear):
                 .to(str(self.weight.device)),
                 requires_grad=False,
             )
-            if prefix + "DT" in state_dict.keys():
-                self.DT = Parameter(
-                    state_dict[prefix + "DT"]
-                    .clone()
-                    .to(str(self.weight.device))
-                    .to(self.weight.dtype),
-                    requires_grad=False,
-                )
-            if len(self.DT.shape) > 1:
-                self.use_decision_tree = False
             self.P = Parameter(
                 state_dict[prefix + "P"]
                 .clone()
@@ -344,7 +297,7 @@ class HalutLinear(Linear):
             )
             if len(self.P.shape) > 1:
                 self.use_prototypes = False
-            if not self.use_prototypes and not self.use_decision_tree:
+            if not self.use_prototypes:
                 state_dict[prefix + "B"] = create_bit_matrix(
                     self.lut.size(1), self.lut.size(2), self.weight.dtype
                 ).to(str(self.weight.device))
@@ -419,11 +372,8 @@ class HalutLinear(Linear):
                 self.B,
                 self.lut.size(1),
                 self.lut.size(2),
-                self.dims
-                if not self.use_decision_tree and not self.use_prototypes
-                else None,
+                self.dims if not self.use_prototypes else None,
                 self.P if self.use_prototypes else None,
-                self.DT if self.use_decision_tree else None,
                 temperature=self.temperature,
                 split_factor=self.split_factor,
             )
@@ -505,7 +455,6 @@ class HalutConv2d(_ConvNd):
         device: Union[Any, None] = None,
         dtype: Union[Any, None] = None,
         split_factor: int = 4,
-        use_decision_tree: bool = False,
         use_prototypes: bool = False,
         loop_order: Literal["im2col", "kn2col"] = "im2col",
         halut_active: bool = False,
@@ -545,14 +494,12 @@ class HalutConv2d(_ConvNd):
         self.errors = [(-1, np.zeros(ErrorTuple.MAX, dtype=np.float64))]
         self.S = Parameter(torch.zeros(1), requires_grad=False)
         self.B = Parameter(torch.zeros(1), requires_grad=False)
-        self.DT = Parameter(torch.zeros(1), requires_grad=False)
         self.P = Parameter(torch.zeros(1), requires_grad=False)
         self.temperature = Parameter(torch.ones(1), requires_grad=True)
         self.input_storage_a: Optional[Tensor] = None
         self.input_storage_b: Optional[Tensor] = None
 
         self.split_factor = split_factor
-        self.use_decision_tree = use_decision_tree
         self.use_prototypes = use_prototypes
         self.loop_order = loop_order
 
@@ -565,7 +512,6 @@ class HalutConv2d(_ConvNd):
             K = 16
             C = self.weight.shape[1]
             M = self.weight.shape[0]
-            # print(f"K: {K}, C: {C}, M: {M}")
             self.lut = Parameter(torch.zeros((M, C, K)), requires_grad=True)
             self.thresholds = Parameter(torch.zeros((C * 15)), requires_grad=True)
             self.S = Parameter(
@@ -656,20 +602,10 @@ class HalutConv2d(_ConvNd):
             )
             if len(self.P.shape) > 1:
                 self.use_prototypes = False
-            if prefix + "DT" in state_dict.keys():
-                self.DT = Parameter(
-                    state_dict[prefix + "DT"]
-                    .clone()
-                    .to(str(self.weight.device))
-                    .to(self.weight.dtype),
-                    requires_grad=False,
-                )
-            if len(self.DT.shape) > 1:
-                self.use_decision_tree = False
             self.weight.requires_grad = False
             if len(self.lut.shape) > 3:
                 self.loop_order = "kn2col"
-            if not self.use_prototypes and not self.use_decision_tree:
+            if not self.use_prototypes:
                 state_dict[prefix + "B"] = create_bit_matrix(
                     self.lut.size(1), self.lut.size(2), self.weight.dtype
                 ).to(str(self.weight.device))
@@ -850,11 +786,8 @@ class HalutConv2d(_ConvNd):
                     self.B,
                     self.lut.size(1),
                     self.lut.size(2),
-                    self.dims
-                    if not self.use_decision_tree and not self.use_prototypes
-                    else None,
+                    self.dims if not self.use_prototypes else None,
                     self.P if self.use_prototypes else None,
-                    self.DT if self.use_decision_tree else None,
                     temperature=self.temperature,
                     split_factor=self.split_factor,
                 )
@@ -891,10 +824,9 @@ class HalutConv2d(_ConvNd):
                             self.lut.size(-2),
                             self.lut.size(-1),
                             self.dims[k_x * self.kernel_size[0] + k_y]
-                            if not self.use_decision_tree and not self.use_prototypes
+                            if not self.use_prototypes
                             else None,
                             self.P if self.use_prototypes else None,
-                            self.DT if self.use_decision_tree else None,
                             temperature=self.temperature,
                             split_factor=self.split_factor,
                         )
@@ -934,15 +866,6 @@ class HalutConv2d(_ConvNd):
                     self.errors.append((_input.shape[0], res_error))  # type: ignore
             return output
         else:
-            # if self.dims.shape[0] > 1:
-            #     unfolded = self.transform_input(_input)
-            #     # use inverted selection of dims to set values of unfolded to zero
-            #     unfolded_new = torch.zeros_like(unfolded)
-            #     unfolded_new[:, self.dims] = unfolded[:, self.dims]
-            #     self.check_store_offline(_input, unfolded_new)
-            #     out_unf = unfolded_new.matmul(self.transform_weight(self.weight))
-            #     output = self.transform_output(out_unf, _input)
-            #     return output
             self.check_store_offline(_input)
 
             if self.padding_mode != "zeros":
