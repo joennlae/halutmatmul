@@ -7,12 +7,6 @@
   "python.sortImports.path": "/scratch/janniss/conda/halutmatmul_gpu/bin/isort",
   "python.linting.pylintPath": "/scratch/janniss/conda/halutmatmul_gpu/bin/pylint",
   "python.terminal.activateEnvironment": true,
-  "python.autoComplete.extraPaths": [
-    "maddness/python",
-  ],
-  "python.analysis.extraPaths": [
-    "maddness/python",
-  ],
   "editor.rulers": [
     100
   ],

@@ -3,20 +3,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union, Any, Optional, List, Literal
 
-if TYPE_CHECKING:
-    from halutmatmul.halutmatmul import HalutMatmul
-from pathlib import Path
-import sys
-
 import numpy as np
 import numba
 from numba import prange
 
-sys.path.append(
-    str(Path(__file__).parent) + "/../../../maddness/python/"
-)  # for maddness import
-
-from maddness.util.hash_function_helper import MultiSplit  # type: ignore[attr-defined]
+from halutmatmul.maddness import MultiSplit
+from halutmatmul.halutmatmul import HalutMatmul
 
 
 @numba.jit(parallel=True, nopython=True)
