@@ -16,25 +16,18 @@
 
 * Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
 * More information about the base project is [here](maddness/README.md)
-* [arXiv](https://arxiv.org/abs/2106.10860) paper link
+* [arXiv](https://arxiv.org/abs/2106.10860) Maddnes paper
 
-This repo is used for the algorithmic exploration. I will try to update this repo with as much hardware information as I am allowed to publish.
+## Algorithmic
 
-## Install
+### Differentiable Maddness
 
-```bash
-# install conda environment & activate
-# mamba is recommended for faster install
-conda env create -f environment_gpu.yml
-conda activate halutmatmul
+![Differentiable Maddness](docs/images/code_preview.png)
 
-# IIS prefixed env
-conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
-```
+### ResNet-9 LUTs, Thresholds, Dims
 
-## Hackernews mention (comments only) and discussion
+* [Download 90%+ Model](https://iis-people.ee.ethz.ch/~janniss/resnet9-best.pth)
 
-* [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
 
 ## Hardware OpenROAD flow results from CI
 
@@ -99,6 +92,20 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp)  |
 | Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp)  |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |
-### Links
 
-* [Addendum](docs/addendum.md)
+
+## Install
+
+```bash
+# install conda environment & activate
+# mamba is recommended for faster install
+conda env create -f environment_gpu.yml
+conda activate halutmatmul
+
+# IIS prefixed env
+conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
+```
+
+## Hackernews mention (comments only) and discussion
+
+* [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
