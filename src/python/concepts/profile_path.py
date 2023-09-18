@@ -52,16 +52,6 @@ halutmatmul_module = HalutConv2d(
 input_a = halutmatmul_module.transform_input(input_learn)
 input_b = halutmatmul_module.transform_weight(weights)
 
-# store_array = hm.learn_halut_offline(
-#     input_a.detach().cpu().numpy(),
-#     input_b.detach().cpu().numpy(),
-#     C=C,
-#     K=K,
-#     lut_work_const=-1,
-# )
-#
-# np.save("store_array.npy", store_array)
-
 store_array = np.load("store_array.npy", allow_pickle=True)
 weights.to(torch_device)
 
@@ -90,6 +80,7 @@ state_dict = OrderedDict(
     )
 )
 halutmatmul_module.load_state_dict(state_dict, strict=False)
+
 
 # pylint: disable=dangerous-default-value
 def get_tensors(only_cuda=False, omit_objs=[]):

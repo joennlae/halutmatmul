@@ -14,7 +14,6 @@ def helper_halut(
     D: int = 64,
     M: int = 16,
     C: int = 16,
-    lut_work_const: int = -1,
     a: float = 1.0,
     b: float = 0.0,
     K: int = 16,
@@ -33,7 +32,6 @@ def helper_halut(
         B,
         C=C,
         K=K,
-        lut_work_const=lut_work_const,
         quantize_lut=quantize_lut,
         run_optimized=run_optimized,
     )
