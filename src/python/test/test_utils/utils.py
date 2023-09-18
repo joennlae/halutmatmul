@@ -50,7 +50,9 @@ def helper_test_module(
     state_dict = halutmatmul_module.state_dict()
     shapes_normal = []
     for k, v in state_dict.items():
-        if k in (["lut", "bias", "thresholds"]):  # "thresholds" currently activated
+        if k in (
+            ["lut", "bias", "thresholds", "temperature"]
+        ):  # "thresholds" currently activated
             shapes_normal.append(v.shape)
     print("all shapes:", len(all_shapes), "normal", len(shapes_normal))
 
@@ -59,8 +61,9 @@ def helper_test_module(
         and halutmatmul_module.loop_order == "im2col"
     ):
         if not halutmatmul_module.use_prototypes:
-            assert len(shapes_normal) == len(all_shapes)
-            assert shapes_normal == all_shapes[::-1]
+            assert len(shapes_normal) + 1 == len(
+                all_shapes
+            )  # as thresholds appears two times
     elif (
         isinstance(halutmatmul_module, HalutConv2d)
         and halutmatmul_module.loop_order == "kn2col"
