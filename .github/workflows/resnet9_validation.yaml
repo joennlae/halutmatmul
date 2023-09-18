@@ -1,0 +1,22 @@
+name: ResNet9 - 90%+ accuracy
+on: [push]
+
+jobs:
+  changes:
+    uses: ./.github/workflows/filter.yaml
+  resnet9:
+    name: ResNet9 - 90%+ accuracy
+    needs: changes
+    if: ${{ needs.changes.outputs.algorithmic == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/joennlae/halutmatmul-conda-gpu:latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download model + run validation evaluation
+        run: |
+          source /venv/bin/activate
+          python src/python/test/model_eval.pys
