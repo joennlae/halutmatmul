@@ -20,4 +20,5 @@ jobs:
         run: |
           source /venv/bin/activate
           export PYTHONPATH="$PYTHONPATH:$PWD/src/python/"
+          pip install tensorboard
           python src/python/test/model_eval.py
