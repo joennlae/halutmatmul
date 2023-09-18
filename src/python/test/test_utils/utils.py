@@ -50,7 +50,7 @@ def helper_test_module(
     state_dict = halutmatmul_module.state_dict()
     shapes_normal = []
     for k, v in state_dict.items():
-        if k in (["lut", "bias"]):  # "thresholds" currently deactivated
+        if k in (["lut", "bias", "thresholds"]):  # "thresholds" currently activated
             shapes_normal.append(v.shape)
     print("all shapes:", len(all_shapes), "normal", len(shapes_normal))
 
