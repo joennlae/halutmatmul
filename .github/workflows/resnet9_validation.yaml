@@ -19,4 +19,5 @@ jobs:
       - name: Download model + run validation evaluation
         run: |
           source /venv/bin/activate
+          export PYTHONPATH="$PYTHONPATH:$PWD/src/python/"
           python src/python/test/model_eval.py
