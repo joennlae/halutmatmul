@@ -554,7 +554,7 @@ class HalutConv2d(_ConvNd):
         return (
             super().extra_repr()
             + f", halut_active={self.halut_active.item()}, loop_order={self.loop_order}, "
-            f"split_factor={self.split_factor}, use_decision_tree={self.use_decision_tree},"
+            f"split_factor={self.split_factor}, "
             f" use_prototypes={self.use_prototypes}"
         )
 
