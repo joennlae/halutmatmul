@@ -75,14 +75,14 @@ with tempfile.TemporaryDirectory() as tmpdirname:
         dtype=torch.qint8,
     )
 
-    model_int8.to("cuda")
+    model_int8.to("cpu")
     criterion = nn.CrossEntropyLoss()
 
     acc1, acc5, loss = evaluate(
         model_int8,
         criterion=criterion,
         data_loader=data_loader_val,
-        device="cuda",
+        device="cpu",
     )
 
     assert acc1 > 0.90
