@@ -5,6 +5,8 @@
 [![Python Linting](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/linting.yaml)
 [![Mypy - Typechecking](https://github.com/joennlae/halutmatmul/actions/workflows/python_typing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_typing.yaml)
 
+### ML CI
+[![ResNet9 - 90%+ accuracy](https://github.com/joennlae/halutmatmul/actions/workflows/resnet9_validation.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/resnet9_validation.yaml)
 ### Hardware CI
 
 [![HW Synth + PAR OpenROAD](https://github.com/joennlae/halutmatmul/actions/workflows/hw_openroad.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_openroad.yaml)
