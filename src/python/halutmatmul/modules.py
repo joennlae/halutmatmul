@@ -150,6 +150,8 @@ def halut_matmul_forward(
     prototypes: Optional[torch.Tensor] = None,
     temperature: torch.Tensor = torch.ones(1, dtype=torch.float16),
     split_factor: int = 4,
+    L_int8: Optional[torch.Tensor] = None,
+    scale: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     # encoding
     input_reshaped = input.reshape((input.shape[0], C, -1))
@@ -189,6 +191,22 @@ def halut_matmul_forward(
         ).sum(
             dim=2
         )
+    if L_int8 is not None and scale is not None:
+        result_hard = torch.zeros(
+            [input.shape[0], L.size(0)], dtype=input.dtype, device=input.device
+        )
+        for i in range(split_factor):
+            M = L.size(0)
+            result_hard[
+                :, (M // split_factor) * i : (M // split_factor) * (i + 1)
+            ] = torch.einsum(
+                "nij, kij -> nki",
+                [E, L_int8[(M // split_factor) * i : (M // split_factor) * (i + 1)]],
+            ).sum(
+                dim=2
+            )
+        result_hard = result_hard * scale
+        result = result_hard - result.detach() + result  # STE
     return result
 
 
@@ -246,10 +264,10 @@ class HalutLinear(Linear):
         self.use_prototypes = use_prototypes
         self._register_load_state_dict_pre_hook(self.state_dict_hook)
 
-    def update_lut(self, epoch: int = 0, epoch_max: int = 100):
+    def update_lut(self):
         pass
 
-    def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
+    def halut_updates(self):
         pass
 
     # has to be defined twice as we need the self object which is not passed per default to the hook
@@ -482,6 +500,8 @@ class HalutConv2d(_ConvNd):
             torch.zeros(1, dtype=torch.bool), requires_grad=False
         )
         self.lut = Parameter(torch.zeros(1), requires_grad=False)
+        self.lut_int8 = Parameter(torch.ones(1), requires_grad=False)
+        self.scale = Parameter(torch.ones(1), requires_grad=False)
         self.thresholds = Parameter(torch.zeros(1), requires_grad=False)
         self.dims = Parameter(torch.zeros(1), requires_grad=False)
 
@@ -542,13 +562,21 @@ class HalutConv2d(_ConvNd):
                 )
                 self.dims[i * 4 : (i + 1) * 4] = channel_dims + i * 9
 
-        self._register_load_state_dict_pre_hook(self.state_dict_hook)
+        self._register_load_state_dict_pre_hook(self.pre_state_dict_hook)
 
-    def update_lut(self, epoch: int = 0, epoch_max: int = 100):
-        pass
+    def update_lut(self):
+        self.scale.data[0] = torch.max(self.lut.data) - torch.min(self.lut.data)
+        bits = 8
+        self.scale.data[0] = self.scale.data[0] / (2**bits - 1)
+        quant_min = -(2 ** (bits - 1))
+        quant_max = 2 ** (bits - 1) - 1
+        self.lut_int8.data = torch.clamp(
+            torch.round(self.lut / self.scale), quant_min, quant_max
+        )
 
-    def halut_updates(self, start_epoch: int = 0, epoch: int = 0, epoch_max: int = 100):
-        pass
+    def halut_updates(self):
+        if self.halut_active:
+            self.update_lut()
 
     def extra_repr(self):
         return (
@@ -558,7 +586,7 @@ class HalutConv2d(_ConvNd):
             f" use_prototypes={self.use_prototypes}"
         )
 
-    def state_dict_hook(
+    def pre_state_dict_hook(
         self, state_dict: "OrderedDict[str, Tensor]", prefix: str, *_: Any
     ) -> None:
         if all(
@@ -578,6 +606,13 @@ class HalutConv2d(_ConvNd):
                 .to(str(self.weight.device))
                 .to(self.weight.dtype),
                 requires_grad=True,
+            )
+            self.lut_int8 = Parameter(
+                state_dict[prefix + "lut_int8"]
+                .clone()
+                .to(str(self.weight.device))
+                .to(self.weight.dtype),
+                requires_grad=False,
             )
             self.thresholds = Parameter(
                 state_dict[prefix + "thresholds"]
@@ -778,6 +813,9 @@ class HalutConv2d(_ConvNd):
             transformed_input = self.transform_input(_input)
 
             if self.loop_order == "im2col":
+                if len(self.lut_int8.shape) == 1:  # first time lut update
+                    self.update_lut()
+
                 ret_tensor = halut_matmul_forward(
                     transformed_input,
                     self.thresholds,
@@ -790,6 +828,8 @@ class HalutConv2d(_ConvNd):
                     self.P if self.use_prototypes else None,
                     temperature=self.temperature,
                     split_factor=self.split_factor,
+                    L_int8=self.lut_int8,
+                    scale=self.scale,
                 )
             elif self.loop_order == "kn2col":
                 H_out, W_out = self.get_H_W_out(_input.shape[2], _input.shape[3])
