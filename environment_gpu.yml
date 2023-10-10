@@ -38,6 +38,7 @@ dependencies:
   # ci
   - pytest-split
   - pip:
+      - tensorboard
       - cupy_cuda11x
       - pytorch-nemo
       - timm==0.5.4
