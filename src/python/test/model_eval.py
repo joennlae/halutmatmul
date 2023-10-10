@@ -62,7 +62,7 @@ with tempfile.TemporaryDirectory() as tmpdirname:
 
     model.to("cuda")
     criterion = nn.CrossEntropyLoss()
-    evaluate(
+    acc1, acc5, loss = evaluate(
         model,
         criterion=criterion,
         data_loader=data_loader_val,
@@ -79,12 +79,12 @@ with tempfile.TemporaryDirectory() as tmpdirname:
     # model_int8.to("cpu")
     # criterion = nn.CrossEntropyLoss()
 
-    acc1, acc5, loss = evaluate(
-        model,
-        criterion=criterion,
-        data_loader=data_loader_val,
-        device="cpu",
-    )
+    # acc1, acc5, loss = evaluate(
+    #     model,
+    #     criterion=criterion,
+    #     data_loader=data_loader_val,
+    #     device="cpu",
+    # )
 
     assert acc1 > 0.916
     assert acc5 > 0.99
