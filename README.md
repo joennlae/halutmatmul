@@ -54,7 +54,7 @@ print(mse)
 
 ## Hardware OpenROAD flow results from CI
 
-All NanGate45 results are not optimized! The results are only for reference and to show the flow works.
+All NanGate45 results are NOT OPTIMIZED! The results are only for reference and to show the flow works.
 
 | All Designs    |  NanGate45      |
 | -------------  |  -------------  |
