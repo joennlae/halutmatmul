@@ -115,6 +115,9 @@ def conv2d_helper(
                 "lut": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
                 if not use_prototypes
                 else torch.from_numpy(store_array[hm.HalutOfflineStorage.SIMPLE_LUT]),
+                "lut_int8": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
+                if not use_prototypes
+                else torch.from_numpy(store_array[hm.HalutOfflineStorage.SIMPLE_LUT]),
                 "thresholds": torch.from_numpy(
                     store_array[hm.HalutOfflineStorage.THRESHOLDS]
                 ),
