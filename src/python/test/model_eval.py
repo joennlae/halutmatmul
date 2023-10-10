@@ -60,13 +60,13 @@ with tempfile.TemporaryDirectory() as tmpdirname:
     print(model)
     print(halut_modules)
 
-    model.to("cuda")
+    model.to("cpu")
     criterion = nn.CrossEntropyLoss()
     acc1, acc5, loss = evaluate(
         model,
         criterion=criterion,
         data_loader=data_loader_val,
-        device="cuda",
+        device="cpu",
     )
 
     # int8 quantized model
