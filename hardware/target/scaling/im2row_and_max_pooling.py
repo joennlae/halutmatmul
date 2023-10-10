@@ -9,8 +9,8 @@ kernel_size = 3
 N = 1
 H = 8
 W = 8
-IN_CHANNEL = 8
-OUT_CHANNEL = 16
+IN_CHANNEL = 16
+OUT_CHANNEL = 64
 padding = 1
 
 random_array = np.random.rand(N, H, W, IN_CHANNEL) * 2 - 1
@@ -134,7 +134,7 @@ max_pool_out = max_pool(
 ).numpy()
 
 print(max_pool_out.shape)
-print(max_pool_out)
+# print(max_pool_out)
 
 max_pooling_buffers = [
     [-10000 for _ in range(W // pooling_kernel_size)] for _ in range(OUT_CHANNEL)
@@ -147,8 +147,8 @@ element_cnt = 0
 output_valid = [False for _ in range(W // pooling_kernel_size)]
 for n in range(N):
     for l in range(L):  # H * W
-        print("l", l, "buffer_offset", buffer_offset)
-        print("output_valid", output_valid)
+        # print("l", l, "buffer_offset", buffer_offset)
+        # print("output_valid", output_valid)
         for c in range(OUT_CHANNEL):
             if output_valid[buffer_offset]:
                 # check if overwrite
