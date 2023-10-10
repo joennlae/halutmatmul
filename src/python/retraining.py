@@ -222,8 +222,13 @@ def run_retraining(
                     loop_order = "im2col"
                     c_ = inner_dim_im2col // 4
             print("module_ref", module_ref)
+            if "conv1.0" in next_layer:
+                # first layer
+                c_ = c_ * 9
             if "fc" in next_layer:
                 c_ = c_base  # fc.weight = [512, 10]
+            if isinstance(module_ref, HalutLinear):
+                c_ = 256 // 4
             modules = {next_layer: [c_, K, loop_order, use_prototype]} | halut_modules
         else:
             modules = halut_modules
@@ -271,7 +276,7 @@ def run_retraining(
                     continue
                 if isinstance(module, (HalutConv2d, HalutLinear)):
                     if name == "thresholds":
-                        # params["thresholds"].append(p)
+                        params["thresholds"].append(p)
                         continue
                     if name == "temperature":
                         # params["temperature"].append(p)
@@ -295,8 +300,8 @@ def run_retraining(
         params["thresholds"] = params["thresholds"][-1:]
         custom_lrs = {
             "temperature": 0.1 * 0.0,
-            "thresholds": lr,
-            "old_thresholds": lr,
+            "thresholds": lr / 2,
+            "old_thresholds": lr / 2,
             "old_lut": lr,
             "lut": lr,
             "other": lr,
@@ -347,7 +352,8 @@ def run_retraining(
 
         # if args_checkpoint.cifar10:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=train_epochs, eta_min=0.0002
+            optimizer,
+            T_max=train_epochs,  # eta_min=0.0002 # no eta_min during fine-tuning
         )
         # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
@@ -514,9 +520,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 25  # imagenet 2, cifar10 max 40 as we use plateaulr
+    TRAIN_EPOCHS = 300  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128
-    LR = 0.001  # imagenet 0.001, cifar10 0.01
+    LR = 0.0005  # 0.001 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
