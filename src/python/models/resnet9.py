@@ -13,7 +13,7 @@ def conv_block(in_channels, out_channels, pool=False, halut_active=False):
             kernel_size=3,
             padding=1,
             halut_active=halut_active,
-            split_factor=2,
+            split_factor=4,
         ),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
@@ -118,29 +118,21 @@ class ResNet9(nn.Module):
         # self.gause6 = GaussianNoise()
         # self.quant6 = SimulateQuantError(bitwidth=bitwidth)
 
+        self.maxpool = nn.MaxPool2d(4)
         self.classifier = nn.Sequential(
-            nn.AdaptiveMaxPool2d((1, 1)),  # MaxPool2d(4)
-            nn.Flatten(),
-            nn.Dropout(0.2),
             HalutLinear(256, num_classes),
         )
         self.apply(_weights_init)
 
     def forward(self, xb):
         out = self.conv1(xb)
-        # out = self.gause1(out)
-        # out = self.quant1(out)
         out = self.conv2(out)
-        # out = self.gause2(out)
-        # out = self.quant2(out)
         out = self.res1(out) + out
         out = self.conv3(out)
-        # out = self.gause4(out)
-        # out = self.quant4(out)
         out = self.conv4(out)
-        # out = self.gause5(out)
-        # out = self.quant5(out)
         out = self.res2(out) + out
+        out = self.maxpool(out)
+        out = out.flatten(1)
         out = self.classifier(out)
         return out
 
@@ -152,3 +144,11 @@ if __name__ == "__main__":
     from torchinfo import summary
 
     summary(model, input_size=(1, 3, 32, 32))
+
+    from ptflops import get_model_complexity_info
+
+    macs, params = get_model_complexity_info(
+        model, (3, 224, 224), as_strings=True, print_per_layer_stat=True, verbose=True
+    )
+    print("{:<30}  {:<8}".format("Computational complexity: ", macs))
+    print("{:<30}  {:<8}".format("Number of parameters: ", params))
