@@ -12,4 +12,7 @@
   ],
   "editor.formatOnSave": true,
   "python.analysis.typeCheckingMode": "basic",
+  "extensions.experimental.affinity": {
+    "asvetliakov.vscode-neovim": 1
+  },
 }
