@@ -80,6 +80,9 @@ def linear_helper(
                 )
                 if use_prototypes
                 else torch.zeros(1, dtype=torch.float32),
+                "lut_int8": torch.from_numpy(store_array[hm.HalutOfflineStorage.LUT])
+                if not use_prototypes
+                else torch.from_numpy(store_array[hm.HalutOfflineStorage.SIMPLE_LUT]),
             }
         )
     )
