@@ -327,7 +327,7 @@ resnet9_layers = [
     "conv4.0",
     "res2.0.0",
     "res2.1.0",
-    # "classifier.3",
+    # "classifier.0",
 ]
 
 """

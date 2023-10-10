@@ -59,20 +59,9 @@ def train_one_epoch(
         "img/s", utils_train.SmoothedValue(window_size=10 * accum_iter, fmt="{value}")
     )
 
-    def update_lut(module, prefix=""):
-        if isinstance(module, (HalutConv2d, HalutLinear)):
-            module.update_lut(epoch=epoch, epoch_max=args.epochs)
-            return
-
-        for child_name, child_module in module.named_children():
-            child_prefix = f"{prefix}.{child_name}" if prefix != "" else child_name
-            update_lut(child_module, prefix=child_prefix)
-
     def halut_updates(module, prefix=""):
-        if isinstance(module, (HalutConv2d)):
-            module.halut_updates(
-                start_epoch=args.start_epoch, epoch=epoch, epoch_max=args.epochs
-            )
+        if isinstance(module, (HalutConv2d, HalutLinear)):
+            module.halut_updates()
             return
 
         for child_name, child_module in module.named_children():
@@ -102,7 +91,6 @@ def train_one_epoch(
             if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
                 scaler.step(optimizer)
                 scaler.update()
-                update_lut(model)
                 halut_updates(model)
                 optimizer.zero_grad()
         else:
@@ -128,7 +116,6 @@ def train_one_epoch(
             # weights update
             if ((i + 1) % accum_iter == 0) or (i + 1 == len(data_loader)):
                 optimizer.step()
-                update_lut(model)
                 halut_updates(model)
                 optimizer.zero_grad()
 
@@ -464,11 +451,11 @@ def main(args, gradient_accumulation_steps=1):
                 # filter(lambda p: p.requires_grad, model.parameters())
                 continue
             if isinstance(module, (HalutConv2d, HalutLinear)):
+                if name == "thresholds":
+                    params["thresholds"].append(p)
+                    continue
                 if name == "temperature":
                     # params["temperature"].append(p)
-                    continue
-                if name == "thresholds":
-                    # params["thresholds"].append(p)
                     continue
                 if name == "lut":
                     params["lut"].append(p)
