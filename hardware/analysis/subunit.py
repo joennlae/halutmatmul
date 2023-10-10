@@ -4,7 +4,7 @@ from typing import Any, List
 import pandas as pd
 
 D_to_C = [4, 8, 16, 32, 64]
-C = 32
+C = 16
 
 data_frame = pd.read_csv("power_data.csv")
 
@@ -13,7 +13,7 @@ sorted_ = data_frame.sort_values(
 )
 
 data_frame = sorted_.groupby(["design_name", "power_type"]).first().reset_index()
-# print(data_frame)
+print(data_frame)
 
 
 def add_technology(input: Any) -> str:
