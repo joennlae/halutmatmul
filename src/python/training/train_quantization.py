@@ -99,7 +99,7 @@ def main(args):
 
     if not (args.test_only or args.post_training_quantize):
         model.fuse_model(is_qat=True)
-        bitwidth = 4
+        bitwidth = 8
         intB_act_fq = FakeQuantize.with_args(
             observer=HistogramObserver,
             quant_min=0,
@@ -187,6 +187,7 @@ def main(args):
     model.apply(torch.ao.quantization.enable_observer)
     model.apply(torch.ao.quantization.enable_fake_quant)
     start_time = time.time()
+    best_acc = 0.0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -202,7 +203,7 @@ def main(args):
                 model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
             print("Evaluate QAT model")
 
-            evaluate(
+            acc, _, _ = evaluate(
                 model, criterion, data_loader_test, device=device, log_suffix="QAT"
             )
             quantized_eval_model = copy.deepcopy(model_without_ddp)
@@ -229,9 +230,14 @@ def main(args):
                 "epoch": epoch,
                 "args": args,
             }
-            utils.save_on_master(
-                checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth")
-            )
+
+            if acc > best_acc:
+                best_acc = acc
+                utils.save_on_master(
+                    checkpoint,
+                    os.path.join(args.output_dir, f"model_best_{best_acc:.2f}.pth"),
+                )
+                print("Saving model with best accuracy ", best_acc)
             utils.save_on_master(
                 checkpoint, os.path.join(args.output_dir, "checkpoint.pth")
             )
@@ -240,6 +246,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f"Training time {total_time_str}")
+    print(f"Best accuracy {best_acc:.3f}")
 
 
 def get_args_parser(add_help=True):
