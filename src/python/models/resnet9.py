@@ -2,10 +2,13 @@ import torch
 from torch import nn
 from torch.nn import init
 from torch.nn.parameter import Parameter
+from torchvision.models.quantization.utils import _fuse_modules, quantize_model
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 
-def conv_block(in_channels, out_channels, pool=False, halut_active=False):
+def conv_block(
+    in_channels, out_channels, pool=False, halut_active=False, use_torch_conv=False
+):
     layers = [
         HalutConv2d(
             in_channels,
@@ -14,7 +17,9 @@ def conv_block(in_channels, out_channels, pool=False, halut_active=False):
             padding=1,
             halut_active=halut_active,
             split_factor=4,
-        ),
+        )
+        if not use_torch_conv
+        else nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
     ]
@@ -31,96 +36,53 @@ def _weights_init(m):
         init.normal_(m.thresholds)
 
 
-class GaussianNoise(nn.Module):
-    """Gaussian noise regularizer.
-
-    Args:
-        sigma (float, optional): relative standard deviation used to generate the
-            noise. Relative means that it will be multiplied by the magnitude of
-            the value your are adding the noise to. This means that sigma can be
-            the same regardless of the scale of the vector.
-        is_relative_detach (bool, optional): whether to detach the variable before
-            computing the scale of the noise. If `False` then the scale of the noise
-            won't be seen as a constant but something to optimize: this will bias the
-            network to generate vectors with smaller values.
-    """
-
-    def __init__(self, sigma=0.5, is_relative_detach=True):
-        super().__init__()
-        self.sigma = sigma
-        self.is_relative_detach = is_relative_detach
-        self.register_buffer("noise", torch.tensor(0))
-        self.active = Parameter(torch.ones(1, dtype=torch.bool), requires_grad=False)
-
-    def forward(self, x):
-        if self.training and self.sigma != 0 and self.active:
-            scale = (
-                self.sigma * x.detach() if self.is_relative_detach else self.sigma * x
-            )
-            sampled_noise = self.noise.expand(*x.size()).float().normal_() * scale
-            x = x + sampled_noise
-        return x
-
-
-class SimulateQuantError(nn.Module):
-    def __init__(self, bitwidth=8):
-        super().__init__()
-        self.bitwidth = bitwidth
-        self.active = Parameter(torch.ones(1, dtype=torch.bool), requires_grad=False)
-
-    def forward(self, x):
-        if self.training and self.active:
-            scale_range = torch.max(x) - torch.min(x)
-            scale = scale_range / (2**self.bitwidth - 1)
-            scale = scale.item()
-            x = torch.fake_quantize_per_tensor_affine(
-                x,
-                scale,
-                0,
-                quant_min=-(2 ** (self.bitwidth - 1)),
-                quant_max=2 ** (self.bitwidth - 1) - 1,
-            )
-        return x
-
-
 halut_active = False
+use_torch_conv = True
 
 
 class ResNet9(nn.Module):
     def __init__(self, in_channels, num_classes) -> None:
         super().__init__()
 
-        # bitwidth = 4
-
-        self.conv1 = conv_block(in_channels, 64)
-        # self.gause1 = GaussianNoise()
-        # self.quant1 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv2 = conv_block(64, 128, pool=True, halut_active=halut_active)
-        # self.gause2 = GaussianNoise()
-        # self.quant2 = SimulateQuantError(bitwidth=bitwidth)
+        self.conv1 = conv_block(in_channels, 64, use_torch_conv=use_torch_conv)
+        self.conv2 = conv_block(
+            64, 128, pool=True, halut_active=halut_active, use_torch_conv=use_torch_conv
+        )
         self.res1 = nn.Sequential(
-            conv_block(128, 128, halut_active=halut_active),
-            conv_block(128, 128, halut_active=halut_active),
+            conv_block(
+                128, 128, halut_active=halut_active, use_torch_conv=use_torch_conv
+            ),
+            conv_block(
+                128, 128, halut_active=halut_active, use_torch_conv=use_torch_conv
+            ),
         )
-        # self.gause3 = GaussianNoise()
-        # self.quant3 = SimulateQuantError(bitwidth=bitwidth)
-
-        self.conv3 = conv_block(128, 256, pool=True, halut_active=halut_active)
-        # self.gause4 = GaussianNoise()
-        # self.quant4 = SimulateQuantError(bitwidth=bitwidth)
-        self.conv4 = conv_block(256, 256, pool=True, halut_active=halut_active)
-        # self.gause5 = GaussianNoise()
-        # self.quant5 = SimulateQuantError(bitwidth=bitwidth)
+        self.conv3 = conv_block(
+            128,
+            256,
+            pool=True,
+            halut_active=halut_active,
+            use_torch_conv=use_torch_conv,
+        )
+        self.conv4 = conv_block(
+            256,
+            256,
+            pool=True,
+            halut_active=halut_active,
+            use_torch_conv=use_torch_conv,
+        )
         self.res2 = nn.Sequential(
-            conv_block(256, 256, halut_active=halut_active),
-            conv_block(256, 256, halut_active=halut_active),
+            conv_block(
+                256, 256, halut_active=halut_active, use_torch_conv=use_torch_conv
+            ),
+            conv_block(
+                256, 256, halut_active=halut_active, use_torch_conv=use_torch_conv
+            ),
         )
-        # self.gause6 = GaussianNoise()
-        # self.quant6 = SimulateQuantError(bitwidth=bitwidth)
-
         self.maxpool = nn.MaxPool2d(4)
         self.classifier = nn.Sequential(
-            HalutLinear(256, num_classes),
+            HalutLinear(256, num_classes)
+            if not use_torch_conv
+            else nn.Linear(256, num_classes)
         )
         self.apply(_weights_init)
 
@@ -135,6 +97,24 @@ class ResNet9(nn.Module):
         out = out.flatten(1)
         out = self.classifier(out)
         return out
+
+    def fuse_model(self, is_qat=False):
+        _fuse_modules(
+            self,
+            [
+                ["conv1.0", "conv1.1", "conv1.2"],
+                ["conv2.0", "conv2.1", "conv2.2"],
+                ["res1.0.0", "res1.0.1", "res1.0.2"],
+                ["res1.1.0", "res1.1.1", "res1.1.2"],
+                ["conv3.0", "conv3.1", "conv3.2"],
+                ["conv4.0", "conv4.1", "conv4.2"],
+                ["res2.0.0", "res2.0.1", "res2.0.2"],
+                ["res2.1.0", "res2.1.1", "res2.1.2"],
+            ],
+            is_qat=is_qat,
+            inplace=True,
+        )
+        return self
 
 
 if __name__ == "__main__":

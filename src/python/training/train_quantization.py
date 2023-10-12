@@ -12,11 +12,20 @@ import argparse
 
 import torch
 import torch.ao.quantization
+from torch.ao.quantization import (
+    FakeQuantize,
+    HistogramObserver,
+    QConfig,
+)
 import torch.utils.data
-import torchvision
-import utils_train as utils
 from torch import nn
+
+import utils_train as utils
 from train import evaluate, load_data, train_one_epoch
+from models.resnet9 import ResNet9
+
+# pylint: disable=line-too-long
+# Instructions: https://github.com/pytorch/vision/tree/main/references/classification#post-training-quantized-models
 
 
 def main(args):
@@ -25,6 +34,11 @@ def main(args):
 
     utils.init_distributed_mode(args)
     print(args)
+
+    if args.cifar10:
+        args.val_resize_size = 32
+        args.val_crop_size = 32
+        args.train_crop_size = 32
 
     if args.post_training_quantize and args.distributed:
         raise RuntimeError(
@@ -66,17 +80,45 @@ def main(args):
     print("Creating model", args.model)
     # when training quantized models, we always start from a pre-trained fp32 reference model
     prefix = "quantized_"
+
+    num_classes = len(dataset.classes)
+    print(dataset.classes)
     model_name = args.model
+    if model_name == "resnet9":
+        model = ResNet9(3, num_classes)
+        # pylint: disable=line-too-long
+        base_model_fp32_path = "/usr/scratch2/vilan1/janniss/model_checkpoints/resnet9-lr-0.001-no-dropout-flatten/model_best-93.82.pth"
+        checkpoint = torch.load(base_model_fp32_path, map_location="cpu")
+        model.load_state_dict(checkpoint["model"], strict=False)
+    else:
+        raise RuntimeError("Unknown model name: " + str(model_name))
+
     if not model_name.startswith(prefix):
         model_name = prefix + model_name
-    model = torchvision.models.get_model(
-        model_name, weights=args.weights, quantize=args.test_only
-    )
     model.to(device)
 
     if not (args.test_only or args.post_training_quantize):
         model.fuse_model(is_qat=True)
-        model.qconfig = torch.ao.quantization.get_default_qat_qconfig(args.backend)
+        bitwidth = 4
+        intB_act_fq = FakeQuantize.with_args(
+            observer=HistogramObserver,
+            quant_min=0,
+            quant_max=int(2**bitwidth - 1),
+            dtype=torch.quint8,
+            qscheme=torch.per_tensor_affine,
+            reduce_range=False,
+        )
+        intB_weight_fq = FakeQuantize.with_args(
+            observer=HistogramObserver,
+            quant_min=int(-(2**bitwidth) / 2),
+            quant_max=int((2**bitwidth) / 2 - 1),
+            dtype=torch.qint8,
+            qscheme=torch.per_tensor_symmetric,
+            reduce_range=False,
+        )
+        intB_qconfig = QConfig(activation=intB_act_fq, weight=intB_weight_fq)
+        model.qconfig = intB_qconfig
+        # model.qconfig = torch.ao.quantization.get_default_qat_qconfig(args.backend)
         torch.ao.quantization.prepare_qat(model, inplace=True)
 
         if args.distributed and args.sync_bn:
@@ -168,13 +210,13 @@ def main(args):
             quantized_eval_model.to(torch.device("cpu"))
             torch.ao.quantization.convert(quantized_eval_model, inplace=True)
 
-            print("Evaluate Quantized model")
-            evaluate(
-                quantized_eval_model,
-                criterion,
-                data_loader_test,
-                device=torch.device("cpu"),
-            )
+            # print("Evaluate Quantized model")
+            # evaluate(
+            #     quantized_eval_model,
+            #     criterion,
+            #     data_loader_test,
+            #     device=torch.device("cpu"),
+            # )
 
         model.train()
 
@@ -207,7 +249,7 @@ def get_args_parser(add_help=True):
 
     parser.add_argument(
         "--data-path",
-        default="/datasets01/imagenet_full_size/061417/",
+        default="/scratch/ml_datasets/ILSVRC2012",
         type=str,
         help="dataset path",
     )
@@ -225,7 +267,7 @@ def get_args_parser(add_help=True):
     parser.add_argument(
         "-b",
         "--batch-size",
-        default=32,
+        default=128,
         type=int,
         help="images per gpu, the total batch size is $NGPU x batch_size",
     )
@@ -265,7 +307,7 @@ def get_args_parser(add_help=True):
     parser.add_argument(
         "-j",
         "--workers",
-        default=16,
+        default=4,
         type=int,
         metavar="N",
         help="number of data loading workers (default: 16)",
@@ -374,6 +416,18 @@ def get_args_parser(add_help=True):
     )
     parser.add_argument(
         "--weights", default=None, type=str, help="the weights enum name to load"
+    )
+
+    parser.add_argument(
+        "--cifar10",
+        action="store_true",
+        help="Uses CIFAR10 dataset",
+    )
+
+    parser.add_argument(
+        "--cifar100",
+        action="store_true",
+        help="Uses CIFAR100 dataset",
     )
 
     return parser
