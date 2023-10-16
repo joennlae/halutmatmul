@@ -37,7 +37,7 @@ def _weights_init(m):
 
 
 halut_active = False
-use_torch_conv = True  # use for quantization aware training
+use_torch_conv = False  # use for quantization aware training
 
 
 class ResNet9(nn.Module):
