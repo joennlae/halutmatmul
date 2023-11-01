@@ -19,7 +19,7 @@ dependencies:
   - scipy
   - scikit-learn=1.1
   - torchvision
-  - pytorch
+  - pytorch=2.0 # as pytorch 2.1 needs cuda 11.8 at least and vilan does not have that
   - torchinfo
   # kws
   - torchaudio
