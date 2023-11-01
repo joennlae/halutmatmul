@@ -1,3 +1,0 @@
-#!/bin/bash
-
-primetime-2022.03-zr pt_shell "$@"
