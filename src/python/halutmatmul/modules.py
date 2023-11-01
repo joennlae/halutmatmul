@@ -155,10 +155,9 @@ def halut_matmul_forward(
 ) -> torch.Tensor:
     # encoding
     input_reshaped = input.reshape((input.shape[0], C, -1))
-    if dims is not None:  # default maddness
+    if dims is not None:  # default maddness as described in the paper
         h = S.mm(input[:, dims].T) - T.unsqueeze(1)
-    elif prototypes is not None:  # using argmin
-        # input_reshaped = input.reshape((input.shape[0], C, -1))
+    elif prototypes is not None:  # using argmin as used in LUT-NN etc.
         mse = torch.sum(torch.square(input_reshaped.unsqueeze(2) - prototypes), dim=3)
         encoding_soft = torch.nn.Softmax(dim=2)(-mse / temperature)
     else:
