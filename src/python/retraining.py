@@ -520,8 +520,8 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 300  # 25 layer-per-layer, 300 fine-tuning
-    BATCH_SIZE = 128
+    TRAIN_EPOCHS = 1000  # 25 layer-per-layer, 300 fine-tuning
+    BATCH_SIZE = 128  # 128
     LR = 0.0005  # 0.001 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
@@ -640,6 +640,7 @@ if __name__ == "__main__":
         args_checkpoint.gpu = args.gpu  # type: ignore
         args_checkpoint.distributed = args.distributed  # type: ignore
         args_checkpoint.dist_backend = args.dist_backend  # type: ignore
+        args_checkpoint.device = "cuda:" + str(args.gpu)
     args_checkpoint.workers = 4  # type: ignore
     args_checkpoint.simulate = False  # type: ignore
     args_checkpoint.testname = args.testname  # type: ignore
