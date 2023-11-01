@@ -1,9 +1,0 @@
-reports/
-outputs/
-logs/
-inputs/
-
-*.log
-*.txt
-
-reports*
