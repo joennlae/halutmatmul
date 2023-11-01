@@ -13,13 +13,6 @@
 [![RTL Linting](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml)
 [![HW Design Verification](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml)
 
-
-## General Information
-
-* Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
-* More information about the base project is [here](maddness/README.md)
-* [arXiv](https://arxiv.org/abs/2106.10860) Maddnes paper
-
 ## Algorithmic
 
 ### Differentiable Maddness
@@ -128,6 +121,11 @@ conda activate halutmatmul
 # IIS prefixed env
 conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
 ```
+
+## References
+
+* [arXiv](https://arxiv.org/abs/2106.10860) Maddness paper
+* Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
 
 ## Hackernews mention (comments only) and discussion
 
