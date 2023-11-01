@@ -16,3 +16,5 @@ src/python/.datasets
 src/python/runs
 
 tools
+
+*.log
