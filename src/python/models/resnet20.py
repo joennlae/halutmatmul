@@ -68,13 +68,13 @@ class LambdaLayer(nn.Module):
         return self.lambd(x)
 
 
-halut_active = True
+halut_active = False
 
 
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option="A"):
+    def __init__(self, in_planes, planes, stride=1, option="B"):
         super(BasicBlock, self).__init__()
         self.conv1 = HalutConv2d(
             in_planes,

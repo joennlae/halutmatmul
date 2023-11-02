@@ -353,7 +353,8 @@ def run_retraining(
         # if args_checkpoint.cifar10:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            T_max=train_epochs,  # eta_min=0.0002 # no eta_min during fine-tuning
+            T_max=train_epochs,
+            # eta_min=0.0002,  # no eta_min during fine-tuning
         )
         # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
@@ -520,7 +521,7 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 1000  # 25 layer-per-layer, 300 fine-tuning
+    TRAIN_EPOCHS = 300  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128  # 128
     LR = 0.0005  # 0.001 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
