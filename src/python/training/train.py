@@ -762,7 +762,7 @@ def main(args, gradient_accumulation_steps=1):
                 optimizer_lr_local,
                 args.min_lr_to_break,
             )
-            if optimizer_lr_local < args.min_lr_to_break:
+            if optimizer_lr_local <= args.min_lr_to_break:
                 print("learning rate too small, stop training")
                 break
 
