@@ -28,16 +28,16 @@ def conv_block(
     return nn.Sequential(*layers)
 
 
+halut_active = False
+use_torch_conv = False  # use for quantization aware training
+
+
 def _weights_init(m):
     if isinstance(m, (HalutLinear, HalutConv2d)):
         init.kaiming_normal_(m.weight)
     if isinstance(m, HalutConv2d) and m.halut_active:
         init.kaiming_normal_(m.lut)
         init.normal_(m.thresholds)
-
-
-halut_active = False
-use_torch_conv = False  # use for quantization aware training
 
 
 class ResNet9(nn.Module):
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     from ptflops import get_model_complexity_info
 
     macs, params = get_model_complexity_info(
-        model, (3, 224, 224), as_strings=True, print_per_layer_stat=True, verbose=True
+        model, (3, 32, 32), as_strings=True, print_per_layer_stat=True, verbose=True
     )
     print("{:<30}  {:<8}".format("Computational complexity: ", macs))
     print("{:<30}  {:<8}".format("Number of parameters: ", params))

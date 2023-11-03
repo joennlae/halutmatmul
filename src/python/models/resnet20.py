@@ -69,33 +69,56 @@ class LambdaLayer(nn.Module):
 
 
 halut_active = False
+use_default_torch = False
 
 
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option="B"):
+    def __init__(self, in_planes, planes, stride=1, option="A"):
         super(BasicBlock, self).__init__()
-        self.conv1 = HalutConv2d(
-            in_planes,
-            planes,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            bias=False,
-            halut_active=halut_active,
-            split_factor=1,
+        self.conv1 = (
+            HalutConv2d(
+                in_planes,
+                planes,
+                kernel_size=3,
+                stride=stride,
+                padding=1,
+                bias=False,
+                halut_active=halut_active,
+                split_factor=1,
+            )
+            if not use_default_torch
+            else nn.Conv2d(
+                in_planes,
+                planes,
+                kernel_size=3,
+                stride=stride,
+                padding=1,
+                bias=False,
+            )
         )
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = HalutConv2d(
-            planes,
-            planes,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            bias=False,
-            halut_active=halut_active,
-            split_factor=1,
+        self.conv2 = (
+            HalutConv2d(
+                planes,
+                planes,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=False,
+                halut_active=halut_active,
+                split_factor=1,
+            )
+            if not use_default_torch
+            else nn.Conv2d(
+                planes,
+                planes,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=False,
+            )
         )
         self.bn2 = nn.BatchNorm2d(planes)
 
@@ -123,6 +146,14 @@ class BasicBlock(nn.Module):
                         bias=False,
                         halut_active=halut_active,
                         split_factor=1,
+                    )
+                    if not use_default_torch
+                    else nn.Conv2d(
+                        in_planes,
+                        self.expansion * planes,
+                        kernel_size=1,
+                        stride=stride,
+                        bias=False,
                     ),
                     nn.BatchNorm2d(self.expansion * planes),
                 )
@@ -145,7 +176,11 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
-        self.linear = HalutLinear(64, num_classes)
+        self.linear = (
+            HalutLinear(64, num_classes)
+            if not use_default_torch
+            else nn.Linear(64, num_classes)
+        )
 
         self.apply(_weights_init)
 
@@ -223,3 +258,15 @@ if __name__ == "__main__":
             test(globals()[net_name]())
             summary(globals()[net_name](), input_size=(1, 3, 32, 32))
             print()
+
+            from ptflops import get_model_complexity_info
+
+            macs, params = get_model_complexity_info(
+                globals()[net_name](),
+                (3, 32, 32),
+                as_strings=True,
+                print_per_layer_stat=True,
+                verbose=True,
+            )
+            print("{:<30}  {:<8}".format("Computational complexity: ", macs))
+            print("{:<30}  {:<8}".format("Number of parameters: ", params))
