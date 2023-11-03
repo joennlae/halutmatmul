@@ -756,9 +756,15 @@ def main(args, gradient_accumulation_steps=1):
             )
             # optimizer_lr_all [[0.0005], [0.0050], [0.0050], [0.0050]]
             optimizer_lr_local = optimizer_lr_all[0].item()
-        # if optimizer_lr_local < args.lr * 1e-4:
-        #     print("learning rate too small, stop training")
-        #     break
+        if hasattr(args, "min_lr_to_break"):
+            print(
+                "Check if learning rate is too small",
+                optimizer_lr_local,
+                args.min_lr_to_break,
+            )
+            if optimizer_lr_local < args.min_lr_to_break:
+                print("learning rate too small, stop training")
+                break
 
     if args.distributed:
         torch.distributed.barrier()

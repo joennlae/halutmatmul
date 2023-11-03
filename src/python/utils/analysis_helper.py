@@ -315,7 +315,7 @@ resnet20_b_layers = [
     "layer3.1.conv2",
     "layer3.2.conv1",
     "layer3.2.conv2",
-    "linear",
+    # "linear",
 ]
 
 resnet9_layers = [
