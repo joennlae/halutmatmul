@@ -320,7 +320,7 @@ def run_retraining(
         print("param_groups", len(param_groups))
         weight_decay = 0.0
         opt_name = "adam"
-        lr_scheduler_name = "cosineannealinglr"
+        lr_scheduler_name = "plateau"
         args_checkpoint.lr_scheduler = lr_scheduler_name
         args_checkpoint.opt = opt_name
         # opt_name = args_checkpoint.opt.lower()
@@ -343,31 +343,34 @@ def run_retraining(
         else:
             raise ValueError("Unknown optimizer {}".format(opt_name))
 
-        # freeze learning rate by increasing step size
-        # TODO: make learning rate more adaptive
-        # imagenet 0.001, cifar10 0.01
-
-        # checkpoint["lr_scheduler"]["step_size"] = lr_step_size  # imagenet 1, cifar10 7
-        # args_checkpoint.lr_scheduler = "steplr"
-
         # if args_checkpoint.cifar10:
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer,
-            T_max=train_epochs,
-            # eta_min=0.0002,  # no eta_min during fine-tuning
-        )
-        # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        #     optimizer, mode="min", factor=0.2, patience=6, verbose=True
-        # )
-        # lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        #     optimizer, step_size=lr_step_size, gamma=0.1
-        # )
+        if args_checkpoint.lr_scheduler == "cosineannealinglr":
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=train_epochs,
+                # eta_min=0.0002,  # no eta_min during fine-tuning
+            )
+        elif args_checkpoint.lr_scheduler == "plateau":
+            # this should give us three levels
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode="min",
+                factor=0.5,
+                patience=3,
+                verbose=True,
+                min_lr=0.0002,
+            )
+            args_checkpoint.min_lr_to_break = 0.0002
+        else:
+            raise Exception(
+                "Unknown lr scheduler {}".format(args_checkpoint.lr_scheduler)
+            )
+
         checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
 
         # optimizer updates
         checkpoint["optimizer"] = opt_state_dict
 
-        # sys.exit(0)
         args_checkpoint.output_dir = args.output_dir
         if not args.distributed or args.rank == 0:
             save_on_master(
@@ -521,9 +524,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 300  # 25 layer-per-layer, 300 fine-tuning
+    TRAIN_EPOCHS = 100  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128  # 128
-    LR = 0.0005  # 0.001 layer-per-payer, 0.0005 fine-tuning
+    LR = 0.001  # 0.001 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
