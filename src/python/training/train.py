@@ -27,6 +27,7 @@ from training.timm_model import convert_to_halut
 from models.resnet import resnet18
 from models.resnet20 import resnet20
 from models.resnet9 import ResNet9
+from models.tiny.resnet8 import Resnet8v1EEMBC
 from halutmatmul.modules import HalutConv2d, HalutLinear
 
 SCRATCH_BASE = "/scratch/janniss"
@@ -415,6 +416,8 @@ def main(args, gradient_accumulation_steps=1):
             model = resnet20()
         elif args.model == "resnet9":
             model = ResNet9(3, num_classes)
+        elif args.model == "resnet8":
+            model = Resnet8v1EEMBC()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         # state_dict_copy = model.state_dict().copy()
