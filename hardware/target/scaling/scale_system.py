@@ -12,7 +12,9 @@ STELLA_NERA_UNITS = 4
 # 128 bit memory bandwidth
 TCDM_BANDWIDTH = 4 * 32
 
-FP_16_MAC_UNITS = 1
+FP_16_MAC_UNITS = (
+    2 * STELLA_NERA_UNITS
+)  # two operations per cycle we add two per stella nera unit
 
 # Input parameters
 """
@@ -424,9 +426,11 @@ Number of parameters:           269.72 k
 
 # lets get the matmul sizes
 
-resnet20_first_layer_info = [[1024, 27], [1, 3, 32, 32], [27, 16]]
-
-resnet20_middle_layer_info = [
+resnet20_layer_info = [
+    [1024, 27],
+    [1, 3, 32, 32],
+    [27, 16],
+    # second layer
     [1024, 144],  # conv transform in
     [1, 16, 32, 32],  # conv input
     [144, 16],  # conv tranform weight
@@ -481,12 +485,12 @@ resnet20_middle_layer_info = [
     [64, 576],
     [1, 64, 8, 8],
     [576, 64],
-]
-
-resnet20_last_layer_info = [
+    # last layer
     [1, 64],
+    [1, 64, 1, 1],
     [64, 10],
 ]
+
 resnet9_layer_info = [
     [1024, 27],
     [1, 3, 32, 32],
@@ -520,6 +524,41 @@ resnet9_layer_info = [
     [256, 10],
 ]
 
+resnet8_layer_info = [
+    [1024, 27],
+    [1, 3, 32, 32],
+    [27, 16],
+    # second layer
+    [1024, 144],
+    [1, 16, 32, 32],
+    [144, 16],
+    [1024, 144],
+    [1, 16, 32, 32],
+    [144, 16],
+    [256, 144],
+    [1, 16, 32, 32],
+    [144, 32],
+    [256, 288],
+    [1, 32, 16, 16],
+    [288, 32],
+    [256, 16],
+    [1, 16, 32, 32],
+    [16, 32],
+    [64, 288],
+    [1, 32, 16, 16],
+    [288, 64],
+    [64, 576],
+    [1, 64, 8, 8],
+    [576, 64],
+    [64, 32],
+    [1, 32, 16, 16],
+    [32, 64],
+    # last layer
+    [1, 64],
+    [1, 64, 1, 1],
+    [64, 10],
+]
+
 total_cycles = 0
 total_fJ = 0
 
@@ -551,9 +590,7 @@ def execute_fp16_conv2d(input_shape, kernel_size, out_channel, stride=1, padding
                         fJ += kernel_size * kernel_size * 2 * mem_access_cost  # read
                         for _ in range(kernel_size):  # k_x
                             for _ in range(kernel_size):  # k_y
-                                fJ += (
-                                    mac_unit_cost_per_mac + mem_access_cost * 2
-                                ) * FP_16_MAC_UNITS  # MAC
+                                fJ += mac_unit_cost_per_mac + mem_access_cost * 2  # MAC
                                 cycles += 0.5 / FP_16_MAC_UNITS  # 1 * MAC unit
                         fJ += mem_access_cost * 2  # write result
     return cycles, fJ
@@ -563,46 +600,55 @@ def execute_fp16_macs(n, d, m):
     cycles = 0
     fJ = 0
     for _ in range(n):
-        for _ in range(d):
+        for _ in range(m):
             fJ += mem_access_cost * 2
-            for _ in range(m):
-                fJ += (mac_unit_cost_per_mac + (mem_access_cost * 2)) * FP_16_MAC_UNITS
+            for _ in range(d):
+                fJ += mac_unit_cost_per_mac + (mem_access_cost * 2)
                 cycles += 0.5 / (FP_16_MAC_UNITS)
             fJ += mem_access_cost * 2  # write result
     return cycles, fJ
 
 
-def execute_maddness(n, d, m, input_shape, output_shape, kernel_size):
-    if kernel_size != 3:
-        raise Exception("Please check if division factor is 9")
-    c = d // 9
-    assert (d % 9) == 0
+def execute_maddness(n, d, m, input_shape, output_shape):
+    # default kernel size is 3
+    kernel_size = 3
+    div_factor = kernel_size * kernel_size
+    c = d // div_factor
+    if (d % div_factor) > 0:
+        # kernel size 1
+        print("assuming 4 four kernel size == 1")
+        div_factor = 4
+        kernel_size = 1
+        c = d // div_factor
+        assert (d % div_factor) == 0
     cycles = 0
     fJ = 0
     # mapping to accelerators
     # we first tile over c
     # pooling = n // (output_shape[-2] * output_shape[-1])
-    units = c // C
+    units = math.ceil(c / C)
     mapping = {}
     for i in range(STELLA_NERA_UNITS):
         mapping[i] = []
-    if units == STELLA_NERA_UNITS or units > STELLA_NERA_UNITS:
-        units_assignment = {}
-        for i in range(STELLA_NERA_UNITS):
-            units_assignment[i] = []
-        for i in range(units):
-            offset = (i // STELLA_NERA_UNITS) * STELLA_NERA_UNITS * C
-            current_assignment = []
-            for j in range(
-                offset,
-                offset + C,
-                C - 1,
-            ):
-                current_assignment.append((i * C) + j)
-            units_assignment[i % STELLA_NERA_UNITS].append(current_assignment)
-        for i in range(STELLA_NERA_UNITS):
-            mapping[i] = {"C": units_assignment[i]}
-        # TODO if units < STELLA_NERA_UNITS optimizations are possible
+    units_assignment = {}
+    for i in range(STELLA_NERA_UNITS):
+        units_assignment[i] = []
+    for i in range(units):
+        offset = (i // STELLA_NERA_UNITS) * STELLA_NERA_UNITS * C
+        current_assignment = []
+        for j in range(
+            offset,
+            offset + C,
+            C - 1,
+        ):
+            current_assignment.append((i * C) + j)
+        if i == units - 1:
+            current_assignment[1] = c - 1
+        units_assignment[i % STELLA_NERA_UNITS].append(current_assignment)
+    for i in range(STELLA_NERA_UNITS):
+        mapping[i] = {"C": units_assignment[i]}
+    # TODO if units < STELLA_NERA_UNITS optimizations are possible
+    # double buffering for example
 
     m_capacity = DECODER_BLOCKS * DECODERS_PER_BLOCK
     m_rounds = math.ceil(m / m_capacity)
@@ -611,6 +657,7 @@ def execute_maddness(n, d, m, input_shape, output_shape, kernel_size):
         m_mapping.append([(i * m_capacity), (i * m_capacity) + m_capacity - 1])
         if i == m_rounds - 1:
             m_mapping[i][1] = m - 1
+    print(mapping)
     for j in range(STELLA_NERA_UNITS):
         mapping[j]["M"] = m_mapping
 
@@ -686,39 +733,37 @@ def execute_maddness(n, d, m, input_shape, output_shape, kernel_size):
 # 4 outputs per cycles
 # 2 FPUs needed per stella nera accelerator --> could be heavily optimized
 
+# resnet20_layer_info, resnet9_layer_info, resnet8_layer_info
+model_info = resnet8_layer_info
 
 # first layer
-fp16_macs = (
-    resnet9_layer_info[0][0] * resnet9_layer_info[0][1] * resnet9_layer_info[2][1]
-)
+fp16_macs = model_info[0][0] * model_info[0][1] * model_info[2][1]
 print("fp16_macs", fp16_macs)
-cycles_fp16, fJ_fp16 = execute_fp16_conv2d(resnet9_layer_info[1], 3, 64)
+cycles_fp16, fJ_fp16 = execute_fp16_conv2d(model_info[1], 3, 64)
 total_cycles += cycles_fp16
 total_fJ += fJ_fp16
 
+print("layer 1 cycles", cycles_fp16, "fJ", fJ_fp16)
 print_total_info(total_cycles, total_fJ)
 
 # second layer
 
-for i in range(0, (len(resnet9_layer_info) // 3) - 2):
+for i in range(0, (len(model_info) // 3) - 2):
     print("LAYER", i + 2)
     offset = i * 3
     cycles, fJ = execute_maddness(
-        resnet9_layer_info[3 + offset][0],
-        resnet9_layer_info[3 + offset][1],
-        resnet9_layer_info[5 + offset][1],
-        resnet9_layer_info[4 + offset],
-        resnet9_layer_info[7 + offset],
-        3,
+        model_info[3 + offset][0],
+        model_info[3 + offset][1],
+        model_info[5 + offset][1],
+        model_info[4 + offset],
+        model_info[7 + offset],
     )
     print("layer", i + 2, "cycles", cycles, "fJ", fJ)
     total_cycles += cycles
     total_fJ += fJ
     print_total_info(total_cycles, total_fJ)
 
-cycles, fJ = execute_fp16_macs(
-    resnet9_layer_info[-3][0], resnet9_layer_info[-3][1], resnet9_layer_info[-1][1]
-)
+cycles, fJ = execute_fp16_macs(model_info[-3][0], model_info[-3][1], model_info[-1][1])
 total_cycles += cycles
 total_fJ += fJ
 print_total_info(total_cycles, total_fJ)
