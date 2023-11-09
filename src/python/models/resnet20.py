@@ -270,3 +270,5 @@ if __name__ == "__main__":
             )
             print("{:<30}  {:<8}".format("Computational complexity: ", macs))
             print("{:<30}  {:<8}".format("Number of parameters: ", params))
+
+            output = globals()[net_name]()(torch.ones(1, 3, 32, 32))
