@@ -450,6 +450,9 @@ class ErrorTuple:
     MAX = 5
 
 
+PRINT_DEBUG = False
+
+
 class HalutConv2d(_ConvNd):
     __doc__ = r"""Applies a 2D convolution over an input signal composed of several input
     planes.
@@ -807,6 +810,24 @@ class HalutConv2d(_ConvNd):
 
     def forward(self, _input: Tensor) -> Tensor:
         # https://pytorch.org/docs/stable/generated/torch.nn.Unfold.html
+
+        if PRINT_DEBUG:
+            transformed_input = self.transform_input(_input)
+            transformed_weights = self.transform_weight(self.weight)
+            print(
+                "[DEBUG] transformed input shape: ",
+                transformed_input.shape,
+                _input.shape,
+                self._get_name(),
+                _input.device,
+            )
+            print(
+                "[DEBUG] transformed weights shape: ",
+                transformed_weights.shape,
+                self._get_name(),
+                self.weight.device,
+            )
+            self.weight.to(_input.device)
 
         if self.halut_active[0] and not self.store_input[0]:
             transformed_input = self.transform_input(_input)
