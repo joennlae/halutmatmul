@@ -21,6 +21,7 @@ from utils.analysis_helper import get_layers, sys_info
 from models.resnet import resnet18
 from models.resnet9 import ResNet9
 from models.resnet20 import resnet20
+from models.tiny.resnet8 import Resnet8v1EEMBC
 from halutmatmul.halutmatmul import HalutModuleConfig
 from halutmatmul.model import HalutHelper, get_module_by_name
 from halutmatmul.modules import HalutConv2d, HalutLinear
@@ -72,6 +73,8 @@ def load_model(
             model = resnet20()
         elif args.model == "resnet9":
             model = ResNet9(3, num_classes)  # type: ignore
+        elif args.model == "resnet8":
+            model = Resnet8v1EEMBC()
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -162,6 +165,8 @@ def run_retraining(
     )
     halut_model.print_available_module()
     layers = get_layers(model_name)  # type: ignore[arg-type]
+    # reverse layers
+    # layers = layers[::-1]
     print("modules", halut_modules, layers)
 
     if halut_modules is None:
@@ -213,6 +218,8 @@ def run_retraining(
                 #     loop_order = "im2col"
                 if loop_order == "im2col":
                     c_ = inner_dim_im2col // 9  # 9 = 3x3
+                    if module_ref.kernel_size[0] * module_ref.kernel_size[1] == 1:
+                        c_ = inner_dim_im2col // 4
                 else:
                     c_ = (
                         inner_dim_kn2col // 8
@@ -320,7 +327,7 @@ def run_retraining(
         print("param_groups", len(param_groups))
         weight_decay = 0.0
         opt_name = "adam"
-        lr_scheduler_name = "plateau"
+        lr_scheduler_name = "cosineannealinglr"
         args_checkpoint.lr_scheduler = lr_scheduler_name
         args_checkpoint.opt = opt_name
         # opt_name = args_checkpoint.opt.lower()
@@ -348,7 +355,7 @@ def run_retraining(
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
                 T_max=train_epochs,
-                # eta_min=0.0002,  # no eta_min during fine-tuning
+                eta_min=0.0002,  # no eta_min during fine-tuning
             )
         elif args_checkpoint.lr_scheduler == "plateau":
             # this should give us three levels
@@ -356,7 +363,7 @@ def run_retraining(
                 optimizer,
                 mode="min",
                 factor=0.5,
-                patience=3,
+                patience=6,
                 verbose=True,
                 min_lr=0.0002,
             )
@@ -524,9 +531,9 @@ def model_analysis(args: Any) -> None:
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
-    TRAIN_EPOCHS = 100  # 25 layer-per-layer, 300 fine-tuning
+    TRAIN_EPOCHS = 25  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128  # 128
-    LR = 0.001  # 0.001 layer-per-payer, 0.0005 fine-tuning
+    LR = 0.002  # 0.001 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")

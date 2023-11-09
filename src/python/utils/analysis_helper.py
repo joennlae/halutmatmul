@@ -353,6 +353,27 @@ layer4.1.conv2   torch.Size([512, 512, 3, 3])
 fc   torch.Size([1000, 512])
 """
 
+resnet8_layers = [
+    "first_stack.block.0",
+    "first_stack.block.3",
+    "second_stack.block.0",
+    "second_stack.block.3",
+    "second_stack.residual",
+    "third_stack.block.0",
+    "third_stack.block.3",
+    "third_stack.residual",
+]
+
+resnet8_layers = [
+    "third_stack.block.0",
+    "second_stack.block.3",
+    "first_stack.block.3",
+    "second_stack.block.0",
+    "first_stack.block.0",
+    "second_stack.residual",
+    "third_stack.residual",
+]
+
 
 # pylint: disable=too-many-return-statements
 def get_layers(name: available_models) -> list[str]:
@@ -364,6 +385,8 @@ def get_layers(name: available_models) -> list[str]:
         return resnet20_layers
     elif name == "resnet9":
         return resnet9_layers
+    elif name == "resnet8":
+        return resnet8_layers
     else:
         return Exception("Model name not supported: ", name)  # type: ignore
 
