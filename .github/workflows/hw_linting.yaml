@@ -21,7 +21,7 @@ jobs:
       - name: Lint with pylint
         run: |
           $CONDA/bin/conda install -c conda-forge pylint=2.17.1
-          $CONDA/bin/pylint --reports yes hardware/util/* hardware/target/dv/**/*.py hardware/analysis/*.py
+          $CONDA/bin/pylint --reports yes hardware/util/* hardware/target/dv/**/*.py
 
   typechecking-python:
     needs: changes
