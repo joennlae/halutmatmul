@@ -1,3 +1,9 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Jannis Schönleber, ETH Zurich
+
 module mixed_int_adder #(
     parameter int unsigned IN_WIDTH = 8,
     parameter int unsigned OUT_WIDTH = 32

@@ -5,7 +5,6 @@
 
 // Adapted by Jannis Schönleber 2022
 
-
 module register_file_mem_latch #(
     parameter int unsigned AddrWidth = 4,
     parameter int unsigned DataWidth = 16

@@ -1,3 +1,9 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Jannis Schönleber, ETH Zurich
+
 module fp_adder #(
     parameter int unsigned C_OP = fp_defs::C_OP,
     parameter int unsigned C_EXP = fp_defs::C_EXP,

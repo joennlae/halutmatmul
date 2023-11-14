@@ -1,3 +1,9 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Jannis Schönleber, ETH Zurich
+
 module halut_decoder #(
     parameter int unsigned K = halut_pkg::K,
     parameter int unsigned C = halut_pkg::C,
