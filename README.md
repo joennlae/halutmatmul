@@ -13,9 +13,7 @@
 [![RTL Linting](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml)
 [![HW Design Verification](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml)
 
-## Algorithmic
-
-## Maddness algorithm
+# Algorithmic - Maddness
 
 ![Maddness Animation](/docs/images/maddness_animation.webp)
 
@@ -49,7 +47,7 @@ mse = np.square(C_halut - C).mean()
 print(mse)
 ```
 
-## Hardware OpenROAD flow results from CI
+# Hardware - OpenROAD flow results from CI
 
 All NanGate45 results are NOT OPTIMIZED! The results are only for reference and to show the flow works.
 
