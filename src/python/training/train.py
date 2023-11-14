@@ -1,6 +1,6 @@
 # source: https://github.com/pytorch/vision/blob/main/references/classification/train.py
 # SPDX-License-Identifier: BSD-3-Clause (as before)
-# includes a to of halut related changes
+# includes a lot of halut related changes
 # type: ignore
 # pylint: disable=line-too-long, import-outside-toplevel, unnecessary-lambda-assignment
 import datetime
@@ -70,8 +70,6 @@ def train_one_epoch(
             halut_updates(child_module, prefix=child_prefix)
 
     header = f"Epoch: [{epoch}]"
-    # prev_lut = None
-    # prev_conv = None
     for i, (image, target) in enumerate(
         metric_logger.log_every(data_loader, 1, header)
     ):
@@ -98,18 +96,6 @@ def train_one_epoch(
             reported_loss = loss.detach().item()
             loss = loss / accum_iter
             loss.backward()
-
-            # check if diff exists
-            # if prev_lut is not None:
-            #     diff = model.conv2[0].lut - prev_lut
-            #     print("diff", torch.norm(diff).item())
-            # if prev_conv is not None:
-            #     diff = model.conv1[0].weight - prev_conv
-            #     print("diff", torch.norm(diff).item())
-            # prev_lut = model.conv2[0].lut.clone()
-            # prev_conv = model.conv1[0].weight.clone()
-            # print("grad norm", model.conv1[0].weight.grad.norm().item())
-            # print("grad norm", model.conv2[0].lut.grad.norm().item())
 
             if args.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
@@ -163,7 +149,6 @@ def evaluate(
     print_freq=1,
     log_suffix="",
 ):
-    # TODO: sometimes it would be intersting to have that as .train
     model.eval()
     metric_logger = utils_train.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
@@ -402,8 +387,6 @@ def main(args, gradient_accumulation_steps=1):
         pin_memory=True,
     )
 
-    print("Creating model")
-    # if args.model == "resnet18":
     if args.cifar100:
         model = resnet18(
             progress=True, **{"is_cifar": True, "num_classes": num_classes}
@@ -419,10 +402,6 @@ def main(args, gradient_accumulation_steps=1):
         elif args.model == "resnet8":
             model = Resnet8v1EEMBC()
     else:
-        # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
-        # state_dict_copy = model.state_dict().copy()
-        # convert_to_halut(model)
-        # model.load_state_dict(state_dict_copy, strict=False)
         model = torchvision.models.get_model(
             args.model, pretrained=True, num_classes=num_classes
         )
@@ -433,7 +412,6 @@ def main(args, gradient_accumulation_steps=1):
         checkpoint = torch.load(args.resume, map_location="cpu")
         # load to update halut deactivated layers
         model.load_state_dict(checkpoint["model"])
-    # model.half()
     model.to(device)
 
     if args.distributed and args.sync_bn:
@@ -450,21 +428,18 @@ def main(args, gradient_accumulation_steps=1):
 
     def _add_params(module, prefix=""):
         for name, p in module.named_parameters(recurse=False):
-            if not p.requires_grad:  # removes parameter from optimizer!!
-                # filter(lambda p: p.requires_grad, model.parameters())
+            if not p.requires_grad:
                 continue
             if isinstance(module, (HalutConv2d, HalutLinear)):
                 if name == "thresholds":
                     params["thresholds"].append(p)
                     continue
-                if name == "temperature":
+                if name == "temperature":  # temperature is not used
                     # params["temperature"].append(p)
                     continue
                 if name == "lut":
                     params["lut"].append(p)
                     continue
-            # if prefix in ("conv1", "linear"):
-            #     continue
             print("add to other", prefix, name)
             params["other"].append(p)
 
@@ -531,8 +506,6 @@ def main(args, gradient_accumulation_steps=1):
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
     args.lr_scheduler = args.lr_scheduler.lower()
-    # if args.cifar10:
-    #     args.lr_scheduler = "steplr"
     if args.lr_scheduler == "steplr":
         main_lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma
@@ -682,7 +655,8 @@ def main(args, gradient_accumulation_steps=1):
         writer.add_scalar("test/acc", acc, epoch)
         writer.add_scalar("test/acc5", acc5, epoch)
         writer.add_scalar("test/loss", loss, epoch)
-        # calc temperature
+
+        # temperature training would be here :-)
         # all_temps = []
 
         # def _get_temps(module, prefix=""):
