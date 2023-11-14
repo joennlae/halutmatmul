@@ -120,7 +120,7 @@ class ResNet9(nn.Module):
 if __name__ == "__main__":
     model = ResNet9(3, 10).to("cpu")
     print(model)
-    output = model(torch.ones(1, 3, 32, 32).to("cpu"))
+
     from torchinfo import summary
 
     summary(model, input_size=(1, 3, 32, 32))
