@@ -112,7 +112,6 @@ def run_retraining(
     distributed: bool = False,
     batch_size: int = 32,
     lr: float = 0.01,
-    lr_step_size: int = 8,
     # pylint: disable=unused-argument
     train_epochs: int = 20,
 ) -> tuple[Any, int, int, int]:
@@ -165,46 +164,22 @@ def run_retraining(
     )
     halut_model.print_available_module()
     layers = get_layers(model_name)  # type: ignore[arg-type]
-    # reverse layers
-    # layers = layers[::-1]
-    print("modules", halut_modules, layers)
 
     if halut_modules is None:
         next_layer_idx = 0
         halut_modules = {}
     else:
         next_layer_idx = len(halut_modules.keys())
-    # C = int(args.C)
     K = 16
     use_prototype = False
 
-    # add all at once
-    # max = len(layers) - 1
     max = len(layers)
-    if next_layer_idx == 0:
-        max = 1
-    elif next_layer_idx == 1:
-        max = 4  # add residual + next conv layer together
-    else:
-        max = next_layer_idx + 1
-    # max = len(layers)
     max = next_layer_idx + 1
-    print("next input", next_layer_idx, max)
     for i in range(next_layer_idx, max):
-        print("next_layer_idx", next_layer_idx, i, max)
-        print("editable_keys", halut_model.editable_keys)
         if not test_only and i < len(layers):
             next_layer = layers[i]
-            if next_layer not in halut_model.editable_keys:
-                print("not in editable keys", next_layer)
-                if "gause" in next_layer or "quant" in next_layer:
-                    module_ref = get_module_by_name(halut_model.model, next_layer)
-                    module_ref.active = Parameter(
-                        torch.zeros(1, dtype=torch.bool), requires_grad=False
-                    )
-                continue
             c_base = 16
-            loop_order = "im2col"
+            loop_order = "im2col"  # kn2col only tested experimentally
             c_ = c_base
             module_ref = get_module_by_name(halut_model.model, next_layer)
             if isinstance(module_ref, HalutConv2d):
@@ -214,8 +189,6 @@ def run_retraining(
                     * module_ref.kernel_size[1]
                 )
                 inner_dim_kn2col = module_ref.in_channels
-                # if "layer3" in next_layer or "layer4" in next_layer:
-                #     loop_order = "im2col"
                 if loop_order == "im2col":
                     c_ = inner_dim_im2col // 9  # 9 = 3x3
                     if module_ref.kernel_size[0] * module_ref.kernel_size[1] == 1:
@@ -224,16 +197,10 @@ def run_retraining(
                     c_ = (
                         inner_dim_kn2col // 8
                     )  # little lower than 9 but safer to work now
-
                 if "downsample" in next_layer or "shortcut" in next_layer:
                     loop_order = "im2col"
                     c_ = inner_dim_im2col // 4
             print("module_ref", module_ref)
-            if "conv1.0" in next_layer:
-                # first layer
-                c_ = c_ * 9
-            if "fc" in next_layer:
-                c_ = c_base  # fc.weight = [512, 10]
             if isinstance(module_ref, HalutLinear):
                 c_ = 256 // 4
             modules = {next_layer: [c_, K, loop_order, use_prototype]} | halut_modules
@@ -278,22 +245,18 @@ def run_retraining(
 
         def _add_params(module, prefix=""):
             for name, p in module.named_parameters(recurse=False):
-                if not p.requires_grad:  # removes parameter from optimizer!!
-                    # filter(lambda p: p.requires_grad, model.parameters())
+                if not p.requires_grad:
                     continue
                 if isinstance(module, (HalutConv2d, HalutLinear)):
                     if name == "thresholds":
                         params["thresholds"].append(p)
                         continue
-                    if name == "temperature":
+                    if name == "temperature":  # temperature currently not trained
                         # params["temperature"].append(p)
                         continue
                     if name == "lut":
                         params["lut"].append(p)
                         continue
-                # if prefix in ("conv1", "linear"):
-                #     continue
-                print("add to other", prefix, name)
                 params["other"].append(p)  # add batch normalization
 
             for child_name, child_module in module.named_children():
@@ -330,7 +293,6 @@ def run_retraining(
         lr_scheduler_name = "cosineannealinglr"
         args_checkpoint.lr_scheduler = lr_scheduler_name
         args_checkpoint.opt = opt_name
-        # opt_name = args_checkpoint.opt.lower()
         if opt_name == "sgd":
             optimizer = torch.optim.SGD(
                 param_groups,
@@ -350,7 +312,6 @@ def run_retraining(
         else:
             raise ValueError("Unknown optimizer {}".format(opt_name))
 
-        # if args_checkpoint.cifar10:
         if args_checkpoint.lr_scheduler == "cosineannealinglr":
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
@@ -374,8 +335,6 @@ def run_retraining(
             )
 
         checkpoint["lr_scheduler"] = lr_scheduler.state_dict()
-
-        # optimizer updates
         checkpoint["optimizer"] = opt_state_dict
 
         args_checkpoint.output_dir = args.output_dir
@@ -413,128 +372,12 @@ def run_retraining(
     return args_checkpoint, idx, len(layers), checkpoint["epoch"]
 
 
-# pylint: disable=consider-iterating-dictionary
-def model_analysis(args: Any) -> None:
-    (_, model, state_dict, _, _, _, _, _) = load_model(
-        args.checkpoint, distributed=False
-    )
-
-    total_params = 0
-    prev_params = 0
-    all_results = {}  # type: ignore
-    print("model", model)
-    for k, v in state_dict.items():
-        layer = ".".join(k.split(".")[:-1])
-        if (
-            "bn" in layer or "downsample.1" in layer or "conv1" == layer
-        ):  # downsample.1 = bn
-            continue
-        if layer not in all_results.keys():
-            all_results[layer] = {}
-        if ".lut" in k or ".threshold" in k or ".A" in k:
-            print(k, v.shape)
-            type_ = k.split(".")[-1]
-            all_results[layer]["name"] = layer
-            all_results[layer][f"{type_}_shape"] = v.shape
-            all_results[layer][f"{type_}_size"] = v.numel() * 2 // 1024
-            all_results[layer][f"{type_}_params"] = v.numel()
-            if type_ == "lut" and len(v.shape) == 3:
-                all_results[layer]["C"] = v.shape[1]
-                all_results[layer]["K"] = v.shape[2]
-                all_results[layer]["M"] = v.shape[0]
-            total_params += v.numel()
-            if ".A" in k or ".lut" in k:
-                print(k, v)
-        if ".weight" in k:
-            print(k, v.shape)
-            params_weight = v.numel() * 2 // 1024
-            prev_params += v.numel()
-            all_results[layer]["weight_size"] = v.numel() * 2 // 1024
-            all_results[layer]["weight_params"] = v.numel()
-            all_results[layer]["weight_shape"] = v.shape
-            all_results[layer]["in"] = v.shape[1]
-            all_results[layer]["out"] = v.shape[0]
-            all_results[layer]["kernel_size"] = v.shape[2] if len(v.shape) > 2 else 1
-            all_results[layer]["D"] = (
-                v.shape[1] * all_results[layer]["kernel_size"] ** 2
-            )
-            print(k, params_weight)
-    # pylint: disable=consider-using-dict-items
-    for layer in all_results.keys():
-        if "C" in all_results[layer].keys():
-            all_results[layer]["CW"] = (
-                all_results[layer]["D"] // all_results[layer]["C"]
-            )
-            all_results[layer]["ratio"] = (
-                all_results[layer]["lut_size"] / all_results[layer]["weight_size"]
-            )
-        else:
-            all_results[layer]["CW"] = 0
-            all_results[layer]["ratio"] = 0
-    print("total params", total_params)
-    print("prev params", prev_params)
-    print(all_results)
-    df = pd.DataFrame(all_results).T
-    print(df)
-    df_selected = df[
-        [
-            "name",
-            "D",
-            "M",
-            "C",
-            "in",
-            "out",
-            "kernel_size",
-            "CW",
-            "lut_size",
-            "weight_size",
-            # "thresholds_size",
-            "ratio",
-        ]
-    ]
-    cidx = pd.Index(
-        [
-            "Layer Name",
-            "D",
-            "M",
-            "C",
-            "In",
-            "Out",
-            "Kernel",
-            "CW",
-            "LUT [kB]",
-            "Weight [kB]",
-            # "Threshold [kB]",
-            "Ratio",
-        ],
-    )
-    df_selected.columns = cidx
-    styler = df_selected.style
-    styler.format(subset="CW", precision=0).format_index(escape="latex", axis=1).format(
-        subset="Ratio", precision=2
-    ).format_index(escape="latex", axis=0).hide(level=0, axis=0)
-    styler.to_latex(
-        "table_resnet18_cifar10.tex",
-        clines="skip-last;data",
-        convert_css=True,
-        position_float="centering",
-        multicol_align="|c|",
-        hrules=True,
-        # float_format="%.2f",
-    )
-    # pylint: disable=import-outside-toplevel
-    from torchinfo import summary
-
-    summary(model, input_size=(1, 3, 32, 32), depth=4)
-
-
 if __name__ == "__main__":
     DEFAULT_FOLDER = "/scratch2/janniss/"
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
     TRAIN_EPOCHS = 25  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128  # 128
     LR = 0.001  # 0.001/0.002 layer-per-payer, 0.0005 fine-tuning
-    LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
     parser.add_argument(
@@ -577,11 +420,6 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "-analysis",
-        action="store_true",
-        help="analysis",
-    )
-    parser.add_argument(
         "-single",
         action="store_true",
         help="run in non distributed mode",
@@ -605,13 +443,6 @@ if __name__ == "__main__":
         args.halutdata = DEFAULT_FOLDER + f"/halut/{args.testname}/"
         args.learned = DEFAULT_FOLDER + f"/halut/{args.testname}/learned/"
 
-    if args.analysis:
-        print(
-            args.checkpoint,
-        )
-        model_analysis(args)
-        sys.exit(0)
-
     output_dir = os.path.dirname(args.checkpoint)
     if args.testname is not None:
         output_dir = DEFAULT_FOLDER + f"/halut/{args.testname}/checkpoints/"
@@ -625,7 +456,6 @@ if __name__ == "__main__":
             distributed=False,
             batch_size=BATCH_SIZE,
             lr=LR,
-            lr_step_size=LR_STEP_SIZE,
             train_epochs=TRAIN_EPOCHS,
         )
         args.distributed = False
@@ -641,7 +471,6 @@ if __name__ == "__main__":
             distributed=True,
             batch_size=BATCH_SIZE,
             lr=LR,
-            lr_step_size=LR_STEP_SIZE,
             train_epochs=TRAIN_EPOCHS,
         )
         torch.cuda.set_device(args.gpu)
@@ -655,8 +484,6 @@ if __name__ == "__main__":
     args_checkpoint.workers = 4  # type: ignore
     args_checkpoint.simulate = False  # type: ignore
     args_checkpoint.testname = args.testname  # type: ignore
-    # epochs_array = [-1, 30, 20, 20, 30, 30, 30, 30]
-    print("epoch", epoch, idx)
     for i in range(idx, total + 1):  # type: ignore
         args_checkpoint.epochs = epoch + TRAIN_EPOCHS  # type: ignore
         args_checkpoint.resume = (  # type: ignore
@@ -667,9 +494,6 @@ if __name__ == "__main__":
             torch.cuda.empty_cache()
             torch.cuda.set_device(args.gpu)
             dist.barrier()
-        # args_checkpoint.test_only = True
-        # main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
-        # args_checkpoint.test_only = False
         main(args_checkpoint, gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS)
         if not args.single:
             dist.barrier()
@@ -689,7 +513,6 @@ if __name__ == "__main__":
             distributed=not args.single,
             batch_size=BATCH_SIZE,
             lr=LR,
-            lr_step_size=LR_STEP_SIZE,
             train_epochs=TRAIN_EPOCHS,
         )
         torch.cuda.empty_cache()
@@ -701,7 +524,6 @@ if __name__ == "__main__":
                 distributed=not args.single,
                 batch_size=BATCH_SIZE,
                 lr=LR,
-                lr_step_size=LR_STEP_SIZE,
                 train_epochs=TRAIN_EPOCHS,
             )  # do not overwrite args_checkpoint
         torch.cuda.empty_cache()
