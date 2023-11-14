@@ -565,7 +565,7 @@ total_fJ = 0
 # we assume everything is loaded into L2/L1 cache on a pulpissimo like architecture
 # L1 access 0.9 pJ/Byte https://arxiv.org/pdf/2110.09101.pdf should be lower
 mem_access_cost = 900
-# FMA operation cost 2 FMA vector units scaled to 14nm and frequencz
+# FMA operation cost 2 FMA vector units scaled to 14nm and frequency and voltage
 # --> 2 MACS/cycle per unit latency 3 cycles
 # https://arxiv.org/pdf/2007.01530.pdf 3.43 pJ/(4xMACs) throughput per cycle
 # for one unit 1.71 / cycle --> 2 MACS/cycle
@@ -723,8 +723,12 @@ def execute_maddness(n, d, m, input_shape, output_shape):
                 for _ in range(n):
                     cycles += C  # takes c cyles to get a value
                     fJ += (
-                        23600 + mac_unit_cost_per_mac * 4
-                    ) * C  # per cycles / stella nera unit + 4x MACs
+                        23600
+                        + mac_unit_cost_per_mac
+                        * 4  # per cycles / stella nera unit + 4x MACs
+                    ) * C
+                    # that is a clear overestimate
+                    # as most of the time we sum over C first and then have to do the conversion once
     return cycles, fJ
 
 
@@ -734,7 +738,7 @@ def execute_maddness(n, d, m, input_shape, output_shape):
 # 2 FPUs needed per stella nera accelerator --> could be heavily optimized
 
 # resnet20_layer_info, resnet9_layer_info, resnet8_layer_info
-model_info = resnet8_layer_info
+model_info = resnet9_layer_info
 
 # first layer
 fp16_macs = model_info[0][0] * model_info[0][1] * model_info[2][1]
