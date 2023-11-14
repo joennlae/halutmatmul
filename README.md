@@ -21,7 +21,7 @@
 
 ### ResNet-9 LUTs, Thresholds, Dims
 
-* [Download 90%+ Model](https://iis-people.ee.ethz.ch/~janniss/resnet9-best.pth)
+* [Download 92%+ Model](https://iis-people.ee.ethz.ch/~janniss/resnet9-best-int8.pth)
 
 ### Halutmatmul example
 

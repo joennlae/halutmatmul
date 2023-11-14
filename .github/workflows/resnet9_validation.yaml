@@ -1,11 +1,11 @@
-name: ResNet9 - 91.6%+ accuracy
+name: ResNet9 - 92.6%+ accuracy
 on: [push]
 
 jobs:
   changes:
     uses: ./.github/workflows/filter.yaml
   resnet9:
-    name: ResNet9 - 91.6%+ accuracy
+    name: ResNet9 - 92.6%+ accuracy
     needs: changes
     if: ${{ needs.changes.outputs.algorithmic == 'true' }}
     runs-on: ubuntu-latest
