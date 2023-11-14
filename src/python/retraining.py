@@ -74,7 +74,7 @@ def load_model(
         elif args.model == "resnet9":
             model = ResNet9(3, num_classes)  # type: ignore
         elif args.model == "resnet8":
-            model = Resnet8v1EEMBC()
+            model = Resnet8v1EEMBC()  # type: ignore
     else:
         # model = timm.create_model(args.model, pretrained=True, num_classes=num_classes)
         model = torchvision.models.get_model(
@@ -359,7 +359,7 @@ def run_retraining(
             )
         elif args_checkpoint.lr_scheduler == "plateau":
             # this should give us three levels
-            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(  # type: ignore
                 optimizer,
                 mode="min",
                 factor=0.5,

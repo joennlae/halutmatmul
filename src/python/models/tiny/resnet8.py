@@ -42,7 +42,7 @@ class ResNetBlock(nn.Module):
         if in_channels == out_channels:
             self.residual = nn.Identity()
         else:
-            self.residual = HalutConv2d(
+            self.residual = HalutConv2d(  # type: ignore
                 in_channels=in_channels,
                 out_channels=out_channels,
                 kernel_size=1,
