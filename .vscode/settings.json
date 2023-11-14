@@ -1,11 +1,4 @@
 {
-  "python.linting.pylintEnabled": true,
-  "python.linting.enabled": true,
-  "python.formatting.provider": "black",
-  // https://github.com/microsoft/vscode-python/issues/18508#issuecomment-1036254146
-  "python.formatting.blackPath": "/scratch/janniss/conda/halutmatmul_gpu/bin/black",
-  "python.sortImports.path": "/scratch/janniss/conda/halutmatmul_gpu/bin/isort",
-  "python.linting.pylintPath": "/scratch/janniss/conda/halutmatmul_gpu/bin/pylint",
   "python.terminal.activateEnvironment": true,
   "editor.rulers": [
     100
@@ -14,5 +7,11 @@
   "python.analysis.typeCheckingMode": "basic",
   "extensions.experimental.affinity": {
     "asvetliakov.vscode-neovim": 1
+  },
+  "python.analysis.extraPaths": [
+    "./src/python"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
   },
 }
