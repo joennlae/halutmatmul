@@ -533,7 +533,7 @@ if __name__ == "__main__":
     MODEL_NAME_EXTENSION = "cifar10-halut-resnet9"
     TRAIN_EPOCHS = 25  # 25 layer-per-layer, 300 fine-tuning
     BATCH_SIZE = 128  # 128
-    LR = 0.002  # 0.001 layer-per-payer, 0.0005 fine-tuning
+    LR = 0.001  # 0.001/0.002 layer-per-payer, 0.0005 fine-tuning
     LR_STEP_SIZE = 20
     GRADIENT_ACCUMULATION_STEPS = 1
     parser = argparse.ArgumentParser(description="Replace layer with halut")
