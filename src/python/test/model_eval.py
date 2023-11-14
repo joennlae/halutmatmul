@@ -69,23 +69,6 @@ with tempfile.TemporaryDirectory() as tmpdirname:
         device="cpu",
     )
 
-    # int8 quantized model
-    # model_int8 = torch.ao.quantization.quantize_dynamic(
-    #     model,
-    #     {HalutConv2d, HalutLinear},
-    #     dtype=torch.qint8,
-    # )
-
-    # model_int8.to("cpu")
-    # criterion = nn.CrossEntropyLoss()
-
-    # acc1, acc5, loss = evaluate(
-    #     model,
-    #     criterion=criterion,
-    #     data_loader=data_loader_val,
-    #     device="cpu",
-    # )
-
-    assert acc1 > 0.916
+    assert acc1 > 0.926
     assert acc5 > 0.99
     assert loss < 0.5
