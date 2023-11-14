@@ -1,3 +1,9 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Jannis Schönleber, ETH Zurich
+
 module fp_16_32_adder (
     input  logic signed [16-1:0] operand_fp16_i,
     input  logic signed [32-1:0] operand_fp32_i,

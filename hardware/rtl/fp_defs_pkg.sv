@@ -1,3 +1,10 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Jannis Schönleber, ETH Zurich
+
+
 `define RM_NEAREST 2'h0
 `define RM_TRUNC 2'h1
 `define RM_PLUSINF 2'h2
