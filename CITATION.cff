@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this, please cite it as below."
+title: "Stella Nera: Achieving 161 TOp/s/W with Multiplier-free DNN Acceleration based on Approximate Matrix Multiplication"
+doi: 10.48550/arXiv.2311.10207
+authors:
+  - family-names: Schönleber
+    given-names: Jannis
+    orcid: https://orcid.org/0009-0000-2242-5331
+    affiliation: ETH Zürich
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Schönleber
+      given-names: Jannis
+      orcid: https://orcid.org/0009-0000-2242-5331
+      affiliation: ETH Zürich
+    - family-names: Cavigelli
+      given-names: Lukas
+      affiliation: Huawei Technologies Zürich Research Center
+    - family-names: Andri
+      given-names: Renzo
+      affiliation: Huawei Technologies Zürich Research Center
+    - family-names: Perotti
+      given-names: Matteo
+      affiliation: ETH Zürich
+    - family-names: Benini
+      given-names: Luca
+      affiliations:
+        - ETH Zürich
+        - Università di Bologna
