@@ -1,30 +1,72 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this, please cite it as below."
-title: "Stella Nera: Achieving 161 TOp/s/W with Multiplier-free DNN Acceleration based on Approximate Matrix Multiplication"
-doi: 10.48550/arXiv.2311.10207
+title: >-
+  Stella Nera: Achieving 161 TOp/s/W with Multiplier-free
+  DNN Acceleration based on Approximate Matrix
+  Multiplication
+message: "If you use it in your work, please cite or reference :-)"
+type: software
 authors:
-  - family-names: Schönleber
-    given-names: Jannis
-    orcid: https://orcid.org/0009-0000-2242-5331
+  - given-names: Jannis
+    family-names: Schönleber
     affiliation: ETH Zürich
+    orcid: "https://orcid.org/0009-0000-2242-5331"
+  - given-names: Lukas
+    family-names: Cavigelli
+    affiliation: Huawei Technologies Zürich Research Center
+  - given-names: Renzo
+    family-names: Andri
+    affiliation: Huawei Technologies Zürich Research Center
+  - given-names: Matteo
+    family-names: Perotti
+    affiliation: ETH Zürich
+  - given-names: Luca
+    family-names: Benini
+    affiliation: ETH Zürich
+identifiers:
+  - type: url
+    value: "https://arxiv.org/abs/2311.10207"
+  - type: doi
+    value: 10.48550/arXiv.2311.10207
 preferred-citation:
   type: article
+  title: >-
+    Stella Nera: Achieving 161 TOp/s/W with Multiplier-free
+    DNN Acceleration based on Approximate Matrix
+    Multiplication
   authors:
-    - family-names: Schönleber
-      given-names: Jannis
-      orcid: https://orcid.org/0009-0000-2242-5331
+    - given-names: Jannis
+      family-names: Schönleber
       affiliation: ETH Zürich
-    - family-names: Cavigelli
-      given-names: Lukas
+      orcid: "https://orcid.org/0009-0000-2242-5331"
+    - given-names: Lukas
+      family-names: Cavigelli
       affiliation: Huawei Technologies Zürich Research Center
-    - family-names: Andri
-      given-names: Renzo
+    - given-names: Renzo
+      family-names: Andri
       affiliation: Huawei Technologies Zürich Research Center
-    - family-names: Perotti
-      given-names: Matteo
+    - given-names: Matteo
+      family-names: Perotti
       affiliation: ETH Zürich
-    - family-names: Benini
-      given-names: Luca
-      affiliations:
-        - ETH Zürich
-        - Università di Bologna
+    - given-names: Luca
+      family-names: Benini
+      affiliation: ETH Zürich
+  doi: "10.48550/arXiv.2311.10207"
+repository-code: "https://github.com/joennlae/halutmatmul"
+abstract: >-
+  The recent Maddness method approximates Matrix
+  Multiplication (MatMul) without the need for
+  multiplication by using a hash-based version of product
+  quantization (PQ). The hash function is a decision tree,
+  allowing for efficient hardware implementation, as
+  multiply-accumulate operations are replaced by decision
+  tree passes and LUT lookups. Stella Nera is the first
+  Maddness accelerator achieving 15x higher area efficiency
+  (GMAC/s/mm^2) and 25x higher energy efficiency (TMAC/s/W)
+  than direct MatMul accelerators in the same technology. In
+  a commercial 14 nm technology and scaled to 3 nm, we
+  achieve an energy efficiency of 161 TOp/s/W@0.55V with a
+  Top-1 accuracy on CIFAR-10 of over 92.5% using ResNet9.
+license: MIT
