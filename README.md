@@ -19,9 +19,8 @@
 
 ### Abstract
 
-```
-The recent Maddness method approximates Matrix Multiplication (MatMul) without the need for multiplication by using a hash-based version of product quantization (PQ). The hash function is a decision tree, allowing for efficient hardware implementation, as multiply-accumulate operations are replaced by decision tree passes and LUT lookups. Stella Nera is the first Maddness accelerator achieving 15x higher area efficiency (GMAC/s/mm^2) and 25x higher energy efficiency (TMAC/s/W) than direct MatMul accelerators in the same technology. In a commercial 14 nm technology and scaled to 3 nm, we achieve an energy efficiency of 161 TOp/s/W@0.55V with a Top-1 accuracy on CIFAR-10 of over 92.5% using ResNet9.
-```
+
+*The recent Maddness method approximates Matrix Multiplication (MatMul) without the need for multiplication by using a hash-based version of product quantization (PQ). The hash function is a decision tree, allowing for efficient hardware implementation, as multiply-accumulate operations are replaced by decision tree passes and LUT lookups. Stella Nera is the first Maddness accelerator achieving 15x higher area efficiency (GMAC/s/mm^2) and 25x higher energy efficiency (TMAC/s/W) than direct MatMul accelerators in the same technology. In a commercial 14 nm technology and scaled to 3 nm, we achieve an energy efficiency of 161 TOp/s/W@0.55V with a Top-1 accuracy on CIFAR-10 of over 92.5% using ResNet9.*
 
 # Algorithmic - Maddness
 
