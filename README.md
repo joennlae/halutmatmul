@@ -1,4 +1,9 @@
-# Stella Nera - Halutmatmul
+<div align="center">
+
+# Stella Nera: A halutmatmul based accelerator
+</div>
+
+<div align="center">
 
 ### Algorithmic CI
 [![PyTorch Layer Test | PyTest](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/python_testing.yaml)
@@ -13,7 +18,9 @@
 [![RTL Linting](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_linting.yaml)
 [![HW Design Verification](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml/badge.svg)](https://github.com/joennlae/halutmatmul/actions/workflows/hw_dv.yaml)
 
-# Paper
+</div>
+
+## Paper
 
 * [Stella Nera: Achieving 161 TOp/s/W with Multiplier-free DNN Acceleration based on Approximate Matrix Multiplication](https://arxiv.org/abs/2311.10207)
 
@@ -21,6 +28,7 @@
 
 
 *The recent Maddness method approximates Matrix Multiplication (MatMul) without the need for multiplication by using a hash-based version of product quantization (PQ). The hash function is a decision tree, allowing for efficient hardware implementation, as multiply-accumulate operations are replaced by decision tree passes and LUT lookups. Stella Nera is the first Maddness accelerator achieving 15x higher area efficiency (GMAC/s/mm^2) and 25x higher energy efficiency (TMAC/s/W) than direct MatMul accelerators in the same technology. In a commercial 14 nm technology and scaled to 3 nm, we achieve an energy efficiency of 161 TOp/s/W@0.55V with a Top-1 accuracy on CIFAR-10 of over 92.5% using ResNet9.*
+
 
 # Algorithmic - Maddness
 
@@ -56,9 +64,9 @@ mse = np.square(C_halut - C).mean()
 print(mse)
 ```
 
-# Hardware - OpenROAD flow results from CI
+# Hardware - OpenROAD flow results from CI - NOT OPTIMIZED
 
-All NanGate45 results are NOT OPTIMIZED! The results are only for reference and to show the flow works.
+All completely open hardware results are NOT OPTIMIZED! The results are only for reference and to show the flow works.
 
 | All Designs    |  NanGate45      |
 | -------------  |  -------------  |
@@ -86,8 +94,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  50.4 | 
 | TNS            |  0 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_clocks.webp)  |
-| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_routing.webp)  |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/results/6_final.gds)  |
 
 
@@ -101,8 +109,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  48.7 | 
 | TNS            |  0 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_clocks.webp)  |
-| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_routing.webp)  |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/results/6_final.gds)  |
 
 
@@ -116,8 +124,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  52.1 | 
 | TNS            |  0 |
-| Clock Net      | ![Clock_net](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp)  |
-| Routing        | ![Routing](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp)  |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |
 
 
@@ -133,11 +141,7 @@ conda activate halutmatmul
 conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
 ```
 
-## References
+### References
 
 * [arXiv](https://arxiv.org/abs/2106.10860) Maddness paper
 * Based on [MADDness/Bolt](https://github.com/dblalock/bolt).
-
-## Hackernews mention (comments only) and discussion
-
-* [HN: Bolt: Faster matrix and vector operations that run on compressed data](https://news.ycombinator.com/item?id=31792206)
