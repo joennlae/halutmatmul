@@ -94,8 +94,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  50.4 | 
 | TNS            |  0 |
-| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
-| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_clocks.webp" alt="Clock Net" width="100"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/reports/final_routing.webp" alt="Routing" width="100"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_matmul/results/6_final.gds)  |
 
 
@@ -109,8 +109,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  48.7 | 
 | TNS            |  0 |
-| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
-| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_clocks.webp" alt="Clock Net" width="100"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/reports/final_routing.webp" alt="Routing" width="100"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_encoder_4/results/6_final.gds)  |
 
 
@@ -124,8 +124,8 @@ ACC_TYPE=INT DATA_WIDTH=8 NUM_M=8 NUM_DECODER_UNITS=4 NUM_C=16 make halut-open-s
 | Voltage [V]    |   1.1             |
 | Util [%]       |  52.1 | 
 | TNS            |  0 |
-| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp" alt="Clock Net" style="max-width: 100%; height: auto;"> |
-| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp" alt="Routing" style="max-width: 100%; height: auto;"> |
+| Clock Net      | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_clocks.webp" alt="Clock Net" width="100"> |
+| Routing        | <img src="https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/reports/final_routing.webp" alt="Routing" width="100"> |
 | GDS            | [GDS Download](https://raw.githubusercontent.com/joennlae/halutmatmul-openroad-reports/main/latest/nangate45/halut_decoder/results/6_final.gds)  |
 
 
@@ -139,6 +139,17 @@ conda activate halutmatmul
 
 # IIS prefixed env
 conda env create -f environment_gpu.yml --prefix /scratch/janniss/conda/halutmatmul_gpu
+```
+
+# Citation
+
+```bibtex
+@article{schonleber2023stella,
+  title={Stella Nera: Achieving 161 TOp/s/W with Multiplier-free DNN Acceleration based on Approximate Matrix Multiplication},
+  author={Sch{\"o}nleber, Jannis and Cavigelli, Lukas and Andri, Renzo and Perotti, Matteo and Benini, Luca},
+  journal={arXiv preprint arXiv:2311.10207},
+  year={2023}
+}
 ```
 
 ### References
